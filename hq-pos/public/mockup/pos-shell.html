@@ -1,0 +1,3495 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BR 코리아 본사 HQ POS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.0/css/all.min.css">
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+
+    /* ═══════════════════════════════════════════════════
+   RESET & GLOBAL
+═══════════════════════════════════════════════════ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+      font-size: 13px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   ROOT LAYOUT
+═══════════════════════════════════════════════════ */
+    .pos-root {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #0f0f1e;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   TOP SYSTEM BAR
+═══════════════════════════════════════════════════ */
+    .sys-bar {
+      height: 40px;
+      background: #0f0f1e;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 10px;
+      flex-shrink: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .07);
+      z-index: 200;
+    }
+
+    .sys-logo {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #FF6E00, #E91E8C);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 900;
+      color: white;
+      flex-shrink: 0;
+      letter-spacing: -1px;
+    }
+
+    .sys-brand {
+      color: white;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -.3px;
+      flex-shrink: 0;
+    }
+
+    .sys-brand span {
+      color: #FF6E00;
+    }
+
+    .sys-divider {
+      width: 1px;
+      height: 18px;
+      background: rgba(255, 255, 255, .1);
+      flex-shrink: 0;
+    }
+
+    .sys-search {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, .07);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 6px;
+      padding: 4px 10px;
+      width: 190px;
+    }
+
+    .sys-search input {
+      background: none;
+      border: none;
+      outline: none;
+      color: rgba(255, 255, 255, .75);
+      font-size: 12px;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .sys-search input::placeholder {
+      color: rgba(255, 255, 255, .3);
+    }
+
+    .sys-search i {
+      color: rgba(255, 255, 255, .3);
+      font-size: 11px;
+    }
+
+    .sys-store {
+      font-size: 12px;
+      color: rgba(255, 255, 255, .65);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .sys-store strong {
+      color: #FF8C33;
+      font-weight: 800;
+    }
+
+    .sys-store .store-tag {
+      background: rgba(255, 110, 0, .15);
+      color: rgba(255, 140, 51, .9);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    /* KPI row in sys-bar */
+    .sys-kpi-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 6px;
+    }
+
+    .sys-kpi {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .sys-kpi-val {
+      font-size: 13px;
+      font-weight: 800;
+      color: white;
+    }
+
+    .sys-kpi-lbl {
+      font-size: 10px;
+      color: rgba(255, 255, 255, .45);
+    }
+
+    .sys-kpi-chg {
+      font-size: 10px;
+      font-weight: 700;
+      color: #22c55e;
+    }
+
+    .sys-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sys-emp {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(255, 255, 255, .65);
+      font-size: 12px;
+    }
+
+    .sys-emp .emp-tag {
+      background: rgba(255, 110, 0, .2);
+      color: #FF8C33;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .sys-icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .07);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, .55);
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      transition: all .15s;
+      position: relative;
+    }
+
+    .sys-icon-btn:hover {
+      background: rgba(255, 255, 255, .14);
+      color: white;
+    }
+
+    .sys-icon-btn .notif-dot {
+      width: 7px;
+      height: 7px;
+      background: #E91E8C;
+      border-radius: 50%;
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      border: 1.5px solid #0f0f1e;
+    }
+
+    .sys-lang {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255, 255, 255, .07);
+      border-radius: 5px;
+      padding: 4px 9px;
+      color: rgba(255, 255, 255, .65);
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   BODY ROW
+═══════════════════════════════════════════════════ */
+    .pos-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   LEFT SIDEBAR
+═══════════════════════════════════════════════════ */
+    .sidebar {
+      width: 54px;
+      background: #131325;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 0;
+      gap: 2px;
+      flex-shrink: 0;
+      overflow-y: auto;
+      scrollbar-width: none;
+      border-right: 1px solid rgba(255, 255, 255, .05);
+    }
+
+    .sidebar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .sb-item {
+      width: 46px;
+      border-radius: 8px;
+      padding: 7px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      transition: all .15s;
+      border: none;
+      background: none;
+      flex-shrink: 0;
+      position: relative;
+      font-family: inherit;
+    }
+
+    .sb-item:hover {
+      background: rgba(255, 255, 255, .07);
+    }
+
+    .sb-item.active {
+      background: rgba(255, 110, 0, .18);
+    }
+
+    .sb-item.active .sb-icon {
+      color: #FF6E00;
+    }
+
+    .sb-item.active .sb-lbl {
+      color: #FF8C33;
+    }
+
+    .sb-icon {
+      font-size: 16px;
+      color: rgba(255, 255, 255, .45);
+      line-height: 1;
+    }
+
+    .sb-lbl {
+      font-size: 9px;
+      color: rgba(255, 255, 255, .38);
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.2;
+      word-break: keep-all;
+    }
+
+    .sb-badge {
+      min-width: 14px;
+      height: 14px;
+      background: #E91E8C;
+      border-radius: 7px;
+      font-size: 9px;
+      font-weight: 800;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+      position: absolute;
+      top: 3px;
+      right: 3px;
+    }
+
+    .sb-badge.amber {
+      background: #F59E0B;
+    }
+
+    .sb-divider {
+      width: 28px;
+      height: 1px;
+      background: rgba(255, 255, 255, .07);
+      margin: 4px 0;
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   MAIN CONTENT AREA
+═══════════════════════════════════════════════════ */
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #f4f5f7;
+    }
+
+    /* ── TAB BAR ─────────────────────────── */
+    .tab-bar {
+      height: 38px;
+      background: #ffffff;
+      border-bottom: 2px solid #e8e8e8;
+      display: flex;
+      align-items: flex-end;
+      padding: 0 0 0 8px;
+      gap: 1px;
+      flex-shrink: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      z-index: 10;
+    }
+
+    .tab-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      height: 33px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f0f0f0;
+      border: 1px solid #e0e0e0;
+      border-bottom: none;
+      border-radius: 7px 7px 0 0;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      color: #777;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+
+    .tab-btn:hover {
+      background: #fff;
+      color: #444;
+    }
+
+    .tab-btn.active {
+      background: #ffffff;
+      color: #1a1a1a;
+      border-color: #d0d0d0;
+      border-bottom: 2px solid #ffffff;
+      margin-bottom: -2px;
+      z-index: 2;
+    }
+
+    .tab-btn.ai-tab.active {
+      color: #FF6E00;
+      border-top: 2px solid #FF6E00;
+    }
+
+    .tab-btn i {
+      font-size: 11px;
+    }
+
+    .tab-close {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #aaa;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .tab-close:hover {
+      background: rgba(0, 0, 0, .1);
+      color: #444;
+    }
+
+    /* ── CONTENT FRAME ──────────────────── */
+    .content-frame {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .content-page {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: none;
+      overflow: hidden;
+    }
+
+    .content-page.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    iframe.pos-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* ── PLACEHOLDER PAGE ───────────────── */
+    .placeholder-page {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #bbb;
+      background: #f8f9fa;
+    }
+
+    .placeholder-page i {
+      font-size: 40px;
+      color: #ddd;
+    }
+
+    .placeholder-page h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #aaa;
+    }
+
+    .placeholder-page p {
+      font-size: 12px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   MAIN POS PAGE LAYOUT
+═══════════════════════════════════════════════════ */
+    .main-page {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr minmax(200px, 260px);
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      overflow: hidden;
+      background: #f4f5f7;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   공지 게시판 (MAIN PAGE)
+═══════════════════════════════════════════════════ */
+    .notice-main-page {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #f0f1f3;
+    }
+
+    .nm-banner {
+      background: linear-gradient(135deg, #1a1a2e, #2d1444);
+      padding: 9px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .nm-banner-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      background: linear-gradient(135deg, #FF6E00, #E91E8C);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .nm-banner-text {
+      flex: 1;
+    }
+
+    .nm-banner-label {
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.5);
+      font-weight: 700;
+      margin-bottom: 1px;
+    }
+
+    .nm-banner-content {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.45;
+    }
+
+    .nm-banner-content strong {
+      color: #FFB380;
+    }
+
+    .nm-banner-stats {
+      display: flex;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+
+    .nm-stat {
+      text-align: center;
+    }
+
+    .nm-stat .nv {
+      font-size: 15px;
+      font-weight: 800;
+      color: #FF8C33;
+    }
+
+    .nm-stat .nl {
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .nm-body {
+      flex: 1;
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .nm-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .nm-tab-bar {
+      display: flex;
+      align-items: center;
+      background: #f8f9fa;
+      border-bottom: 2px solid #e8e8e8;
+      padding: 0 12px;
+      flex-shrink: 0;
+    }
+
+    .nm-tab {
+      padding: 7px 13px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #999;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all .14s;
+      white-space: nowrap;
+      margin-bottom: -2px;
+      border: none;
+      background: none;
+      font-family: inherit;
+    }
+
+    .nm-tab.active {
+      color: #FF6E00;
+      border-bottom: 2px solid #FF6E00;
+      margin-bottom: -2px;
+    }
+
+    .nm-tab:hover:not(.active) {
+      color: #555;
+    }
+
+    .nm-tab-extra {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nm-unread {
+      background: #FF6E00;
+      color: white;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 8px;
+    }
+
+    .nm-reg-btn {
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: #f0f0f0;
+      border: none;
+      font-size: 10px;
+      font-weight: 700;
+      color: #666;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .14s;
+    }
+
+    .nm-reg-btn:hover {
+      background: #FF6E00;
+      color: white;
+    }
+
+    .nm-list {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #e0e0e0 transparent;
+    }
+
+    .nm-list::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .nm-list::-webkit-scrollbar-thumb {
+      background: #e0e0e0;
+      border-radius: 2px;
+    }
+
+    .nm-row {
+      display: flex;
+      align-items: center;
+      padding: 5px 12px;
+      border-bottom: 1px solid #f2f2f2;
+      cursor: pointer;
+      transition: background .1s;
+      gap: 6px;
+      min-height: 28px;
+    }
+
+    .nm-row:hover {
+      background: #fff8f4;
+    }
+
+    .nm-row.unread .nm-row-title {
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+
+    .nm-row.pinned {
+      background: #fffcf0;
+    }
+
+    .nm-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      border: 1px solid transparent;
+    }
+
+    .nt-notice {
+      background: #fff0e0;
+      color: #d46b08;
+      border-color: #ffd591;
+    }
+
+    .nt-guide {
+      background: #e6f4ff;
+      color: #1677ff;
+      border-color: #91caff;
+    }
+
+    .nt-promo {
+      background: #fff0f6;
+      color: #c41d7f;
+      border-color: #ffadd2;
+    }
+
+    .nt-edu {
+      background: #f6ffed;
+      color: #389e0d;
+      border-color: #b7eb8f;
+    }
+
+    .nt-urgent {
+      background: #fff1f0;
+      color: #cf1322;
+      border-color: #ffa39e;
+    }
+
+    .nt-normal {
+      background: #fafafa;
+      color: #888;
+      border-color: #e0e0e0;
+    }
+
+    .nm-row-title {
+      flex: 1;
+      font-size: 12px;
+      color: #444;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .nm-row-date {
+      font-size: 11px;
+      color: #bbb;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .nm-new-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #E91E8C;
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   RIGHT QUICK PANEL
+═══════════════════════════════════════════════════ */
+    /* ── Right Quick Panel ── */
+    .right-panel {
+      width: 105px;
+      background: #eef2f7;
+      border-left: 1px solid #d1d9e6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 6px;
+      padding-bottom: 120px;
+      /* FAB 공간 확보 */
+      gap: 5px;
+      flex-shrink: 0;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    .rp-btn {
+      width: 100%;
+      min-height: 60px;
+      background: white;
+      border: 1px solid #c8d1e0;
+      border-radius: 4px;
+      display: flex;
+      padding: 6px 8px;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .rp-btn:hover {
+      background: #fdfdfd;
+      border-color: #FF6E00;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .rp-text {
+      flex: 1;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 800;
+      color: #333;
+      line-height: 1.25;
+      word-break: keep-all;
+    }
+
+    .rp-text strong {
+      display: block;
+      font-size: 11px;
+      color: #000;
+      margin-top: 1px;
+    }
+
+    .rp-icon-box {
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .rp-icon-box i {
+      font-size: 22px;
+      color: #555;
+    }
+
+    .rp-div {
+      width: 30px;
+      height: 1px;
+      background: #eee;
+      margin: 10px 0;
+    }
+
+    /* ── Custom Chat Icon in FAB ── */
+    .chat-custom-icon {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      /* 흰색 계통으로 변경하여 시인성 확보 */
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .chat-custom-icon i {
+      font-size: 38px;
+      /* 크기 소폭 확대 */
+    }
+
+    .chat-custom-icon span {
+      position: absolute;
+      top: 46%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 9px;
+      color: #E91E8C;
+      /* 말풍선 안의 점은 핑크색으로 유지하여 포인트 */
+      letter-spacing: -1px;
+      font-weight: 900;
+      margin-top: -2px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   AI FLOATING BUTTONS — 2-button stack
+ ═══════════════════════════════════════════════════ */
+    .ai-fab-wrap {
+      position: fixed;
+      bottom: 25px;
+      right: 16px;
+      z-index: 1200;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .ai-fab-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-direction: row-reverse;
+    }
+
+    .ai-fab {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      border: 2.5px solid #FF6E00;
+    }
+
+    .ai-fab:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 35px rgba(233, 30, 140, 0.5);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .ai-fab::before {
+      content: '';
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      opacity: 0.25;
+      filter: blur(8px);
+      z-index: -1;
+      animation: fabPulse 2.5s infinite;
+    }
+
+    .ai-fab--chat::before {
+      background: linear-gradient(135deg, #FF6E00, #E91E8C);
+    }
+
+    .ai-fab--dash::before {
+      background: linear-gradient(135deg, #4A3AFF, #7C5CFC);
+    }
+
+    .ai-fab--dash {
+      border-color: #5B4AE2;
+    }
+
+    .ai-fab--dash:hover {
+      box-shadow: 0 12px 35px rgba(91, 74, 226, 0.5);
+    }
+
+    @keyframes fabPulse {
+      0% { transform: scale(1); opacity: 0.25; }
+      50% { transform: scale(1.15); opacity: 0.12; }
+      100% { transform: scale(1); opacity: 0.25; }
+    }
+
+    .ai-fab-icon {
+      font-size: 24px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+    }
+
+    .ai-fab--chat .ai-fab-icon { color: #FF6E00; }
+    .ai-fab--dash .ai-fab-icon { color: #5B4AE2; }
+
+    .ai-fab-label {
+      background: rgba(15, 15, 30, 0.92);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(8px);
+      transition: all 0.25s ease;
+    }
+
+    .ai-fab-row:hover .ai-fab-label {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .ai-fab-wrap.show-tip .ai-fab-label {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+
+    /* ═══════════════════════════════════════════════════
+   AI MINI CHAT PANEL
+═══════════════════════════════════════════════════ */
+    .ai-mini {
+      position: fixed;
+      bottom: 110px;
+      right: 30px;
+      width: 360px;
+      height: 650px;
+      max-height: 80vh;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, .25);
+      z-index: 1100;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform-origin: bottom right;
+      transform: scale(.8) translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all .3s cubic-bezier(.34, 1.56, .64, 1);
+    }
+
+    .ai-mini.open {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .ai-mini-head {
+      background: linear-gradient(135deg, #FF6E00, #E91E8C);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .ai-mini-av {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    .ai-mini-info {
+      flex: 1;
+    }
+
+    .ai-mini-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: white;
+    }
+
+    .ai-mini-sub {
+      font-size: 10px;
+      color: rgba(255, 255, 255, .75);
+      margin-top: 1px;
+    }
+
+    .ai-mini-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .ai-mini-goto {
+      background: rgba(255, 255, 255, .2);
+      border: 1px solid rgba(255, 255, 255, .35);
+      color: white;
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+
+    .ai-mini-goto:hover {
+      background: rgba(255, 255, 255, .32);
+    }
+
+    .ai-mini-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .2);
+      border: none;
+      cursor: pointer;
+      color: white;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+    }
+
+    .ai-mini-close:hover {
+      background: rgba(255, 255, 255, .32);
+    }
+
+    .ai-mini-msgs {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: #f0f0f0 transparent;
+    }
+
+    .m-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .m-row.user {
+      flex-direction: row-reverse;
+    }
+
+    .m-av {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #FF6E00, #E91E8C);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    .m-bubble {
+      max-width: 230px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #333;
+    }
+
+    .m-row.ai .m-bubble {
+      background: linear-gradient(135deg, #fff8f4, #fff);
+      border: 1px solid #ffe5cc;
+      border-radius: 4px 12px 12px 12px;
+    }
+
+    .m-row.user .m-bubble {
+      background: linear-gradient(135deg, #FF6E00, #E91E8C);
+      color: white;
+      border-radius: 12px 4px 12px 12px;
+    }
+
+    .ai-mini-quickrow {
+      padding: 0 12px 8px;
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .mq {
+      padding: 5px 11px;
+      border-radius: 14px;
+      border: 1.5px solid #ffd4b0;
+      background: #fff4ec;
+      font-size: 11px;
+      font-weight: 700;
+      color: #FF6E00;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+    }
+
+    .mq:hover {
+      background: #FF6E00;
+      color: white;
+      border-color: #FF6E00;
+    }
+
+    .ai-mini-input-row {
+      padding: 10px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .mini-inp {
+      flex: 1;
+      padding: 7px 12px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 20px;
+      outline: none;
+      font-size: 12px;
+      font-family: inherit;
+      transition: border-color .15s;
+    }
+
+    .mini-inp:focus {
+      border-color: #FF6E00;
+    }
+
+    .mini-send {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FF6E00, #E91E8C);
+      border: none;
+      cursor: pointer;
+      color: white;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity .15s;
+    }
+
+    .mini-send:hover {
+      opacity: .85;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   NOTIFICATION PANEL
+═══════════════════════════════════════════════════ */
+    .notif-panel {
+      position: fixed;
+      top: 46px;
+      right: 14px;
+      width: 320px;
+      max-height: 400px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .18);
+      z-index: 700;
+      overflow: hidden;
+      transform: scale(.9) translateY(-8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all .2s ease;
+    }
+
+    .notif-panel.open {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .notif-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .notif-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #222;
+    }
+
+    .notif-mark-all {
+      font-size: 11px;
+      color: #FF6E00;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .notif-list {
+      overflow-y: auto;
+      max-height: 350px;
+    }
+
+    .notif-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 11px 14px;
+      border-bottom: 1px solid #f8f8f8;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .notif-item.unread {
+      background: #fffaf7;
+    }
+
+    .notif-item:hover {
+      background: #f8f8f8;
+    }
+
+    .notif-ico {
+      font-size: 20px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .notif-body {
+      flex: 1;
+    }
+
+    .notif-item-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #333;
+      line-height: 1.4;
+    }
+
+    .notif-item-sub {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .notif-unread-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #FF6E00;
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════ */
+    .toast-container {
+      position: fixed;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+      align-items: center;
+      width: 500px;
+      max-width: 90vw;
+    }
+
+    .toast {
+      background: #1a1a2e;
+      color: white;
+      padding: 11px 18px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .3);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      animation: toastIn .3s ease;
+      pointer-events: all;
+      border-left: 3px solid #FF6E00;
+    }
+
+    .toast.success {
+      border-color: #22c55e;
+    }
+
+    .toast.warn {
+      border-color: #f59e0b;
+    }
+
+    .toast.err {
+      border-color: #ef4444;
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* ── Scrollbar ─────────────────────── */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #d0d0d0;
+      border-radius: 2px;
+    }
+
+    /* 로봇 아이콘용 스타일 */
+    .fa-robot {
+      font-size: 30px;
+    }
+
+    /* 말풍선 아이콘용 스타일 */
+    .fa-comment-dots {
+      font-size: 30px;
+    }
+
+    /* ═══════════════════════════════════════════
+       HQ DASHBOARD CONTENT STYLES
+    ═══════════════════════════════════════════ */
+    .hq-kpi-row {
+      display: flex;
+      gap: 8px;
+      padding: 10px 12px;
+      flex-shrink: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .hq-kpi-row::-webkit-scrollbar { display: none; }
+    .hq-kpi {
+      flex: 1;
+      min-width: 120px;
+      background: white;
+      border-radius: 8px;
+      padding: 10px 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .hq-kpi-label { font-size: 10px; color: #888; font-weight: 600; }
+    .hq-kpi-val { font-size: 20px; font-weight: 900; color: #1a1a2e; line-height: 1.1; }
+    .hq-kpi-sub { font-size: 10px; color: #999; }
+    .hq-kpi-sub.up { color: #22c55e; }
+    .hq-kpi-sub.down { color: #ef4444; }
+    .hq-kpi-icon { font-size: 14px; margin-right: 4px; }
+
+    .hq-filter-row {
+      display: flex;
+      gap: 6px;
+      padding: 6px 12px;
+      flex-shrink: 0;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .hq-filter-chip {
+      padding: 3px 10px;
+      border-radius: 14px;
+      border: 1.5px solid #e0e0e0;
+      background: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      color: #666;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .hq-filter-chip:hover { border-color: #FF6E00; color: #FF6E00; }
+    .hq-filter-chip.active { background: #FF6E00; color: white; border-color: #FF6E00; }
+
+    .hq-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .hq-section-head {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 2px solid #f0f0f0;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .hq-section-title { font-size: 12px; font-weight: 800; color: #333; }
+    .hq-section-badge {
+      font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 8px;
+    }
+    .hq-section-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+      scrollbar-width: thin;
+      scrollbar-color: #e0e0e0 transparent;
+    }
+    .hq-section-body::-webkit-scrollbar { width: 3px; }
+    .hq-section-body::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 2px; }
+
+    .hq-row {
+      display: flex;
+      align-items: center;
+      padding: 5px 12px;
+      gap: 6px;
+      border-bottom: 1px solid #f5f5f5;
+      cursor: pointer;
+      transition: background .1s;
+      min-height: 26px;
+    }
+    .hq-row:hover { background: #fff8f4; }
+    .hq-row-label { font-size: 11px; color: #444; flex: 1; font-weight: 500; }
+    .hq-row-val { font-size: 11px; font-weight: 700; color: #1a1a2e; white-space: nowrap; }
+    .hq-row-sub { font-size: 10px; color: #999; white-space: nowrap; }
+
+    .hq-badge {
+      font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+    }
+    .hq-badge.danger { background: #fff1f0; color: #cf1322; }
+    .hq-badge.warn { background: #fff7e6; color: #d46b08; }
+    .hq-badge.ok { background: #f6ffed; color: #389e0d; }
+    .hq-badge.info { background: #e6f4ff; color: #1677ff; }
+
+    .hq-bar-row { display: flex; align-items: center; padding: 3px 12px; gap: 6px; }
+    .hq-bar-label { font-size: 10px; color: #666; width: 80px; flex-shrink: 0; }
+    .hq-bar-track { flex: 1; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+    .hq-bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+    .hq-bar-val { font-size: 10px; color: #333; font-weight: 700; width: 40px; text-align: right; flex-shrink: 0; }
+
+    .hq-mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .hq-mini-table th {
+      background: #f8f9fa;
+      font-weight: 700;
+      color: #555;
+      padding: 5px 8px;
+      text-align: left;
+      border-bottom: 2px solid #e8e8e8;
+      font-size: 10px;
+    }
+    .hq-mini-table td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #f2f2f2;
+      color: #333;
+    }
+    .hq-mini-table tr:hover td { background: #fff8f4; }
+
+    .hq-content-page {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #f0f1f3;
+      padding: 10px;
+      gap: 8px;
+    }
+    .hq-content-page .hq-page-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .hq-content-page .hq-page-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #1a1a2e;
+    }
+    .hq-two-col {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .hq-three-col {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .hq-issue-card {
+      background: #fff;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin: 0 12px 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .hq-issue-title { font-size: 11px; font-weight: 700; color: #333; margin-bottom: 3px; }
+    .hq-issue-desc { font-size: 10px; color: #888; line-height: 1.4; }
+  </style>
+</head>
+
+<body>
+  <div class="pos-root">
+
+    <!-- ══ SYSTEM TOP BAR ═════════════════════════════ -->
+    <header class="sys-bar">
+      <div class="sys-logo">HQ</div>
+      <div class="sys-brand">BR<span>Korea</span> HQ Console</div>
+      <div class="sys-divider"></div>
+      <div class="sys-search">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="점포/메뉴 검색...">
+      </div>
+      <div class="sys-divider"></div>
+      <div class="sys-kpi-row">
+        <div class="sys-kpi"><span class="sys-kpi-val" style="color:#FF6E00">₩33.4M</span><span class="sys-kpi-lbl">일발주</span></div>
+        <div class="sys-kpi"><span class="sys-kpi-val">33</span><span class="sys-kpi-lbl">전체점포</span></div>
+        <div class="sys-kpi"><span class="sys-kpi-val" style="color:#ef4444">6</span><span class="sys-kpi-lbl">위험</span></div>
+        <div class="sys-kpi"><span class="sys-kpi-val" style="color:#f59e0b">12</span><span class="sys-kpi-lbl">주의</span></div>
+        <div class="sys-kpi"><span class="sys-kpi-val" style="color:#22c55e">15</span><span class="sys-kpi-lbl">정상</span></div>
+      </div>
+      <div class="sys-divider"></div>
+
+      <div class="sys-right">
+        <div class="sys-account"
+          style="display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.06); padding:4px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
+          <div class="sys-store" style="display:flex; align-items:center; gap:5px; font-size:12px;">
+            <i class="fas fa-store" style="color:#FF6E00"></i>
+            <strong style="color:white;">BR 코리아 본사</strong>
+             <span class="store-tag" style="padding:1px 5px; font-size:9px;">33개 점포</span>
+          </div>
+          <div style="width:1px; height:12px; background:rgba(255,255,255,0.2);"></div>
+          <div class="sys-emp" style="display:flex; align-items:center; gap:5px; font-size:12px;">
+            <span class="emp-tag"
+              style="background:rgba(233,30,140,0.2); color:#E91E8C; padding:1px 6px; font-size:10px;">운영관리</span>
+            <span style="color:rgba(255,255,255,0.9); font-weight:700;">관리자</span>
+          </div>
+        </div>
+        <div class="sys-divider"></div>
+        <button class="sys-icon-btn" title="알림" onclick="toggleNotifPanel()">
+          <i class="fas fa-bell"></i>
+          <span class="notif-dot"></span>
+        </button>
+        <button class="sys-icon-btn" title="달력"><i class="fas fa-calendar-alt"></i></button>
+        <button class="sys-icon-btn" title="설정"><i class="fas fa-cog"></i></button>
+        <div class="sys-lang">
+          <i class="fas fa-globe"></i> 한국어 <i class="fas fa-chevron-down" style="font-size:8px"></i>
+        </div>
+        <button class="sys-icon-btn" title="종료" style="background:rgba(239,68,68,.15);color:#f87171">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ══ BODY ═══════════════════════════════════════ -->
+    <div class="pos-body">
+
+      <!-- LEFT SIDEBAR -->
+      <nav class="sidebar">
+        <button class="sb-item active" onclick="setActive(this,'main')">
+          <i class="fas fa-home sb-icon"></i>
+          <span class="sb-lbl">종합현황</span>
+        </button>
+        <button class="sb-item" onclick="setActive(this,'order')">
+          <i class="fas fa-building sb-icon"></i>
+          <span class="sb-lbl">점포운영</span>
+          <span class="sb-badge">6</span>
+        </button>
+        <button class="sb-item" onclick="setActive(this,'table')">
+          <i class="fas fa-th-large sb-icon"></i>
+          <span class="sb-lbl">점포현황</span>
+        </button>
+        <div class="sb-divider"></div>
+        <button class="sb-item" onclick="setActive(this,'sales')">
+          <i class="fas fa-chart-line sb-icon"></i>
+          <span class="sb-lbl">매출분석</span>
+        </button>
+        <button class="sb-item" onclick="setActive(this,'stock')">
+          <i class="fas fa-boxes sb-icon"></i>
+          <span class="sb-lbl">재고</span>
+          <span class="sb-badge amber">792</span>
+        </button>
+        <button class="sb-item" onclick="setActive(this,'hygiene')">
+          <i class="fas fa-bullhorn sb-icon"></i>
+          <span class="sb-lbl">캠페인</span>
+        </button>
+        <div class="sb-divider"></div>
+        <button class="sb-item" onclick="setActive(this,'notice')">
+          <i class="fas fa-bell sb-icon"></i>
+          <span class="sb-lbl">공지</span>
+          <span class="sb-badge">7</span>
+        </button>
+        <button class="sb-item" onclick="setActive(this,'staff')">
+          <i class="fas fa-file-alt sb-icon"></i>
+          <span class="sb-lbl">리포트</span>
+        </button>
+        <button class="sb-item" onclick="setActive(this,'report')">
+          <i class="fas fa-robot sb-icon"></i>
+          <span class="sb-lbl">AI인사이트</span>
+        </button>
+      </nav>
+
+      <!-- MAIN AREA -->
+      <div class="main-area">
+        <!-- TAB BAR -->
+        <div class="tab-bar" id="tabBar">
+          <button class="tab-btn active" id="tab-main" onclick="switchTab('main')">
+            <i class="fas fa-home"></i> MAIN
+          </button>
+          <!-- AI tab added dynamically -->
+        </div>
+
+        <!-- CONTENT FRAME -->
+        <div class="content-frame">
+
+         <!-- ── MAIN PAGE: 종합현황 대시보드 ────── -->
+          <div class="content-page active" id="page-main">
+            <div class="notice-main-page">
+              <!-- AI 운영 요약 배너 -->
+              <div class="nm-banner">
+                <div class="nm-banner-icon">📊</div>
+                <div class="nm-banner-text">
+                  <div class="nm-banner-label">🔔 HQ 운영 요약 · 2026-03-10 14:45 기준</div>
+                  <div class="nm-banner-content">전체 33개 점포 · 일일 발주액 <strong>₩33.4M</strong> · 위험 6개 점포 · 주의 17개 점포 · 21개 점포 블루베리크림치즈 도넛 품절 · 전주 대비 발주 -5.4%</div>
+                </div>
+                <div class="nm-banner-stats">
+                  <div class="nm-stat">
+                     <div class="nv">33</div>
+                     <div class="nl">전체점포</div>
+                   </div>
+                   <div class="nm-stat">
+                     <div class="nv" style="color:#ef4444">6</div>
+                     <div class="nl">위험</div>
+                   </div>
+                   <div class="nm-stat">
+                     <div class="nv" style="color:#f59e0b">12</div>
+                     <div class="nl">주의</div>
+                   </div>
+                </div>
+              </div>
+              <!-- KPI 카드 행 -->
+              <div class="hq-kpi-row">
+                <div class="hq-kpi">
+                  <div class="hq-kpi-label">📦 일일 발주액</div>
+                  <div class="hq-kpi-val">₩33.4M</div>
+                  <div class="hq-kpi-sub down">▼ 5.4% vs 전주동일</div>
+                </div>
+                <div class="hq-kpi">
+                  <div class="hq-kpi-label">🏭 일일 생산량</div>
+                  <div class="hq-kpi-val">413,233</div>
+                  <div class="hq-kpi-sub up">▲ 1.4% vs 4주평균</div>
+                </div>
+                <div class="hq-kpi">
+                  <div class="hq-kpi-label">⚠️ 품절 품목</div>
+                  <div class="hq-kpi-val" style="color:#ef4444">792</div>
+                  <div class="hq-kpi-sub">32개 점포에서 발생</div>
+                </div>
+                <div class="hq-kpi">
+                  <div class="hq-kpi-label">📋 발주 필요 점포</div>
+                  <div class="hq-kpi-val" style="color:#f59e0b">18</div>
+                  <div class="hq-kpi-sub">전체의 55%</div>
+                </div>
+                <div class="hq-kpi">
+                  <div class="hq-kpi-label">🔔 미확인 공지</div>
+                  <div class="hq-kpi-val" style="color:#E91E8C">7</div>
+                  <div class="hq-kpi-sub">긴급 1건 포함</div>
+                </div>
+              </div>
+              <!-- 필터 행 -->
+              <div class="hq-filter-row">
+                <span style="font-size:10px;color:#999;font-weight:700;">필터:</span>
+                <button class="hq-filter-chip active" onclick="hqFilter(this,'all')">전체 33개</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'서울')">서울 (7)</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'경기')">경기 (8)</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'부산')">부산 (4)</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'경상')">경상 (3)</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'기타')">기타 (11)</button>
+                <span style="font-size:10px;color:#bbb;margin-left:8px;">빠른 선택:</span>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'store:고양시02')">고양시02</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'store:안양시01')">안양시01</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'store:성남시01')">성남시01</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'store:수원시01')">수원시01</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'store:강서구01')">강서구01</button>
+                <button class="hq-filter-chip" onclick="hqFilter(this,'store:마포구01')">마포구01</button>
+              </div>
+              <!-- 본체: 좌우 2컬럼 -->
+              <div class="nm-body">
+                <!-- 좌: 핵심 지표 + 위험 점포 -->
+                <div class="nm-col">
+                  <div class="nm-tab-bar">
+                    <button class="nm-tab active" onclick="hqMainTab(this,'left','kpi')">핵심지표</button>
+                    <button class="nm-tab" onclick="hqMainTab(this,'left','risk')">위험점포</button>
+                    <button class="nm-tab" onclick="hqMainTab(this,'left','top')">상위점포</button>
+                    <div class="nm-tab-extra">
+                      <span class="nm-unread" style="background:#ef4444">6</span>
+                    </div>
+                  </div>
+                  <div class="nm-list" id="nmLeftList"></div>
+                </div>
+                <!-- 우: 공지 + 이슈 -->
+                <div class="nm-col">
+                  <div class="nm-tab-bar">
+                    <button class="nm-tab active" onclick="hqMainTab(this,'right','notice')">공지</button>
+                    <button class="nm-tab" onclick="hqMainTab(this,'right','issue')">이슈</button>
+                    <button class="nm-tab" onclick="hqMainTab(this,'right','basic')">기본공지</button>
+                    <div class="nm-tab-extra">
+                      <span class="nm-unread" id="nmRightUnread">7</span>
+                      <button class="nm-reg-btn">+ 등록</button>
+                    </div>
+                  </div>
+                  <div class="nm-list" id="nmRightList"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Dashboard tab (iframe) -->
+          <div class="content-page" id="page-ai">
+            <iframe class="pos-iframe" id="aiFrame" src="pos-dashboard.html" title="HQ Fox AI 대시보드" data-origin="same-dir"></iframe>
+          </div>
+
+          <!-- 점포 운영 -->
+          <div class="content-page" id="page-order">
+            <div class="hq-content-page">
+              <div class="hq-page-head">
+                <span class="hq-page-title">🏪 점포 운영 현황</span>
+                <span class="hq-badge danger">위험 6</span>
+                <span class="hq-badge warn">주의 17</span>
+                <span class="hq-badge ok">정상 10</span>
+              </div>
+              <div class="hq-three-col" id="hqStoreOps"></div>
+            </div>
+          </div>
+          <!-- 점포 현황 -->
+          <div class="content-page" id="page-table">
+            <div class="hq-content-page">
+              <div class="hq-page-head">
+                <span class="hq-page-title">📊 점포 현황 · 전체 33개</span>
+              </div>
+              <div class="hq-filter-row" style="padding:0 0 6px 0;">
+                <button class="hq-filter-chip active" onclick="hqStoreFilter(this,'all')">전체</button>
+                <button class="hq-filter-chip" onclick="hqStoreFilter(this,'위험')">위험 (6)</button>
+                <button class="hq-filter-chip" onclick="hqStoreFilter(this,'주의')">주의 (17)</button>
+                <button class="hq-filter-chip" onclick="hqStoreFilter(this,'정상')">정상 (10)</button>
+              </div>
+              <div style="flex:1;overflow:auto;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+                <table class="hq-mini-table" id="hqStoreTable"></table>
+              </div>
+            </div>
+          </div>
+          <!-- 매출 분석 -->
+          <div class="content-page" id="page-sales">
+            <div class="hq-content-page">
+              <div class="hq-page-head">
+                <span class="hq-page-title">📈 매출 분석</span>
+                <span class="hq-badge info">기준: 2026-03-10</span>
+              </div>
+              <div class="hq-two-col" id="hqSales"></div>
+            </div>
+          </div>
+          <!-- 재고 -->
+          <div class="content-page" id="page-stock">
+            <div class="hq-content-page">
+              <div class="hq-page-head">
+                <span class="hq-page-title">📦 재고 관리</span>
+                <span class="hq-badge danger">품절 792건</span>
+                <span class="hq-badge warn">저재고 145건</span>
+              </div>
+              <div class="hq-two-col" id="hqStock"></div>
+            </div>
+          </div>
+          <!-- 캠페인 -->
+          <div class="content-page" id="page-hygiene">
+            <div class="hq-content-page">
+              <div class="hq-page-head">
+                <span class="hq-page-title">📣 캠페인 성과</span>
+                <span class="hq-badge info">최근 집계 기준</span>
+              </div>
+              <div class="hq-two-col" id="hqCampaign"></div>
+            </div>
+          </div>
+          <!-- 공지 -->
+          <div class="content-page" id="page-notice">
+            <div class="hq-content-page">
+              <div class="hq-page-head">
+                <span class="hq-page-title">🔔 공지사항</span>
+                <span class="hq-badge" style="background:#fff0e6;color:#d46b08;">미확인 7건</span>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:8px;overflow:auto;">
+                <div class="hq-section" style="flex:1;">
+                  <div class="hq-section-head">
+                    <span class="hq-section-title">긴급·조치필요 공지</span>
+                    <span class="hq-badge danger">2건</span>
+                  </div>
+                  <div class="hq-section-body" id="hqNoticeUrgent"></div>
+                </div>
+                <div class="hq-section" style="flex:1;">
+                  <div class="hq-section-head">
+                    <span class="hq-section-title">전체 공지</span>
+                    <span class="hq-badge info">33건</span>
+                  </div>
+                  <div class="hq-section-body" id="hqNoticeAll"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 리포트 -->
+          <div class="content-page" id="page-staff">
+            <div class="hq-content-page">
+              <div class="hq-page-head">
+                <span class="hq-page-title">📋 영업 리포트</span>
+                <span class="hq-badge info">2026-03-10 기준</span>
+              </div>
+              <div class="hq-two-col" id="hqReport"></div>
+            </div>
+          </div>
+          <!-- AI 인사이트 -->
+          <div class="content-page" id="page-report">
+            <div class="hq-content-page">
+              <div class="hq-page-head">
+                <span class="hq-page-title">🤖 AI 인사이트</span>
+                <span class="hq-badge" style="background:linear-gradient(135deg,#FF6E00,#E91E8C);color:#fff;">HQ Fox</span>
+              </div>
+              <div class="hq-two-col" id="hqInsight"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT QUICK PANEL -->
+      <div class="right-panel">
+        <button class="rp-btn" onclick="setActive(document.querySelector('[onclick*=order]'),'order')">
+          <div class="rp-text">점포<br><strong>모니터링</strong></div>
+          <div class="rp-icon-box" style="color:#78C2C4"><i class="fas fa-building"></i></div>
+          <div style="position:absolute;top:4px;right:4px;background:#ef4444;color:#fff;font-size:8px;font-weight:800;padding:1px 4px;border-radius:6px;">6</div>
+        </button>
+        <button class="rp-btn" onclick="setActive(document.querySelector('[onclick*=stock]'),'stock')">
+          <div class="rp-text">재고<br>위험<br><strong>18점포</strong></div>
+          <div class="rp-icon-box" style="color:#E84C3D"><i class="fas fa-exclamation-triangle"></i></div>
+        </button>
+        <button class="rp-btn" onclick="setActive(document.querySelector('[onclick*=sales]'),'sales')">
+          <div class="rp-text"><strong>매출</strong><br>전주대비<br>-5.4%</div>
+          <div class="rp-icon-box" style="color:#3498DB"><i class="fas fa-chart-line"></i></div>
+        </button>
+        <button class="rp-btn" onclick="showToast('발주 필요: 블루베리크림치즈 도넛(21점포), 스트로우-중단(21점포), 초코파우더(20점포)','warn')">
+          <div class="rp-text">발주<br><strong>필요</strong><br>TOP3</div>
+          <div class="rp-icon-box" style="color:#F1C40F"><i class="fas fa-truck"></i></div>
+        </button>
+        <button class="rp-btn" onclick="setActive(document.querySelector('[onclick*=hygiene]'),'hygiene')">
+          <div class="rp-text">캠페인<br><strong>성과</strong><br>리포트</div>
+          <div class="rp-icon-box" style="color:#34495E"><i class="fas fa-flag"></i></div>
+        </button>
+        <button class="rp-btn" onclick="setActive(document.querySelector('[onclick*=notice]'),'notice')">
+          <div class="rp-text"><strong>본사</strong><br>공지<br><span style="color:#E91E8C;font-size:9px;">7건</span></div>
+          <div class="rp-icon-box" style="color:#E91E63"><i class="fas fa-bullhorn"></i></div>
+        </button>
+      </div>
+
+    </div><!-- /pos-body -->
+
+
+  </div><!-- /pos-root -->
+
+  <!-- ══ AI FAB — 2-button stack (PIP AI App + Chat) ═══════ -->
+  <div class="ai-fab-wrap" id="aiFabWrap">
+    <div class="ai-fab-row">
+      <div class="ai-fab ai-fab--dash" id="aiFabDash" onclick="openAIDashboard()" title="HQ Fox AI로 이동">
+         <span class="ai-fab-icon"><i class="fas fa-chart-line"></i></span>
+       </div>
+       <span class="ai-fab-label" id="fabLabelDash">📊 HQ Fox AI</span>
+     </div>
+     <div class="ai-fab-row">
+       <div class="ai-fab ai-fab--chat" id="aiFabChat" onclick="handleFabClick()" title="AI 채팅 열기">
+         <span class="ai-fab-icon"><i class="fas fa-comment-dots"></i></span>
+       </div>
+       <span class="ai-fab-label" id="fabLabelChat">🤖 HQ 채팅</span>
+    </div>
+  </div>
+
+  <!-- ══ LOCATION BADGE ════════════════════════════════ -->
+  <div style="position:fixed;top:48px;left:54px;z-index:300;display:flex;gap:6px;align-items:center;padding:6px 12px;background:rgba(15,15,30,0.92);border-bottom:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.08);border-radius:0 0 8px 0;font-size:11px;font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif;">
+   <span style="background:linear-gradient(135deg,#FF6E00,#E91E8C);color:#fff;padding:2px 8px;border-radius:4px;font-weight:700;">HQ</span>
+    <span style="color:rgba(255,255,255,0.7);font-weight:500;">HQ 운영 대시보드</span>
+    <span style="color:rgba(255,255,255,0.3);margin:0 4px;">|</span>
+    <a id="posMainLink" href="http://221.139.49.60:5181/" style="color:#FF8C33;font-weight:600;text-decoration:none;cursor:pointer;" title="PIP POS로 이동">PIP POS 이동 →</a>
+    <span style="color:rgba(255,255,255,0.3);margin:0 4px;">|</span>
+    <a id="pipAiBadgeLink" href="http://221.139.49.60:5181/" target="_blank" rel="noopener" style="color:#FF8C33;font-weight:600;text-decoration:none;cursor:pointer;" title="PIP AI로 이동">PIP AI로 이동 →</a>
+  </div>
+
+  <!-- ══ AI MINI CHAT ══════════════════════════════════ -->
+  <div class="ai-mini" id="aiMini">
+    <div class="ai-mini-head">
+      <div class="ai-mini-av">🤖</div>
+      <div class="ai-mini-info">
+      <div class="ai-mini-title">HQ Fox</div>
+        <div class="ai-mini-sub">HQ 운영 대시보드 · 전체 33개 점포</div>
+      </div>
+      <div class="ai-mini-actions">
+        <button class="ai-mini-goto" onclick="goToFoxAI('fullscreen')" title="HQ Fox AI로 이동">
+           <i class="fas fa-expand"></i> 전체화면
+        </button>
+        <button class="ai-mini-goto" onclick="goToFoxAI('newtab')" style="padding:3px 8px;font-size:10px;" title="새 탭에서 HQ Fox AI 열기">
+          <i class="fas fa-external-link-alt"></i> 새탭
+        </button>
+        <button class="ai-mini-close" onclick="closeMini()"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+    <div class="ai-mini-msgs" id="miniMsgs">
+      <div class="m-row ai">
+        <div class="m-av">🤖</div>
+        <div class="m-bubble">안녕하세요! HQ Fox입니다 🦊<br>전체 33개 점포 운영 데이터를 통합 분석합니다.<br><br>📊 일일 발주액 <strong>₩33.4M</strong><br>⚠️ 위험 점포 <strong style="color:#ef4444">6개</strong> · 주의 <strong style="color:#f59e0b">17개</strong><br>📦 블루베리크림치즈 도넛 <strong>21개 점포 품절</strong><br><br>무엇이든 물어보세요!</div>
+      </div>
+    </div>
+    <div class="ai-mini-quickrow" id="miniQuickRow">
+      <!-- Quick chips are dynamically generated by generateNoticeChips() -->
+    </div>
+    <div class="ai-mini-input-row">
+      <input class="mini-inp" id="miniInp" type="text" placeholder="Fox에게 질문하세요..."
+        onkeydown="if(event.key==='Enter')sendMiniMsg()">
+      <button class="mini-send" onclick="sendMiniMsg()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+  <!-- ══ NOTIFICATION PANEL ════════════════════════════ -->
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-head">
+      <div class="notif-title">알림</div>
+      <div class="notif-mark-all" onclick="markAllRead()">모두 읽음</div>
+    </div>
+    <div class="notif-list" id="notifList"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastWrap"></div>
+
+  <script>
+    /* ═══════════════════════════════════════════
+       STATE
+    ═══════════════════════════════════════════ */
+    let currentTab = 'main';
+    let aiTabOpen = false;
+    let miniOpen = false;
+    let notifOpen = false;
+    /* ═══════════════════════════════════════════
+       MENU DATA
+    ═══════════════════════════════════════════ */
+    const NM_LEFT = [
+      { tag: 'urgent', cls: 'nt-urgent', title: '[긴급] 5월 1일부터 아메리카노·라떼 가격 200원 인상 예정 안내', date: '2026-03-12', unread: true, pinned: true,
+        category: '가격정책', actionRequired: true,
+        summary: '2026년 5월 1일부터 아메리카노·라떼 메뉴 200원 인상 확정. 본사 지침에 따른 전 점포 일괄 적용.',
+        impact: '아메리카노: 4,500→4,700원, 카페라떼: 5,000→5,200원. 객단가 상승 예상, 다이내믹 프라이싱 POS 업데이트 필수.',
+        actionItems: ['POS 메뉴 가격 4/30까지 업데이트', '안내문구 교체 (카운터·앱)', '직원 가격표 숙지 교육'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] KT 싱킹기프트 신시제품 프로모션 운영 중단안내', date: '2026-03-12', unread: true,
+        category: '프로모션', actionRequired: false,
+        summary: 'KT 제휴 싱킹기프트 신시제품 프로모션이 본사 사정으로 운영 중단. 기존 쿠폰 발급 중지.',
+        impact: 'KT 고객 대상 쿠폰 혜택 불가. 관련 포스터·안내물 즉시 철거 필요.',
+        actionItems: ['프로모션 포스터 철거', '키오스크 메뉴에서 해당 항목 숨김 처리'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 26년 2분기~27년(-6기) 오전 한 잔 할인쿠폰 프로모션 종이영수증 안내', date: '2026-03-12', unread: true,
+        category: '프로모션', actionRequired: true,
+        summary: '오전 한 잔 할인쿠폰 프로모션 종이영수증 발급 관련. 2분기~(-6기)까지 진행, 영수증 출력 방식 변경.',
+        impact: '할인쿠픰 발급 프로세스 변경. 영수증 프린터 설정 확인 필요.',
+        actionItems: ['영수증 프린터 상태 점검', '할인쿠폰 발급 테스트 시행', '직원 교육 완료'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 26년 2분기~27년(-6기) D-DAY 프로모션 및 챔피온/신생아/연중 이벤트 안내', date: '2026-03-12', unread: false,
+        category: '프로모션', actionRequired: false,
+        summary: 'D-DAY 프로모션과 챔피온/신생아/연중 이벤트 통합 안내. 2분기부터 순차 적용.',
+        impact: '이벤트 기간 중 매출 변동 예상. 프로모션 겹침 시 우선순위 확인 필요.',
+        actionItems: ['이벤트 달력 확인', '중복 프로모션 정리'] },
+      { tag: '안내', cls: 'nt-guide', title: '[안내] 긴 이 여름 제철 출판 반반 및 단기간 무료들의 오픈 안내', date: '2026-03-12', unread: false,
+        category: '행사', actionRequired: false,
+        summary: '여름 제철 출판 반반 할인 및 단기 무료 프로모션 오픈 안내.',
+        impact: '매장 부스 공간 활용 가능. 부가 매출 기회.',
+        actionItems: ['부스 공간 확보 여부 확인'] },
+      { tag: '프로모션', cls: 'nt-promo', title: '[프로모션] 두비이 앱 소프트웨어·달걀프러이션 매장 한눈 보기', date: '2026-03-12', unread: false,
+        category: '프로모션', actionRequired: false,
+        summary: '두비이 앱에서 소프트웨어·달걀프러이션 프로모션 진행 중. 매장용 가이드 배포.',
+        impact: '앱 사용 고객 대상 혜택. 매장 직원 안내 필요.',
+        actionItems: ['직원 앱 프로모션 안내 숙지'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 렌트스 신제품 종류들 판매 기준일 변경 완료 안내', date: '2026-03-10', unread: false,
+        category: '제품', actionRequired: false,
+        summary: '렌트스 신제품 판매 기준일이 변경 완료. 기존 기준일에서 일부 조정.',
+        impact: '신제품 입고 일정 및 진열 변경 가능.',
+        actionItems: ['신제품 입고 일정 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 두비이 앱 소프트리산 앱 트리 적립 한중 이벤트 오픈 안내', date: '2026-03-10', unread: false,
+        category: '프로모션', actionRequired: false,
+        summary: '두비이 앱 트리 적립 이벤트 오픈. 고객 참여형 프로모션.',
+        impact: '앱 활성화 고객 증가 예상.',
+        actionItems: ['매장 내 이벤트 포스터 부착'] },
+      { tag: '안내', cls: 'nt-guide', title: '[안내] 3월 식품안전 점검 대비 마련 (3/10 확인일 10:21~21시)', date: '2026-03-10', unread: false,
+        category: '위생', actionRequired: true,
+        summary: '3월 10일 식품안전 점검 예정. 10:21~21시 사이 방문 점검 가능. 위생 체크리스트 사전 점검 필수.',
+        impact: '불합격 시 영업정지 위험. 매장 위생 관리 강화 필요.',
+        actionItems: ['위생 체크리스트 사전 점검', '냉장·냉동고 온도 점검', '유통기한 만료 제품 폐기', '조리구역 청소 상태 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 두비이 좋은 음료 금속 이달의 시식점 일정 안내', date: '2026-03-08', unread: false,
+        category: '행사', actionRequired: false,
+        summary: '이달의 시식점 일정 안내. 시음 이벤트 참여 점포 대상.',
+        impact: '시식 행사 준비 필요.',
+        actionItems: ['시음 제품 준비 여부 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[필독] 브랜블록 커피·영 무쿄 서비스 신규 취임 일정 안내', date: '2026-03-08', unread: false,
+        category: '운영', actionRequired: false,
+        summary: '브랜블록 커피·영 무쿄 서비스 신규 취임 일정. 관련 업무 인수인계 필요.',
+        impact: '담당자 변경에 따른 업무 조정.',
+        actionItems: ['인수인계 일정 확인'] },
+      { tag: '안내', cls: 'nt-guide', title: '[안내] 26년 반기 점포 분기별 재무/선별 일정에 대한 안내사항', date: '2026-03-06', unread: false,
+        category: '재무', actionRequired: false,
+        summary: '26년도 반기 점포 분기별 재무 보고 및 선별 일정 안내.',
+        impact: '재무 서류 제출 일정 준수 필요.',
+        actionItems: ['재무 서류 준비'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 3월 봄 세상맞이 세트 프로모션 안내', date: '2026-03-05', unread: false,
+        category: '프로모션', actionRequired: false,
+        summary: '3월 봄 세상맞이 세트 프로모션 진행. 세트 메뉴 구성 및 가격 확인.',
+        impact: '세트 메뉴 매출 변동 예상.',
+        actionItems: ['세트 구성 및 재고 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 26년 7분기 단말기 신규DDL pay 세부 프로판 독립 건의 안내', date: '2026-03-05', unread: false,
+        category: '시스템', actionRequired: false,
+        summary: '신규 단말기 DDL pay 세부 프로판 독립 건의 안내. 결제 시스템 변경 가능.',
+        impact: '결제 단말기 업데이트 필요할 수 있음.',
+        actionItems: ['결제 단말기 펌웨어 버전 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 3월 6-7 시소콜 수준 기준 공지 안내', date: '2026-03-05', unread: false,
+        category: '위생', actionRequired: false,
+        summary: '시소콜(HACCP) 수준 기준 관련 공지. 식품 위생 관리 기준 확인.',
+        impact: '위생 관리 기준 강화 필요할 수 있음.',
+        actionItems: ['HACCP 기준 재확인'] },
+      { tag: '공지', cls: 'nt-notice', title: "[긴급] '26년 상하반기 판매 매장: 시즌 디자인 어려울 경우 변경 안내", date: '2026-03-04', unread: false,
+        category: '디자인', actionRequired: false,
+        summary: '상하반기 시즌 디자인 변경 관련. 어려운 경우 대안 안내.',
+        impact: '시즌 데코레이션 일정 변경 가능.',
+        actionItems: ['시즌 디자인 가이드 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 이미지한다 아리이, 어로 마케팅 온로 상이', date: '2026-03-04', unread: false,
+        category: '마케팅', actionRequired: false,
+        summary: '이미지 관련 마케팅 온라인 상이 안내. 프로모션 이미지 업데이트.',
+        impact: '매장 내 이미지 교체 필요할 수 있음.',
+        actionItems: ['프로모션 이미지 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 이달 신규 가격 정책 변경 안내 (2026-02-27부터)', date: '2026-02-27', unread: false,
+        category: '가격정책', actionRequired: true,
+        summary: '2026년 2월 27일부터 신규 가격 정책 적용. 일부 메뉴 가격 조정.',
+        impact: '가격 변경된 메뉴 POS 업데이트 필수. 미반영 시 매출 손실 발생.',
+        actionItems: ['POS 가격 업데이트 완료 확인', '메뉴판 교체', '직원 가격 안내 교육'] },
+    ];
+
+    const NM_RIGHT = [
+      { tag: '공지', cls: 'nt-notice', title: '[기본공지] 7식목고·냉온음다기 기기 커뮤니티·리뷰어 (휴가+26-17기)', date: '2026-03-12', unread: true, pinned: true,
+        category: '교육', actionRequired: false,
+        summary: '식목고·냉온음다기 기기 관련 교육 커뮤니티 리뷰어 모집. 26-17기 휴가 일정 포함.',
+        impact: '해당 교육 이수 대상자 확인 필요.',
+        actionItems: ['교육 대상자 확인', '휴가 일정 조정'] },
+      { tag: '안내', cls: 'nt-guide', title: '[기본공지] 3번 DD Barista 3급 주코주점의 탈취나타민 들어 다 (-3/18)', date: '2026-03-12', unread: true,
+        category: '교육', actionRequired: true,
+        summary: 'DD Barista 3급 자격 관련 탈취나타민 교육. 3/18 마감.',
+        impact: '미이수 시 자격 유지 불가. 3/18까지 이수 필수.',
+        actionItems: ['3/18 마감일 전 이수 완료', '교육 신청 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[기본공지] 26년 1분기로 안단기 블링/프로폭(26-17기) 가구수과 공지', date: '2026-03-12', unread: false,
+        category: '운영', actionRequired: false, summary: '1분기 안단기 블링/프로폭 가구수 관련 공지.', impact: '행사 준비 일정 확인 필요.', actionItems: ['가구수 확인'] },
+      { tag: '안내', cls: 'nt-guide', title: '[안내] 26년 상단기 직원경력 직업성과(담보) 시사 인원 관리', date: '2026-03-11', unread: false,
+        category: '인사', actionRequired: false, summary: '직원 경력 및 직업성과 관련 인원 관리 안내.', impact: '인사 기록 업데이트 필요.', actionItems: ['인사 기록 확인'] },
+      { tag: '안내', cls: 'nt-guide', title: "[안내] '26년 지역 파트이부(포트) 사원인 관리기기지선 고교", date: '2026-03-11', unread: false,
+        category: '인사', actionRequired: false, summary: '지역 파트 이부 사원 관리 관련 안내.', impact: '해당 인원 확인 필요.', actionItems: ['해당자 여부 확인'] },
+      { tag: '프로모션', cls: 'nt-promo', title: '[공지] BRK/모험연합활동들 관건 소·경기 이벤트', date: '2026-03-09', unread: false,
+        category: '프로모션', actionRequired: false, summary: 'BRK 모험연합활동 소·경기 이벤트 진행.', impact: '이벤트 기간 중 매출 증가 가능.', actionItems: ['이벤트 준비 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 2026년 판매장관조 정사/신사 안내', date: '2026-03-09', unread: false,
+        category: '운영', actionRequired: false, summary: '판매장 관조 정사/신사 관련 안내.', impact: '매장 감사 대비 필요.', actionItems: ['감사 체크리스트 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: "[공지] '26년 BRK 고객보드구성 신청 인재 및 홈원 참면 공지", date: '2026-03-09', unread: false,
+        category: '마케팅', actionRequired: false, summary: 'BRK 고객보드 구성 신청 안내. 참면 대상자 모집.', impact: '참여 시 고객 의견 반영 기회.', actionItems: ['신청 여부 결정'] },
+      { tag: '공지', cls: 'nt-notice', title: 'BRK바대리영 2부기 리프 소개 소책 및 1교 교육 추장 집어 안내', date: '2026-03-08', unread: false,
+        category: '교육', actionRequired: false, summary: 'BRK 바대리영 2부기 리프 소개 및 교육 안내.', impact: '교육 참여 대상자 확인.', actionItems: ['교육 일정 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[공지] 2안 DD스캐빌 시행 및 +교 경기/특기 공지 경증', date: '2026-03-06', unread: false,
+        category: '교육', actionRequired: false, summary: 'DD 스캐빌 시행 및 교육 경기/특기 관련 공지.', impact: '교육 일정 참여 필요.', actionItems: ['일정 확인'] },
+      { tag: '공지', cls: 'nt-notice', title: '[기본공지] 26년/네비스·내서비스 화능(26-17기) 신가입안내(-3/10 마감)', date: '2026-03-06', unread: false,
+        category: '시스템', actionRequired: true, summary: '네비스·내서비스 화능 신가입 안내. 3/10 마감.', impact: '마감일 전 신가입 필수.', actionItems: ['3/10 마감 전 가입 완료'] },
+      { tag: '안내', cls: 'nt-guide', title: '[공지] 26년 임차원 신서의 프로그램 BRK 서울분들의 마들나이', date: '2026-03-05', unread: false,
+        category: '운영', actionRequired: false, summary: '임차원 신서 프로그램 관련 안내.', impact: '프로그램 참여 여부 결정.', actionItems: ['프로그램 내용 확인'] },
+      { tag: '안내', cls: 'nt-guide', title: '[안내] 26년 상반기 점포 원하장 관련 점포 실건 일등 설명', date: '2026-03-05', unread: false,
+        category: '운영', actionRequired: false, summary: '상반기 점포 원하장 관련 실건 설명.', impact: '점포 운영 일정 조정 필요 가능.', actionItems: ['일정 확인'] },
+      { tag: '교육', cls: 'nt-edu', title: '[교육공지] 카라비라 (블럼블/블레) 교육신청안내!', date: '2026-03-05', unread: false,
+        category: '교육', actionRequired: false, summary: '카라비라 블럼블/블레 교육 신청 안내.', impact: '교육 이수 시 자격 갱신.', actionItems: ['교육 신청'] },
+      { tag: '안내', cls: 'nt-guide', title: '[대리판인증리] 시즌 나건 다가인 이 발 가능 일정 안내', date: '2026-03-04', unread: false,
+        category: '인사', actionRequired: false, summary: '대리판인증 관련 일정 안내.', impact: '인증 갱신 일정 준수.', actionItems: ['갱신 일정 확인'] },
+      { tag: '교육', cls: 'nt-edu', title: '[교육공지] 1월 Dunkin Barista 5급 경기/평과 참여 공지', date: '2026-03-04', unread: false,
+        category: '교육', actionRequired: false, summary: 'Dunkin Barista 5급 경기/평과 참여 공지.', impact: '참여 시 자격 인증.', actionItems: ['참여 신청'] },
+      { tag: '안내', cls: 'nt-guide', title: '[계리판증] 1월 기사처/파커이다 카드 사용 공지 일정', date: '2026-03-03', unread: false,
+        category: '시스템', actionRequired: false, summary: '기사처/파커이다 카드 사용 관련 공지.', impact: '카드 사용 방식 확인.', actionItems: ['카드 사용법 숙지'] },
+      { tag: '교육', cls: 'nt-edu', title: '[교육공지] 1월 DD Barista 실습과정 이용안내', date: '2026-03-02', unread: false,
+        category: '교육', actionRequired: false, summary: 'DD Barista 실습과정 이용 안내.', impact: '실습 과정 이수 필요.', actionItems: ['실습 일정 확인'] },
+      { tag: '교육', cls: 'nt-edu', title: '[교육공지] 1월 Dunkin Barista 온라인과정 합격인증 공지', date: '2026-03-01', unread: false,
+        category: '교육', actionRequired: false, summary: '온라인 과정 합격인증 공지.', impact: '합격자 인증서 발급.', actionItems: ['인증서 확인'] },
+    ];
+
+    const NM_BASIC_LEFT = [
+      { tag: '공지', cls: 'nt-notice', title: '[기본공지] 매장 위생관리 기준 및 체크리스트', date: '2026-01-01', unread: false, pinned: true },
+      { tag: '안내', cls: 'nt-guide', title: '[안내] 본사 연락처 및 긴급 지원 안내', date: '2026-01-01', unread: false },
+      { tag: '공지', cls: 'nt-notice', title: '[기본공지] 직원 채용 기준 및 교육 일정 안내', date: '2025-12-01', unread: false },
+      { tag: '안내', cls: 'nt-guide', title: '[안내] 발주 시스템 이용 방법 가이드', date: '2025-12-01', unread: false },
+      { tag: '교육', cls: 'nt-edu', title: '[교육] 바리스타 자격 취득 관련 안내', date: '2025-11-01', unread: false },
+    ];
+
+    const NM_BASIC_RIGHT = [
+      { tag: '공지', cls: 'nt-notice', title: '[기본공지] 카드단말기 사용 가이드', date: '2026-01-01', unread: false, pinned: true },
+      { tag: '안내', cls: 'nt-guide', title: '[안내] 식품위생법 관련 필수 체크 사항', date: '2026-01-01', unread: false },
+      { tag: '공지', cls: 'nt-notice', title: '[기본공지] 화재 대피 및 안전 매뉴얼', date: '2025-12-01', unread: false },
+      { tag: '교육', cls: 'nt-edu', title: '[교육] 고객응대 서비스 표준 안내', date: '2025-11-01', unread: false },
+    ];
+
+    function nmRenderAll() {
+      nmRenderList('nmLeftList', NM_LEFT);
+      nmRenderList('nmRightList', NM_RIGHT);
+    }
+
+    function nmRenderList(containerId, data) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      el.innerHTML = data.map(n => `
+    <div class="nm-row ${n.unread ? 'unread' : ''} ${n.pinned ? 'pinned' : ''}" onclick="nmOpenRow(this)">
+      <span class="nm-tag ${n.cls}">${n.tag}</span>
+      <span class="nm-row-title">${n.title}</span>
+      ${n.unread ? '<span class="nm-new-dot"></span>' : ''}
+      <span class="nm-row-date">${n.date}</span>
+    </div>
+  `).join('');
+    }
+
+    function nmSwitchTab(tabEl, side, type) {
+      const bar = tabEl.closest('.nm-tab-bar');
+      bar.querySelectorAll('.nm-tab').forEach(t => t.classList.remove('active'));
+      tabEl.classList.add('active');
+      const listId = side === 'left' ? 'nmLeftList' : 'nmRightList';
+      let data;
+      if (side === 'left') data = type === 'notice' ? NM_LEFT : NM_BASIC_LEFT;
+      else data = type === 'notice' ? NM_RIGHT : NM_BASIC_RIGHT;
+      nmRenderList(listId, data);
+    }
+
+    function nmOpenRow(row) {
+      row.classList.remove('unread');
+      const dot = row.querySelector('.nm-new-dot');
+      if (dot) dot.remove();
+    }
+
+    /* ═══════════════════════════════════════════
+      STUBS & GLOBALS (declared early to avoid TDZ / ReferenceError)
+     ═══════════════════════════════════════════ */
+    function renderMenu() {}
+    function renderRecents() {}
+
+    var NOTIFS = [
+      { id: 1, ico: '📦', title: '재고 위험 알림', sub: '광명시01·안양시01·강남구01 등 6개 점포 위험 · 블루베리크림치즈 도넛 21개 점포 품절', unread: true },
+      { id: 2, ico: '⚠️', title: '발주 필요 품목', sub: '스트로우-중단 21점포 · 초코파우더 20점포 · 10온즈컵 20점포 품절', unread: true },
+      { id: 3, ico: '📊', title: '전주 대비 발주 변동', sub: '전주 동일요일 대비 발주액 -5.4% 감소 · 청주시01·수원시01 발주액 상위', unread: true },
+      { id: 4, ico: '🔔', title: '긴급 공지', sub: '5월 1일 아메리카노·라떼 200원 인상 확정 · POS 가격 업데이트 필수', unread: true },
+      { id: 5, ico: '🏭', title: '생산 이슈', sub: '두바이 스타일 초콜릿 도넛 전일 생산량 13.3M개 · 소시지인치즈베이글 11.9M개', unread: false },
+    ];
+
+    var miniTypingEl = null;
+
+    /* ═══════════════════════════════════════════
+       INIT
+     ═══════════════════════════════════════════ */
+  (function init() {
+      nmRenderAll();
+      renderMenu('all');
+      renderRecents();
+      renderNotifs();
+      switchTab('main');
+      tick(); setInterval(tick, 1000);
+      // Show FAB tip
+      var fab = document.getElementById('aiFabWrap');
+      if (fab) {
+        fab.classList.add('show-tip');
+        setTimeout(function() { fab.classList.remove('show-tip'); }, 5000);
+      }
+      syncExternalLinks();
+      // HQ Quick Chip 초기 렌더링
+      renderQuickChips(generateNoticeChips());
+      // HQ 페이지 초기 렌더링
+      setTimeout(function() { hqInitPages(); }, 200);
+    })();
+
+    /* ═══════════════════════════════════════════
+       CLOCK
+    ═══════════════════════════════════════════ */
+    function tick() {
+      const el = document.getElementById('posTime');
+      if (el) el.textContent = new Date().toLocaleTimeString('ko-KR');
+    }
+
+    /* ═══════════════════════════════════════════
+       SIDEBAR / TAB
+    ═══════════════════════════════════════════ */
+    function setActive(btn, key) {
+      document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (key === 'main') { switchTab('main'); return; }
+      if (aiTabOpen) { switchTab('ai'); return; }
+      switchTab(key);
+    }
+
+    function switchTab(key) {
+      currentTab = key;
+
+      // 1. 기존 탭 및 페이지 활성화
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.content-page').forEach(p => p.classList.remove('active'));
+
+      const tb = document.getElementById('tab-' + key);
+      const pg = document.getElementById('page-' + key);
+      if (tb) tb.classList.add('active');
+      if (pg) pg.classList.add('active');
+
+      // 2. HQ 페이지 렌더링
+      if (key === 'order') renderHQStoreOps();
+      if (key === 'table') renderHQStoreTable('all');
+      if (key === 'sales') renderHQSales();
+      if (key === 'stock') renderHQStock();
+      if (key === 'hygiene') renderHQCampaign();
+      if (key === 'notice') renderHQNotice();
+      if (key === 'staff') renderHQReport();
+      if (key === 'report') renderHQInsight();
+
+      // 3. FAB buttons now have fixed roles — no icon switching needed
+
+      if (typeof closeNotifPanel === 'function') closeNotifPanel();
+    }
+
+    function getPipPosBaseUrl() {
+      var protocol = window.location.protocol || 'http:';
+      var hostname = window.location.hostname || '221.139.49.60';
+      return protocol + '//' + hostname + ':5181/';
+    }
+
+    function getPipAiUrl() {
+      var currentMockupUrl = window.location.origin + window.location.pathname + window.location.search;
+      return getPipPosBaseUrl() + '?from=pos_mockup&page_key=pos_notice&return_to=' + encodeURIComponent(currentMockupUrl);
+    }
+
+    function syncExternalLinks() {
+      var posUrl = getPipPosBaseUrl();
+      var aiUrl = getPipAiUrl();
+      var posMainLink = document.getElementById('posMainLink');
+      var pipAiBadgeLink = document.getElementById('pipAiBadgeLink');
+      if (posMainLink) posMainLink.setAttribute('href', posUrl);
+      if (pipAiBadgeLink) pipAiBadgeLink.setAttribute('href', aiUrl);
+    }
+
+    function goToBasePOS(mode) {
+      var posUrl = getPipPosBaseUrl();
+      if (mode === 'newtab') {
+        window.open(posUrl, '_blank');
+      } else {
+        window.location.href = posUrl;
+      }
+    }
+
+    function openAIDashboard() {
+      // PIP AI를 새 탭에서 열기 (공지 컨텍스트 유지)
+      goToFoxAI('newtab');
+    }
+
+    function closeAITab() {
+      const btn = document.getElementById('tab-ai');
+      if (btn) btn.remove();
+      aiTabOpen = false;
+      switchTab('main');
+      const sbItem = document.querySelector('.sb-item');
+      if (sbItem) sbItem.classList.add('active');
+      document.getElementById('aiFabWrap').classList.remove('open');
+    }
+
+    /* ═══════════════════════════════════════════
+       FAB CLICK / FAN MENU
+    ═══════════════════════════════════════════ */
+    function navToIF(pageId) {
+      document.getElementById('aiFabWrap').classList.remove('open');
+      // PIP AI로 이동 (공지 컨텍스트 유지)
+      openAIDashboard();
+    }
+
+    function handleFabClick() {
+      // PIP AI 채팅 패널 토글
+      toggleMini();
+    }
+
+    /* ═══════════════════════════════════════════
+       PIP AI PAGE NAVIGATION (bidirectional)
+    ═══════════════════════════════════════════ */
+    function goToFoxAI(mode) {
+      // 공지 컨텍스트를 sessionStorage에 저장
+      var snap = buildNoticeSnapshot();
+      var context = {
+        source: 'hq_mockup',
+        current_page: '/hq-dashboard',
+        page_key: 'hq_dashboard',
+        page_context: 'HQ 운영 대시보드 · 전체 33개 점포',
+        notice_snapshot: snap,
+        timestamp: Date.now()
+      };
+      try {
+        sessionStorage.setItem('fox_pos_context', JSON.stringify(context));
+      } catch(e) {}
+
+      // PIP AI URL (POS 메인 기본 진입 + 공지 컨텍스트 유지)
+      var foxUrl = getPipAiUrl();
+
+      if (mode === 'newtab') {
+        window.open(foxUrl, '_blank');
+        showToast('PIP AI를 새 탭에서 열었습니다', 'success');
+      } else {
+        // 전체화면: 같은 창에서 이동
+        window.location.href = foxUrl;
+      }
+    }
+
+    /* ═══════════════════════════════════════════
+       AI MINI PANEL
+    ═══════════════════════════════════════════ */
+    function toggleMini() {
+      miniOpen = !miniOpen;
+      document.getElementById('aiMini').classList.toggle('open', miniOpen);
+    }
+    function closeMini() {
+      miniOpen = false;
+      document.getElementById('aiMini').classList.remove('open');
+    }
+   /* ═══════════════════════════════════════════
+        PIP AI 백엔드 연동 + 공지 컨텍스트
+     ═══════════════════════════════════════════ */
+    var FOX_API_URL = '/api/chat';
+    var FOX_STORE_ID = 'HQ_ALL';
+    var foxSessionId = 'fox-mockup-' + Date.now();
+    var foxBusy = false;
+
+    /* ── 공지 스냅샷 생성 (챗봇 컨텍스트용) ── */
+    function buildNoticeSnapshot() {
+      var allNotices = [].concat(NM_LEFT, NM_RIGHT, NM_BASIC_LEFT, NM_BASIC_RIGHT);
+      var urgentNotices = allNotices.filter(function(n) { return n.tag === 'urgent' || n.tag === '긴급' || (n.title && n.title.includes('긴급')); });
+      var unreadNotices = allNotices.filter(function(n) { return n.unread; });
+      var promoNotices = allNotices.filter(function(n) { return n.tag === '프로모션' || n.cls === 'nt-promo'; });
+      var eduNotices = allNotices.filter(function(n) { return n.tag === '교육' || n.cls === 'nt-edu'; });
+      var hygieneNotices = allNotices.filter(function(n) { return n.title && (n.title.includes('위생') || n.title.includes('식품안전') || n.title.includes('점검')); });
+      var priceNotices = allNotices.filter(function(n) { return n.category === '가격정책' || (n.title && (n.title.includes('가격') || n.title.includes('인상'))); });
+      var actionRequiredNotices = allNotices.filter(function(n) { return n.actionRequired; });
+
+      // Helper: build enriched notice summary
+      function enrichNotice(n) {
+        return {
+          title: n.title,
+          date: n.date,
+          tag: n.tag,
+          category: n.category || '',
+          actionRequired: n.actionRequired || false,
+          summary: n.summary || '',
+          impact: n.impact || '',
+          actionItems: n.actionItems || []
+        };
+      }
+
+      return {
+        total_count: allNotices.length,
+        unread_count: unreadNotices.length,
+        urgent_count: urgentNotices.length,
+        promo_count: promoNotices.length,
+        edu_count: eduNotices.length,
+        action_required_count: actionRequiredNotices.length,
+        urgent_notices: urgentNotices.slice(0, 5).map(enrichNotice),
+        unread_notices: unreadNotices.slice(0, 8).map(enrichNotice),
+        recent_notices: allNotices.slice(0, 6).map(enrichNotice),
+        promo_notices: promoNotices.slice(0, 4).map(enrichNotice),
+        hygiene_notices: hygieneNotices.slice(0, 3).map(enrichNotice),
+        price_notices: priceNotices.slice(0, 3).map(enrichNotice),
+        action_required_notices: actionRequiredNotices.slice(0, 5).map(enrichNotice)
+      };
+    }
+
+    /* ── 공지 상태 기반 동적 Quick Chip 생성 ── */
+    function generateNoticeChips() {
+      const snap = buildNoticeSnapshot();
+      var chips = [];
+      chips.push({ icon: '📊', text: '오늘 전체 매출 요약해줘' });
+      chips.push({ icon: '🏪', text: '어느 점포가 가장 강한지 알려줘' });
+      chips.push({ icon: '📦', text: '재고 부족 점포 알려줘' });
+      if (snap.urgent_count > 0) {
+        chips.push({ icon: '🚨', text: '긴급 공지 ' + snap.urgent_count + '건 요약해줘' });
+      }
+      return chips;
+    }
+
+    function renderQuickChips(chips) {
+      var row = document.getElementById('miniQuickRow');
+      if (!row) return;
+      row.innerHTML = chips.map(function(c) {
+        return '<button class="mq" onclick="sendMiniQ(this)">' + c.icon + ' ' + esc(c.text) + '</button>';
+      }).join('');
+    }
+
+    /* ── 공지 컨텍스트 포함 PIP AI 호출 ── */
+    async function callFoxAI(message) {
+      var snap = buildNoticeSnapshot();
+
+      // Build rich context text with summaries
+      function enrichLine(n) {
+        var line = '  - [' + n.date + '] ' + n.title;
+        if (n.category) line += ' [' + n.category + ']';
+        if (n.actionRequired) line += ' ⚡조치필요';
+        if (n.summary) line += '\n    요약: ' + n.summary;
+        if (n.impact) line += '\n    영향: ' + n.impact;
+        if (n.actionItems && n.actionItems.length > 0) line += '\n    조치: ' + n.actionItems.join(', ');
+        return line;
+      }
+
+      var noticeContext = [
+        '[공지 게시판 현재 상태]',
+        '전체 공지: ' + snap.total_count + '건',
+        '미읽음: ' + snap.unread_count + '건',
+        '긴급: ' + snap.urgent_count + '건',
+        '프로모션: ' + snap.promo_count + '건',
+        '조치 필요: ' + snap.action_required_count + '건',
+        ''
+      ];
+      if (snap.urgent_notices.length > 0) {
+        noticeContext.push('【긴급 공지】');
+        snap.urgent_notices.forEach(function(n) { noticeContext.push(enrichLine(n)); });
+        noticeContext.push('');
+      }
+      if (snap.action_required_notices.length > 0) {
+        noticeContext.push('【⚡ 조치 필요 공지】');
+        snap.action_required_notices.forEach(function(n) { noticeContext.push(enrichLine(n)); });
+        noticeContext.push('');
+      }
+      if (snap.unread_notices.length > 0) {
+        noticeContext.push('【미읽음 공지】');
+        snap.unread_notices.forEach(function(n) { noticeContext.push(enrichLine(n)); });
+        noticeContext.push('');
+      }
+      if (snap.price_notices.length > 0) {
+        noticeContext.push('【가격 정책 관련】');
+        snap.price_notices.forEach(function(n) { noticeContext.push(enrichLine(n)); });
+        noticeContext.push('');
+      }
+      if (snap.hygiene_notices.length > 0) {
+        noticeContext.push('【위생/점검 관련】');
+        snap.hygiene_notices.forEach(function(n) { noticeContext.push(enrichLine(n)); });
+        noticeContext.push('');
+      }
+      if (snap.promo_notices.length > 0) {
+        noticeContext.push('【프로모션】');
+        snap.promo_notices.forEach(function(n) { noticeContext.push(enrichLine(n)); });
+      }
+
+      var contextStr = noticeContext.join('\n');
+
+      var body = {
+        store_id: FOX_STORE_ID,
+        message: message,
+        session_id: foxSessionId,
+        context: {
+          current_page: '/hq-dashboard',
+          page_key: 'hq_dashboard',
+          page_context: 'HQ 운영 대시보드 · 전체 33개 점포',
+          notice_snapshot: snap,
+          notice_context_text: contextStr
+        }
+      };
+
+      try {
+        var controller = new AbortController();
+        var timeout = setTimeout(function() { controller.abort(); }, 120000);
+        var resp = await fetch(FOX_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Role': 'hq_admin'
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (!resp.ok) throw new Error('API 오류: ' + resp.status);
+        var data = await resp.json();
+
+        // suggested_questions 추출 → Quick Chip 갱신
+        var suggested = data.suggested_questions || [];
+        if (suggested.length > 0) {
+          var newChips = suggested.slice(0, 4).map(function(q) {
+            return { icon: '✨', text: q.text || q };
+          });
+          renderQuickChips(newChips);
+        }
+
+        // 응답 텍스트 추출
+        if (data.answer) return data.answer;
+        if (data.response) return data.response;
+        if (data.content && typeof data.content === 'string') return data.content;
+        if (data.content && data.content.message) return data.content.message;
+        if (data.message) return data.message;
+        return JSON.stringify(data);
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          return '⏱️ AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
+        }
+        console.error('PIP AI 호출 실패:', err);
+        return '⚠️ AI 서버에 연결할 수 없습니다. 백엔드가 실행 중인지 확인해주세요. (localhost:8100)';
+      }
+    }
+
+    function sendMiniMsg() {
+      var inp = document.getElementById('miniInp');
+      var text = inp.value.trim();
+      if (!text || foxBusy) return;
+      appendMiniMsg('user', text);
+      inp.value = '';
+      foxBusy = true;
+      showMiniTyping();
+      callFoxAI(text).then(function(reply) {
+        removeMiniTyping();
+        appendMiniMsg('ai', reply);
+        foxBusy = false;
+      });
+    }
+    function sendMiniQ(btn) {
+      var text = btn.textContent.trim();
+      if (foxBusy) return;
+      appendMiniMsg('user', text);
+      foxBusy = true;
+      showMiniTyping();
+      callFoxAI(text).then(function(reply) {
+        removeMiniTyping();
+        appendMiniMsg('ai', reply);
+        foxBusy = false;
+      });
+    }
+
+    function showMiniTyping() {
+      const c = document.getElementById('miniMsgs');
+      miniTypingEl = document.createElement('div');
+      miniTypingEl.className = 'm-row ai typing-indicator';
+      miniTypingEl.innerHTML = `
+    <div class="m-av">🤖</div>
+    <div class="m-bubble" style="padding:10px 14px;display:flex;gap:3px;align-items:center">
+      <span style="width:6px;height:6px;border-radius:50%;background:#aaa;animation:typeBounce .6s ease infinite alternate"></span>
+      <span style="width:6px;height:6px;border-radius:50%;background:#aaa;animation:typeBounce .6s .2s ease infinite alternate"></span>
+      <span style="width:6px;height:6px;border-radius:50%;background:#aaa;animation:typeBounce .6s .4s ease infinite alternate"></span>
+    </div>`;
+      c.appendChild(miniTypingEl);
+      c.scrollTop = c.scrollHeight;
+    }
+    function removeMiniTyping() {
+      if (miniTypingEl) { miniTypingEl.remove(); miniTypingEl = null; }
+    }
+    function appendMiniMsg(role, text) {
+      var c = document.getElementById('miniMsgs');
+      var d = document.createElement('div');
+      d.className = 'm-row ' + role;
+      if (role === 'ai') {
+        // AI 메시지: 공지 관련 키워드 감지 → 구조화된 카드 렌더링
+        var html = '<div class="m-av">🤖</div>';
+        html += '<div class="m-bubble" style="max-width:260px">';
+        html += formatAIResponse(text);
+        html += '</div>';
+        d.innerHTML = html;
+      } else {
+        d.innerHTML = '<div class="m-bubble">' + esc(text) + '</div>';
+      }
+      c.appendChild(d);
+      c.scrollTop = c.scrollHeight;
+    }
+
+    /* ── AI 응답 포맷팅: 공지 카드 + 액션 버튼 ── */
+    function formatAIResponse(text) {
+      var escaped = esc(text);
+      // 공지 관련 키워드가 있으면 구조화 렌더링 시도
+      var noticeKeywords = ['공지', '긴급', '미읽음', '프로모션', '위생', '점검', '가격 인상', '안내'];
+      var isNoticeQuery = noticeKeywords.some(function(kw) {
+        return text.indexOf(kw) !== -1;
+      });
+
+      if (!isNoticeQuery) {
+        return escaped.replace(/\n/g, '<br>');
+      }
+
+      // 줄 단위로 분리해서 구조화
+      var lines = text.split('\n').filter(function(l) { return l.trim() !== ''; });
+      var result = '';
+      var inList = false;
+
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        // 헤더 라인 (•, -, *, 【 로 시작)
+        if (/^[•\-\*]\s/.test(line) || line.indexOf('【') === 0) {
+          if (!inList) {
+            result += '<div style="margin-top:6px">';
+            inList = true;
+          }
+          result += '<div style="display:flex;align-items:flex-start;gap:4px;margin:2px 0;font-size:11px;line-height:1.45">';
+          result += '<span style="color:#FF6E00;flex-shrink:0">•</span>';
+          result += '<span>' + esc(line.replace(/^[•\-\*]\s*/, '').replace(/^【.*?】\s*/, '')) + '</span>';
+          result += '</div>';
+        } else if (line.indexOf(':') !== -1 && line.indexOf(':') < 20) {
+          // 키:값 형식 → KPI 카드
+          var parts = line.split(':');
+          if (!inList) { result += '<div style="margin-top:6px">'; inList = true; }
+          result += '<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;padding:3px 6px;background:#fff8f4;border-radius:4px">';
+          result += '<span style="color:#666">' + esc(parts[0].trim()) + '</span>';
+          result += '<span style="font-weight:700;color:#1a1a1a">' + esc(parts.slice(1).join(':').trim()) + '</span>';
+          result += '</div>';
+        } else {
+          if (inList) { result += '</div>'; inList = false; }
+          result += '<div style="margin:3px 0">' + esc(line) + '</div>';
+        }
+      }
+      if (inList) result += '</div>';
+
+      // 공지 관련 액션 버튼 추가
+      result += '<div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">';
+      result += '<button onclick="showToast(\'종합 현황으로 이동합니다\',\'info\')" style="padding:4px 10px;border-radius:12px;border:1.5px solid #ffd4b0;background:#fff4ec;font-size:10px;font-weight:700;color:#FF6E00;cursor:pointer;font-family:inherit">📊 대시보드</button>';
+      result += '<button onclick="sendMiniMsg_inline(\'위험 점포 요약해줘\')" style="padding:4px 10px;border-radius:12px;border:1.5px solid #fecaca;background:#fef2f2;font-size:10px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit">🚨 위험점포</button>';
+      result += '<button onclick="sendMiniMsg_inline(\'재고 부족 품목 알려줘\')" style="padding:4px 10px;border-radius:12px;border:1.5px solid #e0e0e0;background:#f9fafb;font-size:10px;font-weight:700;color:#374151;cursor:pointer;font-family:inherit">📦 재고확인</button>';
+      result += '</div>';
+
+      return result;
+    }
+
+    // 인라인 메시지 전송 헬퍼 (액션 버튼에서 사용)
+    function sendMiniMsg_inline(text) {
+      if (foxBusy) return;
+      appendMiniMsg('user', text);
+      foxBusy = true;
+      showMiniTyping();
+      callFoxAI(text).then(function(reply) {
+        removeMiniTyping();
+        appendMiniMsg('ai', reply);
+        foxBusy = false;
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       NOTIFICATION PANEL
+    ═══════════════════════════════════════════ */
+    function toggleNotifPanel() {
+      notifOpen = !notifOpen;
+      document.getElementById('notifPanel').classList.toggle('open', notifOpen);
+    }
+    function closeNotifPanel() {
+      notifOpen = false;
+      document.getElementById('notifPanel').classList.remove('open');
+    }
+    function markAllRead() {
+      NOTIFS.forEach(n => n.unread = false);
+      renderNotifs();
+      document.querySelector('.sys-icon-btn .notif-dot').style.display = 'none';
+      showToast('모든 알림을 읽음 처리했습니다', 'success');
+    }
+    function renderNotifs() {
+      const el = document.getElementById('notifList');
+      if (!el) return;
+      el.innerHTML = NOTIFS.map(n => `
+    <div class="notif-item ${n.unread ? 'unread' : ''}" onclick="readNotif(${n.id})">
+      <div class="notif-ico">${n.ico}</div>
+      <div class="notif-body">
+        <div class="notif-item-title">${n.title}</div>
+        <div class="notif-item-sub">${n.sub}</div>
+      </div>
+      ${n.unread ? '<div class="notif-unread-dot"></div>' : ''}
+    </div>`).join('');
+    }
+    function readNotif(id) {
+      const n = NOTIFS.find(x => x.id === id);
+      if (n) { n.unread = false; renderNotifs(); }
+    }
+
+    /* ═══════════════════════════════════════════
+       MENU
+    ═══════════════════════════════════════════ */
+    function showToast(msg, type = 'info') {
+      const c = document.getElementById('toastWrap');
+      const icons = { info: 'ℹ️', success: '✅', warn: '⚠️', err: '❌' };
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerHTML = `<span>${icons[type] || 'ℹ️'}</span>${esc(msg)}`;
+      c.appendChild(t);
+      setTimeout(() => {
+        t.style.opacity = '0'; t.style.transform = 'translateY(6px)';
+        t.style.transition = '.3s ease';
+        setTimeout(() => t.remove(), 300);
+      }, 2800);
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* Close panels on outside click */
+    document.addEventListener('click', (e) => {
+      if (notifOpen && !e.target.closest('.notif-panel') && !e.target.closest('.sys-icon-btn')) {
+        closeNotifPanel();
+      }
+      const fabWrap = document.getElementById('aiFabWrap');
+      if (fabWrap && fabWrap.classList.contains('open') && !e.target.closest('.ai-fab-wrap')) {
+        fabWrap.classList.remove('open');
+      }
+    });
+
+    /* CSS animation for mini typing */
+    const style = document.createElement('style');
+    style.textContent = `
+  @keyframes typeBounce {
+    from { transform: translateY(0); opacity: .4; }
+    to { transform: translateY(-4px); opacity: 1; }
+  }
+`;
+
+    /* ═══════════════════════════════════════════
+       HQ DATA CONSTANTS (실데이터 기반)
+    ═══════════════════════════════════════════ */
+    var HQ_STORES = [
+      {id:'POC_001',name:'고양시02',region:'경기도',city:'고양시',status:'정상',stockout:4,lowStock:5,dailyOrder:286734,dailyProd:0},
+      {id:'POC_002',name:'영등포구01',region:'서울특별시',city:'영등포구',status:'주의',stockout:8,lowStock:9,dailyOrder:561672,dailyProd:0},
+      {id:'POC_003',name:'노원구01',region:'서울특별시',city:'노원구',status:'주의',stockout:17,lowStock:11,dailyOrder:315714,dailyProd:0},
+      {id:'POC_004',name:'해운대구01',region:'부산광역시',city:'해운대구',status:'주의',stockout:14,lowStock:14,dailyOrder:501280,dailyProd:0},
+      {id:'POC_005',name:'김천시01',region:'경상북도',city:'김천시',status:'정상',stockout:6,lowStock:8,dailyOrder:499377,dailyProd:0},
+      {id:'POC_006',name:'동구01',region:'대구광역시',city:'동구',status:'주의',stockout:10,lowStock:14,dailyOrder:1123143,dailyProd:8472827},
+      {id:'POC_007',name:'강릉시01',region:'강원도',city:'강릉시',status:'정상',stockout:0,lowStock:1,dailyOrder:925964,dailyProd:0},
+      {id:'POC_008',name:'연제구01',region:'부산광역시',city:'연제구',status:'주의',stockout:17,lowStock:16,dailyOrder:502176,dailyProd:9656995},
+      {id:'POC_009',name:'마포구02',region:'서울특별시',city:'마포구',status:'위험',stockout:19,lowStock:0,dailyOrder:864655,dailyProd:0},
+      {id:'POC_010',name:'강서구01',region:'서울특별시',city:'강서구',status:'정상',stockout:7,lowStock:5,dailyOrder:647049,dailyProd:0},
+      {id:'POC_011',name:'안양시01',region:'경기도',city:'안양시',status:'위험',stockout:19,lowStock:10,dailyOrder:905939,dailyProd:14598383},
+      {id:'POC_012',name:'마포구01',region:'서울특별시',city:'마포구',status:'주의',stockout:14,lowStock:0,dailyOrder:1339863,dailyProd:9618180},
+      {id:'POC_013',name:'용인시01',region:'경기도',city:'용인시',status:'정상',stockout:7,lowStock:11,dailyOrder:482708,dailyProd:0},
+      {id:'POC_014',name:'중구01',region:'대구광역시',city:'중구',status:'주의',stockout:9,lowStock:8,dailyOrder:712437,dailyProd:10551411},
+      {id:'POC_015',name:'포항시01',region:'경상북도',city:'포항시',status:'주의',stockout:10,lowStock:8,dailyOrder:748630,dailyProd:0},
+      {id:'POC_016',name:'영등포구02',region:'서울특별시',city:'영등포구',status:'주의',stockout:12,lowStock:11,dailyOrder:645279,dailyProd:0},
+      {id:'POC_017',name:'천안시01',region:'충청남도',city:'천안시',status:'주의',stockout:12,lowStock:9,dailyOrder:438500,dailyProd:8946794},
+      {id:'POC_018',name:'시흥시01',region:'경기도',city:'시흥시',status:'주의',stockout:10,lowStock:10,dailyOrder:587020,dailyProd:0},
+      {id:'POC_019',name:'부산진구01',region:'부산광역시',city:'부산진구',status:'위험',stockout:19,lowStock:0,dailyOrder:1178214,dailyProd:14329247},
+      {id:'POC_020',name:'강남구01',region:'서울특별시',city:'강남구',status:'위험',stockout:19,lowStock:2,dailyOrder:922785,dailyProd:0},
+      {id:'POC_021',name:'경산시01',region:'경상북도',city:'경산시',status:'주의',stockout:8,lowStock:4,dailyOrder:479212,dailyProd:0},
+      {id:'POC_022',name:'서구01',region:'인천광역시',city:'서구',status:'정상',stockout:4,lowStock:19,dailyOrder:621117,dailyProd:10492259},
+      {id:'POC_023',name:'춘천시01',region:'강원도',city:'춘천시',status:'주의',stockout:10,lowStock:12,dailyOrder:538426,dailyProd:0},
+      {id:'POC_024',name:'나주시01',region:'전라남도',city:'나주시',status:'정상',stockout:4,lowStock:12,dailyOrder:526185,dailyProd:0},
+      {id:'POC_025',name:'익산시01',region:'전라북도',city:'익산시',status:'정상',stockout:6,lowStock:4,dailyOrder:964873,dailyProd:352178660},
+      {id:'POC_026',name:'남구01',region:'부산광역시',city:'남구',status:'주의',stockout:12,lowStock:4,dailyOrder:696830,dailyProd:7081080},
+      {id:'POC_027',name:'정읍시01',region:'전라북도',city:'정읍시',status:'주의',stockout:11,lowStock:4,dailyOrder:616355,dailyProd:0},
+      {id:'POC_028',name:'광명시01',region:'경기도',city:'광명시',status:'위험',stockout:20,lowStock:10,dailyOrder:875867,dailyProd:12590119},
+      {id:'POC_029',name:'청주시01',region:'충청북도',city:'청주시',status:'주의',stockout:11,lowStock:0,dailyOrder:1974664,dailyProd:0},
+      {id:'POC_030',name:'성남시01',region:'경기도',city:'성남시',status:'주의',stockout:10,lowStock:9,dailyOrder:1072921,dailyProd:0},
+      {id:'POC_031',name:'수원시01',region:'경기도',city:'수원시',status:'위험',stockout:19,lowStock:0,dailyOrder:1667183,dailyProd:0},
+      {id:'POC_032',name:'여수시01',region:'전라남도',city:'여수시',status:'정상',stockout:0,lowStock:0,dailyOrder:0,dailyProd:0},
+      {id:'POC_033',name:'고양시01',region:'경기도',city:'고양시',status:'정상',stockout:6,lowStock:145,dailyOrder:9215874,dailyProd:0},
+    ];
+
+    var HQ_STOCKOUT_PRODUCTS = [
+      {name:'블루베리크림치즈 도넛',stores:21,cat:'도넛'},
+      {name:'스트로우-중단',stores:21,cat:'포장재'},
+      {name:'초코파우더(길라델리)',stores:20,cat:'식재료'},
+      {name:'10온즈컵(수입)',stores:20,cat:'포장재'},
+      {name:'10온즈리드',stores:15,cat:'포장재'},
+      {name:'설탕(미니바)',stores:15,cat:'식재료'},
+      {name:'던킨쿨라타컵리드',stores:15,cat:'포장재'},
+      {name:'던킨쿨라타컵',stores:15,cat:'포장재'},
+      {name:'킷캣초코 스트로베리',stores:15,cat:'도넛'},
+      {name:'플레인베이글',stores:14,cat:'베이글'},
+      {name:'블루베리베이글',stores:14,cat:'베이글'},
+      {name:'소시지인치즈베이글',stores:13,cat:'베이글'},
+      {name:'두바이ST 쫀득 먼치킨',stores:13,cat:'도넛'},
+      {name:'헤이즐넛로쉐',stores:13,cat:'도넛'},
+      {name:'허쉬초코마시멜로',stores:11,cat:'도넛'},
+    ];
+
+    var HQ_TOP_PRODUCTS = [
+      {name:'페이머스글레이즈드',orderAmt:670663785,orderQty:883615,cat:'도넛'},
+      {name:'에스프레소블렌드 500g',orderAmt:453339600,orderQty:22332,cat:'원두'},
+      {name:'올리브츄이스티',orderAmt:329378040,orderQty:348552,cat:'도넛'},
+      {name:'스트로베리필드',orderAmt:324184170,orderQty:354302,cat:'도넛'},
+      {name:'카푸치노츄이스티',orderAmt:304262775,orderQty:321975,cat:'도넛'},
+      {name:'카카오후로스티드',orderAmt:264671295,orderQty:289261,cat:'도넛'},
+      {name:'소금우유도넛',orderAmt:211883500,orderQty:173675,cat:'도넛'},
+      {name:'카카오하니딥',orderAmt:205971348,orderQty:271372,cat:'도넛'},
+      {name:'보스톤크림',orderAmt:190547676,orderQty:158534,cat:'도넛'},
+      {name:'바바리안필드',orderAmt:181162710,orderQty:197994,cat:'도넛'},
+    ];
+
+    var HQ_REGIONS = {
+      '서울특별시':7,'경기도':8,'부산광역시':4,'경상북도':3,
+      '강원도':2,'대구광역시':2,'전라북도':2,
+      '인천광역시':1,'전라남도':1,'충청남도':1,'충청북도':1
+    };
+
+    /* ═══════════════════════════════════════════
+       HQ PAGE RENDERING
+    ═══════════════════════════════════════════ */
+    var hqCurrentFilter = 'all';
+
+    function fmtWon(n) {
+      if (n >= 100000000) return '₩' + (n/100000000).toFixed(1) + '억';
+      if (n >= 10000) return '₩' + (n/10000).toFixed(0) + '만';
+      return '₩' + n.toLocaleString();
+    }
+    function fmtNum(n) { return n.toLocaleString(); }
+
+    function statusBadge(s) {
+      var cls = s === '위험' ? 'danger' : (s === '주의' ? 'warn' : 'ok');
+      return '<span class="hq-badge ' + cls + '">' + s + '</span>';
+    }
+
+    /* ── 종합현황: 좌측 탭 ── */
+    function hqMainTab(el, side, tab) {
+      var bar = el.closest('.nm-tab-bar');
+      bar.querySelectorAll('.nm-tab').forEach(function(t){ t.classList.remove('active'); });
+      el.classList.add('active');
+      var listId = side === 'left' ? 'nmLeftList' : 'nmRightList';
+      var container = document.getElementById(listId);
+      if (!container) return;
+      if (side === 'left') {
+        if (tab === 'kpi') renderHQKpi(container);
+        else if (tab === 'risk') renderHQRisk(container);
+        else if (tab === 'top') renderHQTop(container);
+      } else {
+        if (tab === 'notice') { nmRenderList(listId, NM_LEFT); }
+        else if (tab === 'issue') renderHQIssues(container);
+        else if (tab === 'basic') { nmRenderList(listId, NM_BASIC_LEFT); }
+      }
+    }
+
+    function renderHQKpi(c) {
+      c.innerHTML = [
+        hqRow('일일 발주액 (33개 점포)','₩33,438,646','▼ 5.4% vs 전주','down'),
+        hqRow('일일 생산량','413,233개','▲ 1.4% vs 4주평균','up'),
+        hqRow('평균 점포당 발주액','₩1,013,292','—',''),
+        hqRow('최고 발주 점포','청주시01','₩1,974,664/일',''),
+        hqRow('최저 발주 점포','고양시02','₩286,734/일',''),
+        hqBar('서울특별시',7,33,'#FF6E00'),
+        hqBar('경기도',8,33,'#E91E8C'),
+        hqBar('부산광역시',4,33,'#3498DB'),
+        hqBar('경상북도',3,33,'#22c55e'),
+        hqBar('기타',11,33,'#999'),
+        hqRow('품절 품목 수','792건','32개 점포에서 발생','down'),
+        hqRow('저재고 품목 (1-2개)','145건','발주 권장','warn'),
+        hqRow('미확인 공지','7건','긴급 1건 포함',''),
+      ].join('');
+    }
+
+    function renderHQRisk(c) {
+      var risk = HQ_STORES.filter(function(s){ return s.status === '위험'; });
+      var warn = HQ_STORES.filter(function(s){ return s.status === '주의'; });
+      var html = '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#ef4444;">🔴 위험 점포 (품절 ≥15)</div>';
+      risk.forEach(function(s) {
+        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+        html += statusBadge(s.status) + ' ';
+        html += '<span class="hq-row-label">' + s.name + '(' + s.city + ')</span>';
+        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '/일</span>';
+        html += '</div>';
+      });
+      html += '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#f59e0b;margin-top:6px;">🟡 주의 점포 (품절 8-14)</div>';
+      warn.forEach(function(s) {
+        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+        html += statusBadge(s.status) + ' ';
+        html += '<span class="hq-row-label">' + s.name + '(' + s.city + ')</span>';
+        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '/일</span>';
+        html += '</div>';
+      });
+      c.innerHTML = html;
+    }
+
+    function renderHQTop(c) {
+      var sorted = HQ_STORES.slice().sort(function(a,b){ return b.dailyOrder - a.dailyOrder; });
+      var html = '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#22c55e;">📈 발주액 상위 10개 점포</div>';
+      sorted.slice(0,10).forEach(function(s,i) {
+        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+        html += '<span style="font-size:10px;font-weight:700;color:' + (i<3?'#FF6E00':'#999') + ';width:18px;">' + (i+1) + '</span>';
+        html += '<span class="hq-row-label">' + s.name + '(' + s.city + ')</span>';
+        html += statusBadge(s.status);
+        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
+        html += '</div>';
+      });
+      html += '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#ef4444;margin-top:6px;">📉 발주액 하위 5개 점포</div>';
+      sorted.slice(-5).reverse().forEach(function(s,i) {
+        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+        html += '<span style="font-size:10px;font-weight:700;color:#999;width:18px;">' + (33-i) + '</span>';
+        html += '<span class="hq-row-label">' + s.name + '(' + s.city + ')</span>';
+        html += statusBadge(s.status);
+        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
+        html += '</div>';
+      });
+      c.innerHTML = html;
+    }
+
+    function renderHQIssues(c) {
+      c.innerHTML = [
+        '<div class="hq-issue-card"><div class="hq-issue-title">🔴 블루베리크림치즈 도넛 21개 점포 품절</div><div class="hq-issue-desc">전체 33개 점포 중 21개 점포에서 품절 발생. 긴급 발주 필요.</div></div>',
+        '<div class="hq-issue-card"><div class="hq-issue-title">🔴 스트로우-중단 21개 점포 품절</div><div class="hq-issue-desc">포장재 부족. 음료 서비스에 지장 우려. 즉시 발주 필요.</div></div>',
+        '<div class="hq-issue-card"><div class="hq-issue-title">🟡 6개 점포 위험 상태 (품절 ≥15)</div><div class="hq-issue-desc">광명시01(20), 안양시01(19), 강남구01(19), 마포구02(19), 부산진구01(19), 수원시01(19)</div></div>',
+        '<div class="hq-issue-card"><div class="hq-issue-title">🟡 전주 대비 발주액 -5.4%</div><div class="hq-issue-desc">전주 동일요일 대비 발주 감소. 매출 연착 가능성 확인 필요.</div></div>',
+        '<div class="hq-issue-card"><div class="hq-issue-title">📋 5월 1일 가격 인상 확정</div><div class="hq-issue-desc">아메리카노·라떼 200원 인상. 4/30까지 POS 업데이트 필수.</div></div>',
+      ].join('');
+    }
+
+    function hqRow(label, val, sub, type) {
+      var cls = type === 'up' ? 'up' : (type === 'down' ? 'down' : '');
+      return '<div class="hq-row"><span class="hq-row-label">' + label + '</span><span class="hq-row-val">' + val + '</span>' + (sub ? '<span class="hq-row-sub ' + cls + '">' + sub + '</span>' : '') + '</div>';
+    }
+    function hqBar(label, val, total, color) {
+      var pct = Math.round(val/total*100);
+      return '<div class="hq-bar-row"><span class="hq-bar-label">' + label + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div><span class="hq-bar-val">' + val + '</span></div>';
+    }
+
+    /* ── 점포 운영 ── */
+    function renderHQStoreOps() {
+      var c = document.getElementById('hqStoreOps');
+      if (!c) return;
+      var riskStores = HQ_STORES.filter(function(s){return s.status==='위험';});
+      var warnStores = HQ_STORES.filter(function(s){return s.status==='주의';});
+      var normalStores = HQ_STORES.filter(function(s){return s.status==='정상';});
+
+      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🔴 위험 점포</span><span class="hq-badge danger">' + riskStores.length + '</span></div><div class="hq-section-body">';
+      riskStores.forEach(function(s) {
+        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+        html += statusBadge(s.status) + ' ';
+        html += '<span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
+        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🟡 주의 점포</span><span class="hq-badge warn">' + warnStores.length + '</span></div><div class="hq-section-body">';
+      warnStores.forEach(function(s) {
+        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+        html += statusBadge(s.status) + ' ';
+        html += '<span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
+        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🟢 정상 점포</span><span class="hq-badge ok">' + normalStores.length + '</span></div><div class="hq-section-body">';
+      normalStores.forEach(function(s) {
+        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+        html += statusBadge(s.status) + ' ';
+        html += '<span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
+        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+
+      c.innerHTML = html;
+    }
+
+    /* ── 점포 현황 ── */
+    function renderHQStoreTable(filter) {
+      var c = document.getElementById('hqStoreTable');
+      if (!c) return;
+      filter = filter || 'all';
+      var stores = HQ_STORES;
+      if (filter === '위험') stores = stores.filter(function(s){return s.status==='위험';});
+      else if (filter === '주의') stores = stores.filter(function(s){return s.status==='주의';});
+      else if (filter === '정상') stores = stores.filter(function(s){return s.status==='정상';});
+
+      var html = '<thead><tr><th>점포</th><th>지역</th><th>상태</th><th>품절</th><th>저재고</th><th>일발주</th></tr></thead><tbody>';
+      stores.forEach(function(s) {
+        html += '<tr onclick="hqSelectStore(\'' + s.id + '\')" style="cursor:pointer;">';
+        html += '<td style="font-weight:700;">' + s.name + '</td>';
+        html += '<td>' + s.city + '</td>';
+        html += '<td>' + statusBadge(s.status) + '</td>';
+        html += '<td style="color:' + (s.stockout>=15?'#ef4444':s.stockout>=8?'#f59e0b':'#22c55e') + ';font-weight:700;">' + s.stockout + '</td>';
+        html += '<td>' + s.lowStock + '</td>';
+        html += '<td>' + fmtWon(s.dailyOrder) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      c.innerHTML = html;
+    }
+    function hqStoreFilter(el, filter) {
+      el.closest('.hq-filter-row').querySelectorAll('.hq-filter-chip').forEach(function(c){c.classList.remove('active');});
+      el.classList.add('active');
+      renderHQStoreTable(filter);
+    }
+
+    /* ── 매출 분석 ── */
+    function renderHQSales() {
+      var c = document.getElementById('hqSales');
+      if (!c) return;
+      var sorted = HQ_STORES.slice().sort(function(a,b){return b.dailyOrder - a.dailyOrder;});
+      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📊 점포별 일일 발주액 (TOP 10)</span></div><div class="hq-section-body">';
+      sorted.slice(0,10).forEach(function(s,i) {
+        var maxOrder = sorted[0].dailyOrder;
+        var pct = Math.round(s.dailyOrder / maxOrder * 100);
+        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + s.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (i<3?'#FF6E00':'#3498DB') + '"></div></div><span class="hq-bar-val">' + fmtWon(s.dailyOrder) + '</span></div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📈 주간 발주 추이</span></div><div class="hq-section-body">';
+      var weeklyData = [
+        {label:'2/28(토)',val:31200000},{label:'3/1(일)',val:28500000},{label:'3/2(월)',val:35200000},
+        {label:'3/3(화)',val:34800000},{label:'3/4(수)',val:35900000},{label:'3/5(목)',val:34100000},
+        {label:'3/6(금)',val:33400000},{label:'3/7(토)',val:29800000},{label:'3/8(일)',val:27100000},
+        {label:'3/9(월)',val:35338646},{label:'3/10(화)',val:33438646},
+      ];
+      var maxW = 36000000;
+      weeklyData.forEach(function(d) {
+        var pct = Math.round(d.val / maxW * 100);
+        var isToday = d.label.indexOf('3/10') >= 0;
+        html += '<div class="hq-bar-row"><span class="hq-bar-label" style="' + (isToday?'font-weight:800;color:#FF6E00;':'') + '">' + d.label + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (isToday?'#FF6E00':'#3498DB') + '"></div></div><span class="hq-bar-val" style="' + (isToday?'font-weight:800;color:#FF6E00;':'') + '">' + fmtWon(d.val) + '</span></div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🏷️ 상위 발주 품목 (누적)</span></div><div class="hq-section-body">';
+      var maxProd = HQ_TOP_PRODUCTS[0].orderAmt;
+      HQ_TOP_PRODUCTS.forEach(function(p,i) {
+        var pct = Math.round(p.orderAmt / maxProd * 100);
+        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + p.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (i<3?'#FF6E00':'#22c55e') + '"></div></div><span class="hq-bar-val">' + fmtWon(p.orderAmt) + '</span></div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🗺️ 지역별 발주 현황</span></div><div class="hq-section-body">';
+      var regions = [
+        {name:'서울특별시',count:7,order:0},{name:'경기도',count:8,order:0},{name:'부산광역시',count:4,order:0},
+        {name:'경상북도',count:3,order:0},{name:'대구광역시',count:2,order:0},{name:'강원도',count:2,order:0},
+        {name:'전라북도',count:2,order:0},{name:'충청남도',count:1,order:0},{name:'충청북도',count:1,order:0},
+        {name:'인천광역시',count:1,order:0},{name:'전라남도',count:1,order:0}
+      ];
+      HQ_STORES.forEach(function(s) {
+        regions.forEach(function(r) { if (s.region === r.name) r.order += s.dailyOrder; });
+      });
+      regions.sort(function(a,b){return b.order - a.order;});
+      var maxR = regions[0].order;
+      regions.forEach(function(r) {
+        var pct = Math.round(r.order / maxR * 100);
+        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + r.name + ' (' + r.count + ')</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:#FF6E00"></div></div><span class="hq-bar-val">' + fmtWon(r.order) + '</span></div>';
+      });
+      html += '</div></div>';
+
+      c.innerHTML = html;
+    }
+
+    /* ── 재고 ── */
+    function renderHQStock() {
+      var c = document.getElementById('hqStock');
+      if (!c) return;
+      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🔴 품절 TOP 15 품목 (점포수)</span><span class="hq-badge danger">792건</span></div><div class="hq-section-body">';
+      var maxStores = HQ_STOCKOUT_PRODUCTS[0].stores;
+      HQ_STOCKOUT_PRODUCTS.forEach(function(p,i) {
+        var pct = Math.round(p.stores / 33 * 100);
+        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + p.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (p.stores>=15?'#ef4444':'#f59e0b') + '"></div></div><span class="hq-bar-val">' + p.stores + '점포</span></div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">⚠️ 위험 점포 재고 현황</span><span class="hq-badge danger">6개</span></div><div class="hq-section-body">';
+      var riskStores = HQ_STORES.filter(function(s){return s.status==='위험';});
+      riskStores.forEach(function(s) {
+        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+        html += statusBadge(s.status) + ' ';
+        html += '<span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
+        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+        html += '<span class="hq-row-val" style="color:#ef4444">긴급발주</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📦 카테고리별 품절 현황</span></div><div class="hq-section-body">';
+      var cats = [{name:'도넛',count:94},{name:'포장재',count:71},{name:'식재료',count:35},{name:'베이글',count:41},{name:'음료',count:18}];
+      var maxCat = 94;
+      cats.forEach(function(cat) {
+        var pct = Math.round(cat.count / maxCat * 100);
+        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + cat.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:#E91E8C"></div></div><span class="hq-bar-val">' + cat.count + '건</span></div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">💡 발주 권장 품목</span></div><div class="hq-section-body">';
+      var reorderItems = [
+        {name:'블루베리크림치즈 도넛',urgency:'긴급',stores:21},
+        {name:'스트로우-중단',urgency:'긴급',stores:21},
+        {name:'초코파우더(길라델리)',urgency:'긴급',stores:20},
+        {name:'10온즈컵(수입)',urgency:'긴급',stores:20},
+        {name:'10온즈리드',urgency:'권장',stores:15},
+        {name:'설탕(미니바)',urgency:'권장',stores:15},
+        {name:'킷캣초코 스트로베리',urgency:'권장',stores:15},
+        {name:'플레인베이글',urgency:'권장',stores:14},
+      ];
+      reorderItems.forEach(function(item) {
+        var badge = item.urgency === '긴급' ? '<span class="hq-badge danger">긴급</span>' : '<span class="hq-badge warn">권장</span>';
+        html += '<div class="hq-row">' + badge + ' <span class="hq-row-label">' + item.name + '</span><span class="hq-row-sub">' + item.stores + '점포 품절</span></div>';
+      });
+      html += '</div></div>';
+
+      c.innerHTML = html;
+    }
+
+    /* ── 캠페인 ── */
+    function renderHQCampaign() {
+      var c = document.getElementById('hqCampaign');
+      if (!c) return;
+      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📣 최근 집계 기준 캠페인 반응</span><span class="hq-badge info">프로모션 데이터 없음</span></div><div class="hq-section-body">';
+      html += '<div style="padding:8px 12px;font-size:11px;color:#666;line-height:1.6;">전용 프로모션 데이터가 없으므로, 발주·생산 데이터 기반으로 캠페인 성과를 간접 추정합니다.</div>';
+
+      var campaigns = [
+        {name:'5월 가격 인상 대비 (아메리카노·라떼 200원)',status:'준비',impact:'전 점포 영향',note:'4/30 POS 업데이트 필수'},
+        {name:'오전 한 잔 할인쿠폰 프로모션',status:'진행',impact:'종이영수증 발급',note:'2분기~(-6기) 진행'},
+        {name:'D-DAY 프로모션',status:'진행',impact:'매출 변동 예상',note:'챔피온/신생아/연중 이벤트 포함'},
+        {name:'KT 싱킹기프트 신시제품',status:'중단',impact:'쿠폰 발급 중지',note:'본사 사정으로 운영 중단'},
+        {name:'봄 세상맞이 세트',status:'진행',impact:'세트 메뉴 구성',note:'3월 프로모션'},
+      ];
+      campaigns.forEach(function(camp) {
+        var statusCls = camp.status === '중단' ? 'danger' : (camp.status === '준비' ? 'warn' : 'info');
+        html += '<div class="hq-row">';
+        html += '<span class="hq-badge ' + statusCls + '">' + camp.status + '</span>';
+        html += '<span class="hq-row-label">' + camp.name + '</span>';
+        html += '<span class="hq-row-sub">' + camp.impact + '</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📊 상위 발주 품목 기반 추정</span></div><div class="hq-section-body">';
+      html += '<div style="padding:8px 12px;font-size:11px;color:#666;line-height:1.6;">프로모션 전용 데이터가 없어 발주액 기준으로 캠페인 기여도를 간접 파악합니다.</div>';
+      HQ_TOP_PRODUCTS.slice(0,5).forEach(function(p,i) {
+        var pct = Math.round(p.orderAmt / HQ_TOP_PRODUCTS[0].orderAmt * 100);
+        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + p.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:#FF6E00"></div></div><span class="hq-bar-val">' + fmtWon(p.orderAmt) + '</span></div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🏪 점포별 발주 비교 (TOP 5)</span></div><div class="hq-section-body">';
+      var sorted = HQ_STORES.slice().sort(function(a,b){return b.dailyOrder - a.dailyOrder;});
+      sorted.slice(0,5).forEach(function(s) {
+        html += '<div class="hq-row"><span class="hq-row-label">' + s.name + ' (' + s.city + ')</span><span class="hq-row-val">' + fmtWon(s.dailyOrder) + '/일</span></div>';
+      });
+      html += '</div></div>';
+
+      c.innerHTML = html;
+    }
+
+    /* ── 공지 ── */
+    function renderHQNotice() {
+      var urgentEl = document.getElementById('hqNoticeUrgent');
+      var allEl = document.getElementById('hqNoticeAll');
+      if (!urgentEl || !allEl) return;
+
+      var urgents = NM_LEFT.filter(function(n){ return n.tag === 'urgent' || n.tag === '긴급' || (n.title && n.title.includes('긴급')); });
+      urgentEl.innerHTML = urgents.map(function(n) {
+        return '<div class="hq-row"><span class="hq-badge danger">긴급</span><span class="hq-row-label">' + n.title + '</span><span class="hq-row-sub">' + n.date + '</span></div>';
+      }).join('');
+
+      var allNotices = [].concat(NM_LEFT, NM_RIGHT).slice(0, 20);
+      allEl.innerHTML = allNotices.map(function(n) {
+        var cls = n.cls || 'nt-normal';
+        return '<div class="hq-row"><span class="nm-tag ' + cls + '">' + n.tag + '</span><span class="hq-row-label">' + n.title + '</span><span class="hq-row-sub">' + n.date + '</span></div>';
+      }).join('');
+    }
+
+    /* ── 리포트 ── */
+    function renderHQReport() {
+      var c = document.getElementById('hqReport');
+      if (!c) return;
+      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📊 영업 리포트 요약</span><span class="hq-badge info">2026-03-10</span></div><div class="hq-section-body">';
+      html += hqRow('전체 점포 수','33개','—','');
+      html += hqRow('일일 총 발주액','₩33,438,646','▼ 5.4% vs 전주','down');
+      html += hqRow('점포 평균 발주액','₩1,013,292/일','—','');
+      html += hqRow('위험 점포','6개','품절 ≥15','down');
+      html += hqRow('주의 점포','17개','품절 8-18','warn');
+      html += hqRow('정상 점포','15개','품절 <8','up');
+      html += hqRow('총 품절 품목','792건','32개 점포','down');
+      html += hqRow('미확인 공지','7건','긴급 1건 포함','warn');
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📈 주간 추이</span></div><div class="hq-section-body">';
+      html += hqRow('전주 대비 발주','▼ 5.4%','동일요일 비교','down');
+      html += hqRow('4주 평균 대비','▲ 1.4%','안정적 흐름','up');
+      html += hqRow('전월 대비 발주','▲ 20.3%','성장세','up');
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🏷️ 채널별 발주 비중</span></div><div class="hq-section-body">';
+      html += hqBar('도넛류',45,100,'#FF6E00');
+      html += hqBar('베이글류',18,100,'#E91E8C');
+      html += hqBar('음료·원두',15,100,'#3498DB');
+      html += hqBar('포장재',12,100,'#22c55e');
+      html += hqBar('기타 식재료',10,100,'#999');
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📝 핵심 인사이트</span></div><div class="hq-section-body" style="padding:8px 12px;">';
+      html += '<div style="font-size:11px;color:#444;line-height:1.7;">';
+      html += '1. <strong>청주시01</strong>이 일일 발주액 ₩1.97M로 전체 1위이며, <strong>수원시01</strong>(₩1.67M)과 <strong>마포구01</strong>(₩1.34M)이 그 뒤를 잇습니다.<br>';
+      html += '2. <strong>블루베리크림치즈 도넛</strong>과 <strong>스트로우-중단</strong>이 21개 점포에서 동시 품절되어 전사적 발주가 시급합니다.<br>';
+      html += '3. 서울·경기 지역 15개 점포가 전체 발주의 약 55%를 차지하며, 부산 4개 점포는 약 15%를 차지합니다.<br>';
+      html += '4. 전주 대비 발주액 -5.4% 감소는 주말 패턴과 연관될 수 있으며, 월간 기준으로는 +20.3% 성장세입니다.<br>';
+      html += '5. <strong>6개 위험 점포</strong>(광명시01, 안양시01, 강남구01, 마포구02, 부산진구01, 수원시01)의 품절 건수가 각각 19-20건으로 긴급 조치가 필요합니다.';
+      html += '</div></div>';
+
+      c.innerHTML = html;
+    }
+
+    /* ── AI 인사이트 ── */
+    function renderHQInsight() {
+      var c = document.getElementById('hqInsight');
+      if (!c) return;
+      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🤖 오늘의 핵심 이슈</span></div><div class="hq-section-body" style="padding:8px 12px;">';
+      html += '<div style="font-size:11px;color:#444;line-height:1.7;">';
+      html += '<div style="margin-bottom:8px;padding:8px;background:#fff5f5;border-radius:6px;border-left:3px solid #ef4444;"><strong>🔴 긴급:</strong> 블루베리크림치즈 도넛·스트로우-중단 21개 점포 품절. 초코파우더·10온즈컵 20개 점포 품절. 즉각적 발주 필요.</div>';
+      html += '<div style="margin-bottom:8px;padding:8px;background:#fffbeb;border-radius:6px;border-left:3px solid #f59e0b;"><strong>🟡 주의:</strong> 16개 점포 주의 상태. 연제구01(17건), 노원구01(17건), 해운대구01(14건) 등 품절 8-18건으로 지속 모니터링 필요.</div>';
+      html += '<div style="margin-bottom:8px;padding:8px;background:#f0fdf4;border-radius:6px;border-left:3px solid #22c55e;"><strong>🟢 양호:</strong> 강릉시01(품절 0건), 여수시01(품절 0건) 정상 운영. 15개 점포 정상 상태 유지.</div>';
+      html += '<div style="padding:8px;background:#eff6ff;border-radius:6px;border-left:3px solid #3b82f6;"><strong>📊 발주:</strong> 일일 총 발주액 ₩33.4M. 전주 대비 -5.4%이나, 월간 기준 +20.3% 성장세. 청주시01이 ₩1.97M로 최대.</div>';
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">⚠️ 위험 점포 상세</span></div><div class="hq-section-body">';
+      var riskStores = HQ_STORES.filter(function(s){return s.status==='위험';});
+      riskStores.forEach(function(s) {
+        html += '<div class="hq-row">' + statusBadge(s.status) + ' <span class="hq-row-label">' + s.name + ' (' + s.city + ')</span><span class="hq-row-sub">품절 ' + s.stockout + '건</span></div>';
+      });
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📈 주간 추이 분석</span></div><div class="hq-section-body">';
+      html += hqRow('전일 대비','▼ 5.4%','발주액 기준','down');
+      html += hqRow('전주 동일요일','▼ 5.4%','발주액 기준','down');
+      html += hqRow('4주 평균 대비','▲ 1.4%','안정','up');
+      html += hqRow('전월 대비','▲ 20.3%','성장세','up');
+      html += hqRow('캠페인 영향','간접 추정','프로모션 전용 데이터 없음','info');
+      html += '</div></div>';
+
+      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🕐 시간대별 추정</span></div><div class="hq-section-body">';
+      var hourly = [
+        {h:'08:00',pct:3},{h:'09:00',pct:4},{h:'10:00',pct:5},{h:'11:00',pct:7},
+        {h:'12:00',pct:9},{h:'13:00',pct:8},{h:'14:00',pct:8},{h:'15:00',pct:9},
+        {h:'16:00',pct:10},{h:'17:00',pct:11},{h:'18:00',pct:11},{h:'19:00',pct:8},
+        {h:'20:00',pct:5},{h:'21:00',pct:3}
+      ];
+      hourly.forEach(function(h) {
+        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + h.h + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + (h.pct * 9) + '%;background:#FF6E00"></div></div><span class="hq-bar-val">' + h.pct + '%</span></div>';
+      });
+      html += '</div></div>';
+
+      c.innerHTML = html;
+    }
+
+    /* ── 필터 ── */
+    function hqFilter(el, filter) {
+      el.closest('.hq-filter-row').querySelectorAll('.hq-filter-chip').forEach(function(c){c.classList.remove('active');});
+      el.classList.add('active');
+      hqCurrentFilter = filter;
+      showToast('필터: ' + (filter === 'all' ? '전체 점포' : filter.replace('store:','')) + ' 적용됨', 'info');
+    }
+
+    function hqSelectStore(storeId) {
+      var store = HQ_STORES.find(function(s){return s.id === storeId;});
+      if (store) {
+        showToast(store.name + ' (' + store.city + ') 선택 · 상태: ' + store.status + ' · 품절: ' + store.stockout + '건 · 일발주: ' + fmtWon(store.dailyOrder), 'info');
+      }
+    }
+
+    /* ── 종합현황 초기 렌더링 ── */
+    function hqInitPages() {
+      renderHQKpi(document.getElementById('nmLeftList'));
+      nmRenderList('nmRightList', NM_LEFT);
+      renderHQStoreOps();
+      renderHQStoreTable('all');
+      renderHQSales();
+      renderHQStock();
+      renderHQCampaign();
+      renderHQNotice();
+      renderHQReport();
+      renderHQInsight();
+    }
+
+    /* ── AI Quick Chips ── */
+    function generateNoticeChips() {
+      return [
+        { icon: '📊', text: '오늘 전체 매출 요약해줘' },
+        { icon: '🏪', text: '어느 점포가 가장 강한지 알려줘' },
+        { icon: '📦', text: '재고 위험 점포 알려줘' },
+        { icon: '🚨', text: '발주 필요한 품목 TOP5' },
+        { icon: '📈', text: '전주 대비 발주 추이 설명해줘' },
+        { icon: '🏷️', text: '결제수단 비중 요약해줘' },
+        { icon: '📊', text: '상위 점포와 하위 점포 차이' },
+        { icon: '📣', text: '최근 집계 기준 반응 좋은 캠페인' },
+        { icon: '🕐', text: '시간대별로 약한 구간 알려줘' },
+      ];
+    }
+
+    /* ── Enhanced AI Context ── */
+    var HQ_AI_CONTEXT = [
+      '【HQ 운영 대시보드 핵심 데이터】',
+      '기준일: 2026-03-10 14:45',
+      '전체 점포: 33개',
+      '일일 총 발주액: ₩33,438,646',
+      '점포 평균 일발주: ₩1,013,292',
+      '위험 점포(품절≥19): 6개 - 광명시01(20건), 안양시01(19건), 강남구01(19건), 마포구02(19건), 부산진구01(19건), 수원시01(19건)',
+      '주의 점포(품절 8-18): 17개',
+      '정상 점포(품절<8): 10개',
+      '품절 품목: 792건 (32개 점포에서 발생)',
+      '저재고 품목(1-2개): 145건',
+      '',
+      '【발주액 상위 5개 점포】',
+      '1. 청주시01: ₩1,974,664/일',
+      '2. 수원시01: ₩1,667,183/일',
+      '3. 마포구01: ₩1,339,863/일',
+      '4. 부산진구01: ₩1,178,214/일',
+      '5. 동구01: ₩1,123,143/일',
+      '',
+      '【발주액 하위 5개 점포】',
+      '29. 영등포구01: ₩561,672/일',
+      '30. 노원구01: ₩315,714/일',
+      '31. 고양시02: ₩286,734/일',
+      '32. 여수시01: ₩0/일 (데이터 부족)',
+      '',
+      '【품절 TOP 5 품목】',
+      '1. 블루베리크림치즈 도넛: 21개 점포 품절',
+      '2. 스트로우-중단: 21개 점포 품절',
+      '3. 초코파우더(길라델리): 20개 점포 품절',
+      '4. 10온즈컵(수입): 20개 점포 품절',
+      '5. 10온즈리드: 15개 점포 품절',
+      '',
+      '【지역별 분포】',
+      '서울특별시: 7개 점포, 경기도: 8개 점포, 부산광역시: 4개 점포, 경상북도: 3개 점포',
+      '강원도: 2개, 대구광역시: 2개, 전라북도: 2개, 인천/전남/충남/충북: 각 1개',
+      '',
+      '【주간 추이】',
+      '전주 동일요일 대비: ▼5.4%',
+      '4주 평균 대비: ▲1.4%',
+      '전월 대비: ▲20.3%',
+      '',
+      '【상위 발주 품목 (누적)】',
+      '1. 페이머스글레이즈드: ₩670,663,785',
+      '2. 에스프레소블렌드 500g: ₩453,339,600',
+      '3. 올리브츄이스티: ₩329,378,040',
+      '4. 스트로베리필드: ₩324,184,170',
+      '5. 카푸치노츄이스티: ₩304,262,775',
+    ].join('\n');
+
+    /* ── Override callFoxAI to include HQ data context ── */
+    var _origCallFoxAI = callFoxAI;
+    callFoxAI = async function(message) {
+      var snap = buildNoticeSnapshot();
+      var body = {
+        store_id: FOX_STORE_ID,
+        message: message,
+        session_id: foxSessionId,
+        context: {
+          current_page: '/hq-dashboard',
+          page_key: 'hq_dashboard',
+          page_context: 'HQ 운영 대시보드 · 전체 33개 점포',
+          notice_snapshot: snap,
+          notice_context_text: HQ_AI_CONTEXT + '\n\n' + buildNoticeContextText(snap),
+          hq_data: {
+            total_stores: 33,
+            daily_order_amt: 33438646,
+            risk_stores: 6,
+            warning_stores: 12,
+            normal_stores: 15,
+            stockout_items: 792,
+            low_stock_items: 145,
+            top_stockout_product: '블루베리크림치즈 도넛 (21개 점포)',
+            vs_last_week: -5.4,
+            vs_4week_avg: 1.4
+          }
+        }
+      };
+
+      try {
+        var controller = new AbortController();
+        var timeout = setTimeout(function() { controller.abort(); }, 120000);
+        var resp = await fetch(FOX_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-User-Role': 'hq_admin' },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (!resp.ok) throw new Error('API 오류: ' + resp.status);
+        var data = await resp.json();
+        var suggested = data.suggested_questions || [];
+        if (suggested.length > 0) {
+          var newChips = suggested.slice(0, 4).map(function(q) { return { icon: '✨', text: q.text || q }; });
+          renderQuickChips(newChips);
+        }
+        if (data.answer) return data.answer;
+        if (data.response) return data.response;
+        if (data.content && typeof data.content === 'string') return data.content;
+        if (data.content && data.content.message) return data.content.message;
+        if (data.message) return data.message;
+        return JSON.stringify(data);
+      } catch (err) {
+        if (err.name === 'AbortError') return '⏱️ AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
+        console.error('PIP AI 호출 실패:', err);
+        return '⚠️ AI 서버에 연결할 수 없습니다. 백엔드가 실행 중인지 확인해주세요. (localhost:8100)';
+      }
+    };
+
+    function buildNoticeContextText(snap) {
+      var lines = [];
+      lines.push('[공지 현황]');
+      lines.push('전체: ' + snap.total_count + '건, 미읽음: ' + snap.unread_count + '건, 긴급: ' + snap.urgent_count + '건');
+      if (snap.urgent_notices && snap.urgent_notices.length > 0) {
+        lines.push('【긴급 공지】');
+        snap.urgent_notices.forEach(function(n) { lines.push('  - [' + n.date + '] ' + n.title); });
+      }
+      return lines.join('\n');
+    }
+
+    document.head.appendChild(style);
+
+    /* ── Initialize HQ pages on load ── */
+    (function() {
+      setTimeout(function() {
+        hqInitPages();
+      }, 100);
+    })();
+  </script>
+</body>
+
+</html>

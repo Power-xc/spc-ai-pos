@@ -1,0 +1,4201 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#FF6E00">
+  <title>AI 비서 — BRKorea POS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.0/css/all.min.css">
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+
+    /* ═══════════════════════════════════════
+       DESIGN TOKENS
+    ═══════════════════════════════════════ */
+    :root {
+      --orange: #FF6E00;
+      --orange-pale: #FFF4EC;
+      --orange-mid: #FF8C33;
+      --pink: #E91E8C;
+      --pink-pale: #FDE7F4;
+      --grad: linear-gradient(135deg, #FF6E00, #E91E8C);
+      --grad-soft: linear-gradient(135deg, #FF8C33, #E91E8C);
+      --white: #ffffff;
+      --g50: #F8F9FA;
+      --g100: #F4F5F7;
+      --g200: #E8E8E8;
+      --g300: #D0D0D0;
+      --g400: #AAAAAA;
+      --g500: #888888;
+      --g600: #666666;
+      --g700: #444444;
+      --g800: #2D2D2D;
+      --g900: #1A1A1A;
+      --ok: #22C55E;
+      --ok-pale: #DCFCE7;
+      --warn: #F59E0B;
+      --warn-pale: #FEF3C7;
+      --err: #EF4444;
+      --err-pale: #FEE2E2;
+      --info: #3B82F6;
+      --info-pale: #DBEAFE;
+      --purple: #7C3AED;
+      --purple-pale: #EDE9FE;
+      --font: 'Pretendard', 'Noto Sans KR', sans-serif;
+      --r-sm: 6px;
+      --r-md: 10px;
+      --r-lg: 14px;
+      --r-xl: 20px;
+      --r-full: 999px;
+      --sh-sm: 0 1px 4px rgba(0, 0, 0, .07);
+      --sh-md: 0 4px 16px rgba(0, 0, 0, .10);
+      --sh-or: 0 4px 14px rgba(255, 110, 0, .3);
+      --tr: .15s ease;
+      --tr-b: .25s ease;
+    }
+
+    /* ═══════════════════════════════════════
+       RESET
+    ═══════════════════════════════════════ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      font-family: var(--font);
+    }
+
+    body {
+      background: var(--g100);
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    /* ═══════════════════════════════════════
+       APP SHELL
+    ═══════════════════════════════════════ */
+    .app-root {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--white);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(0, 0, 0, .2);
+    }
+
+    /* ═══════════════════════════════════════
+       STATUS BAR
+    ═══════════════════════════════════════ */
+    .status-bar {
+      height: 44px;
+      background: var(--grad);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .status-time {
+      font-size: 14px;
+      font-weight: 800;
+      color: white;
+      letter-spacing: -.3px;
+    }
+
+    .status-icons {
+      display: flex;
+      gap: 6px;
+      color: white;
+      font-size: 13px;
+      align-items: center;
+    }
+
+    /* ═══════════════════════════════════════
+       APP HEADER
+    ═══════════════════════════════════════ */
+    .app-header {
+      background: var(--grad);
+      padding: 0 16px 8px;
+      /* 가로 패딩 유지, 세로 하단 패딩 감소 */
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .app-header-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 0 8px;
+      /* 세로 패딩 감소 */
+    }
+
+    .header-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      transition: background var(--tr);
+      flex-shrink: 0;
+    }
+
+    .header-icon-btn:hover {
+      background: rgba(255, 255, 255, .3);
+    }
+
+    .header-info {
+      flex: 1;
+    }
+
+    .header-title {
+      font-size: 17px;
+      font-weight: 900;
+      color: white;
+      letter-spacing: -.4px;
+    }
+
+    .header-sub {
+      font-size: 11px;
+      color: rgba(255, 255, 255, .8);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 2px;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #7FFF00;
+      animation: livePulse 2s ease infinite;
+      box-shadow: 0 0 5px #7FFF00;
+    }
+
+    @keyframes livePulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
+      }
+    }
+
+    .header-avatar {
+      width: 44px;
+      height: 44px;
+      background: rgba(255, 255, 255, .2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      border: 2.5px solid rgba(255, 255, 255, .4);
+      cursor: pointer;
+      transition: transform var(--tr);
+    }
+
+    .header-avatar:hover {
+      transform: scale(1.05);
+    }
+
+    .store-stat-card {
+      background: rgba(255, 255, 255, .18);
+      border: 1px solid rgba(255, 255, 255, .25);
+      border-radius: 10px;
+      padding: 10px 12px;
+      backdrop-filter: blur(12px);
+    }
+
+    /* KPI Grid & Gauges */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid var(--g100);
+      box-shadow: var(--sh-sm);
+    }
+
+    .kpi-card.span-2 {
+      grid-column: span 2;
+    }
+
+    .kpi-lbl {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--g500);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .kpi-lbl i {
+      color: var(--orange);
+    }
+
+    .kpi-val {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--g900);
+    }
+
+    .kpi-val small {
+      font-size: 11px;
+      margin-left: 2px;
+      color: var(--g500);
+    }
+
+    .kpi-chg {
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .kpi-chg.up {
+      color: var(--ok);
+    }
+
+    .kpi-chg.down {
+      color: var(--err);
+    }
+
+    .goal-gauge-wrap {
+      margin-top: 10px;
+    }
+
+    .goal-gauge-track {
+      height: 6px;
+      background: var(--g100);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .goal-gauge-fill {
+      height: 100%;
+      background: var(--grad);
+      border-radius: 3px;
+    }
+
+    .goal-gauge-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--g400);
+      font-weight: 700;
+    }
+
+    /* Predicted Chart (Mobile) */
+    .chart-section {
+      padding: 0 16px 16px;
+    }
+
+    .chart-card {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid var(--g100);
+    }
+
+    .chart-hd {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .chart-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--g800);
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 10px;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--g500);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .legend-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .chart-wrapper {
+      display: flex;
+      align-items: flex-end;
+      position: relative;
+      width: 100%;
+    }
+
+    .chart-y-axis {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100px;
+      font-size: 8px;
+      color: var(--g400);
+      font-weight: 700;
+      padding-bottom: 14px;
+      text-align: right;
+      padding-right: 6px;
+      flex-shrink: 0;
+      min-width: 28px;
+    }
+
+    .m-chart-bars {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      height: 100px;
+      padding-top: 10px;
+      border-bottom: 1px solid var(--g50);
+      padding-bottom: 4px;
+      flex: 1;
+    }
+
+    .m-chart-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 18%;
+    }
+
+    .m-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 80px;
+      width: 100%;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* 차트 말풍선 툴팁 */
+    .m-chart-col {
+      position: relative;
+    }
+
+    .bar-tooltip {
+      position: absolute;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: white;
+      color: var(--g800);
+      font-size: 10px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      white-space: nowrap;
+      display: none;
+      z-index: 100;
+      border: 1px solid var(--g100);
+      font-weight: 800;
+      opacity: 0;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .bar-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid white;
+    }
+
+    .m-chart-col.show-tooltip .bar-tooltip,
+    .kpi-card.show-tooltip .bar-tooltip {
+      display: block;
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      z-index: 1000;
+    }
+
+    .kpi-card.show-tooltip .bar-tooltip {
+      transform: translateY(0);
+      /* KPI 카드의 경우 translateX 덮어씌움 방지 */
+    }
+
+    .m-bar {
+      width: 8px;
+      border-radius: 2px 2px 0 0;
+    }
+
+    .m-bar.this-week {
+      background: var(--orange);
+    }
+
+    .m-bar.last-week {
+      background: var(--g200);
+    }
+
+    .m-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--g400);
+      margin-top: 4px;
+    }
+
+    /* Donut Stock Alert */
+    .donut-stock-section {
+      padding: 0 16px 16px;
+    }
+
+    .donut-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .donut-card {
+      background: white;
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--g100);
+    }
+
+    .donut-img-area {
+      width: 56px;
+      height: 56px;
+      background: var(--g50);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+
+    .donut-img-area img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .donut-info {
+      flex: 1;
+    }
+
+    .donut-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--g900);
+    }
+
+    .donut-remain {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--err);
+      margin: 2px 0;
+    }
+
+    .donut-meter {
+      height: 4px;
+      background: var(--g50);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .donut-meter-fill {
+      height: 100%;
+      background: var(--err);
+    }
+
+    .donut-action {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--orange);
+      margin-top: 4px;
+    }
+
+    /* Op Data Cards */
+    .op-data-section {
+      padding: 0 16px 20px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .op-card {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      border: 1px solid var(--g100);
+    }
+
+    .op-hd {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--g800);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .op-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
+    .op-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .op-lbl {
+      color: var(--g500);
+      font-weight: 600;
+    }
+
+    .op-val {
+      font-weight: 800;
+      color: var(--g800);
+    }
+
+    .op-badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 800;
+    }
+
+    .op-badge.ok {
+      background: var(--ok-pale);
+      color: var(--ok);
+    }
+
+    .op-badge.warn {
+      background: var(--err-pale);
+      color: var(--err);
+    }
+
+    .team-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .team-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--g50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      border: 1px solid var(--g100);
+    }
+
+    .team-info {
+      flex: 1;
+    }
+
+    .team-name {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--g800);
+    }
+
+    .team-time {
+      font-size: 9px;
+      color: var(--g400);
+    }
+
+    .store-stat-card {
+      background: rgba(255, 255, 255, .18);
+      border: 1px solid rgba(255, 255, 255, .25);
+      border-radius: 10px;
+      padding: 10px 12px;
+      backdrop-filter: blur(12px);
+    }
+
+    /* 날씨 위젯 및 말풍선 디자인 */
+    .header-weather {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+      margin-right: 12px;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .header-weather:active {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .weather-main {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: white;
+    }
+
+    .weather-main i {
+      font-size: 14px;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+    }
+
+    .weather-temp {
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .weather-date {
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 700;
+    }
+
+    .weather-popup {
+      position: absolute;
+      top: 50px;
+      right: 0px;
+      width: 180px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(10px);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      animation: bubblePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .weather-popup::after {
+      content: '';
+      position: absolute;
+      top: -8px;
+      right: 25px;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-bottom: 8px solid rgba(255, 255, 255, 0.96);
+    }
+
+    .weather-popup.show {
+      display: flex;
+    }
+
+    @keyframes bubblePop {
+      from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .wp-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .wp-day {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--g800);
+      flex: 1;
+    }
+
+    .wp-icon {
+      font-size: 16px;
+      width: 30px;
+      text-align: center;
+    }
+
+    .wp-temp {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--g600);
+      width: 45px;
+      text-align: right;
+    }
+
+    .wp-desc {
+      font-size: 10px;
+      color: var(--g400);
+      font-weight: 600;
+      margin-left: 8px;
+      flex: 1;
+    }
+
+    .wp-title {
+      font-size: 11px;
+      font-weight: 850;
+      color: var(--orange);
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--g100);
+      padding-bottom: 8px;
+    }
+
+    .store-stat-val {
+      font-size: 16px;
+      font-weight: 900;
+      color: white;
+      letter-spacing: -.5px;
+    }
+
+    .store-stat-val small {
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, .7);
+    }
+
+    .store-stat-chg {
+      font-size: 10px;
+      font-weight: 700;
+      color: #7FFF00;
+      margin-top: 2px;
+    }
+
+    .store-stat-chg.down {
+      color: #FF8080;
+    }
+
+    /* ═══════════════════════════════════════
+       NAV TABS (bottom)
+    ═══════════════════════════════════════ */
+    /* ═══════════════════════════════════════
+       NAV TABS (updated floating design)
+    ═══════════════════════════════════════ */
+    .nav-container {
+      position: absolute;
+      bottom: 24px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .nav-main-pill {
+      flex: 1;
+      height: 64px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      border-radius: 32px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      pointer-events: auto;
+    }
+
+    .nav-tab {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      transition: all var(--tr);
+      color: var(--g500);
+      position: relative;
+      font-family: var(--font);
+    }
+
+    .nav-tab i {
+      font-size: 20px;
+    }
+
+    .nav-tab .tab-label {
+      font-size: 9px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .nav-tab.active {
+      color: var(--orange);
+    }
+
+    .nav-ai-btn {
+      width: 64px;
+      height: 64px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      transition: transform .2s;
+      flex-shrink: 0;
+      pointer-events: auto;
+    }
+
+    .nav-ai-btn:active {
+      transform: scale(0.92);
+    }
+
+    .nav-ai-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--g900);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 22px;
+      transition: all .2s;
+    }
+
+    .nav-ai-btn.active .nav-ai-icon {
+      background: var(--grad);
+      box-shadow: var(--sh-or);
+      transform: scale(1.05);
+    }
+
+    /* ═══════════════════════════════════════
+       QUICK ORDER BUTTONS
+    ═══════════════════════════════════════ */
+    .quick-btn-container {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 20px;
+      /* 고정 마진으로 변경하여 공백 감소 */
+      padding-bottom: 110px;
+    }
+
+    .quick-long-btn {
+      width: 100%;
+      height: 56px;
+      background: var(--g50);
+      border: 1px solid var(--g200);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--g800);
+      cursor: pointer;
+      transition: all .2s;
+      font-family: var(--font);
+    }
+
+    .quick-long-btn:active {
+      background: var(--g100);
+      transform: scale(0.98);
+    }
+
+    .quick-long-btn::after {
+      content: '\f105';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      margin-left: auto;
+      color: var(--g400);
+    }
+
+    /* ── 퀵 액션 바 (실시간 점포 하단) ─── */
+    .quick-action-bar {
+      margin: 0 16px 16px;
+      padding: 14px 16px;
+      background: white;
+      border-radius: 16px;
+      border: 1px solid var(--g100);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, .06);
+    }
+
+    .qa-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--g600);
+      margin-bottom: 10px;
+      letter-spacing: 0.3px;
+    }
+
+    .qa-btn-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .qa-btn {
+      flex: 1;
+      height: 48px;
+      border-radius: 12px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all .2s;
+    }
+
+    .qa-btn i {
+      font-size: 14px;
+    }
+
+    .msg-av.ai {
+      background: var(--grad);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 10px rgba(255, 110, 0, .2);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .qa-btn.secondary {
+      background: var(--g50);
+      color: var(--g800);
+      border: 1px solid var(--g200);
+    }
+
+    .qa-btn.primary {
+      background: var(--grad);
+      color: white;
+      box-shadow: 0 4px 12px rgba(255, 110, 0, .3);
+    }
+
+    .qa-btn.primary:active {
+      transform: scale(0.96);
+    }
+
+    .qa-btn.secondary:active {
+      background: var(--g100);
+      transform: scale(0.96);
+    }
+
+    /* 모바일 퀵 액션 현황 추가 */
+    .qa-status-row {
+      margin-bottom: 12px;
+      padding: 0 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .qa-status-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--g50);
+    }
+
+    .qa-status-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .qa-status-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .qa-status-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--g50);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .qa-status-icon.order {
+      background: var(--orange-pale);
+      color: var(--orange);
+    }
+
+    .qa-status-icon.prod {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .qa-status-info {
+      flex: 1;
+    }
+
+    .qa-status-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--g800);
+      margin-bottom: 2px;
+    }
+
+    .qa-status-desc {
+      font-size: 10px;
+      color: var(--g500);
+    }
+
+    .qa-badge {
+      font-size: 9px;
+      font-weight: 850;
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .qa-badge.done {
+      background: #dcfce7;
+      color: #16a34a;
+    }
+
+    .qa-badge.pending {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+
+    /* ═══════════════════════════════════════
+       POS MENU SCREEN (Mockup)
+    ═══════════════════════════════════════ */
+    #screen-pos {
+      background: #333;
+    }
+
+    .pos-mockup-header {
+      background: #E91E8C;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      color: white;
+      font-weight: 800;
+      gap: 12px;
+    }
+
+    .pos-mockup-body {
+      flex: 1;
+      display: flex;
+      height: 100%;
+    }
+
+    .pos-side-nav {
+      width: 35%;
+      background: white;
+      height: 100%;
+    }
+
+    .pos-side-item {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid #eee;
+      color: #333;
+    }
+
+    .pos-side-item.active {
+      background: #333;
+      color: white;
+      border-bottom-color: #333;
+    }
+
+    .pos-side-item i {
+      font-size: 20px;
+    }
+
+    .pos-side-label {
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .pos-content-mock {
+      flex: 1;
+      background: #444;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pos-list-item {
+      padding: 16px;
+      background: transparent;
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* ═══════════════════════════════════════
+       SCREENS
+    ═══════════════════════════════════════ */
+    .screens {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      min-height: 0;
+    }
+
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(12px);
+      transition: all var(--tr-b);
+      -webkit-overflow-scrolling: touch;
+      display: none;
+      flex-direction: column;
+      padding-bottom: 180px;
+      /* 기존 125px에서 180px로 확대하여 하단 버튼 클릭 공간 확보 */
+    }
+
+    .screen.active {
+      opacity: 1;
+      pointer-events: all;
+      transform: translateX(0);
+      display: flex;
+    }
+
+    .screen::-webkit-scrollbar {
+      width: 0;
+    }
+
+    /* chat 화면: 내부 flex로 스크롤 관리, overflow-y:hidden + height:100% 필수 */
+    #screen-chat {
+      overflow-y: hidden !important;
+      height: 100%;
+      padding-bottom: 0px;
+      /* Chat has its own padding in input area */
+    }
+
+    #screen-chat .chat-messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    #screen-chat .chat-input-area {
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════
+       ONBOARDING OVERLAY
+    ═══════════════════════════════════════ */
+    .onboard-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(160deg, #0d0d1f 0%, #1a1a2e 55%, #2d1444 100%);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 20px 24px;
+      overflow-y: auto;
+      transition: opacity .45s ease;
+    }
+
+    .onboard-overlay.hiding {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .ob-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .ob-logo {
+      width: 76px;
+      height: 76px;
+      background: var(--grad);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      margin: 0 auto 16px;
+      box-shadow: 0 10px 32px rgba(233, 30, 140, .45);
+      animation: obPop .7s cubic-bezier(.34, 1.56, .64, 1);
+    }
+
+    @keyframes obPop {
+      from {
+        transform: scale(.4);
+        opacity: 0
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1
+      }
+    }
+
+    .ob-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: white;
+      letter-spacing: -.6px;
+    }
+
+    .ob-sub {
+      font-size: 13px;
+      color: rgba(255, 255, 255, .6);
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+
+    /* Step indicator */
+    .ob-step-track {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      width: 100%;
+      margin-bottom: 28px;
+    }
+
+    .ob-step-node {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      flex-shrink: 0;
+      transition: all .35s;
+      border: 2px solid transparent;
+    }
+
+    .ob-step-node.wait {
+      background: rgba(255, 255, 255, .1);
+      color: rgba(255, 255, 255, .35);
+      border-color: rgba(255, 255, 255, .1);
+    }
+
+    .ob-step-node.curr {
+      background: white;
+      color: var(--orange);
+      border-color: white;
+    }
+
+    .ob-step-node.done {
+      background: var(--orange);
+      color: white;
+      border-color: var(--orange);
+    }
+
+    .ob-step-line {
+      flex: 1;
+      height: 2px;
+      border-radius: 1px;
+      background: rgba(255, 255, 255, .12);
+      transition: background .35s;
+    }
+
+    .ob-step-line.done {
+      background: var(--orange);
+    }
+
+    .ob-panel {
+      display: none;
+      width: 100%;
+      animation: fadeUp .35s ease;
+    }
+
+    .ob-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* Step 1: Welcome */
+    .ob-welcome-card {
+      background: rgba(255, 255, 255, .08);
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .ob-welcome-greeting {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .ob-avatar-ring {
+      width: 52px;
+      height: 52px;
+      background: rgba(255, 255, 255, .15);
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, .3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+
+    .ob-greet-name {
+      font-size: 18px;
+      font-weight: 900;
+      color: white;
+    }
+
+    .ob-greet-store {
+      font-size: 12px;
+      color: rgba(255, 255, 255, .65);
+      margin-top: 2px;
+    }
+
+    .ob-kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .ob-kpi-cell {
+      background: rgba(255, 255, 255, .08);
+      border-radius: 10px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+
+    .ob-kpi-val {
+      font-size: 20px;
+      font-weight: 900;
+      color: white;
+    }
+
+    .ob-kpi-val small {
+      font-size: 10px;
+      color: rgba(255, 255, 255, .55);
+      font-weight: 500;
+    }
+
+    .ob-kpi-lbl {
+      font-size: 10px;
+      color: rgba(255, 255, 255, .5);
+      margin-top: 3px;
+      font-weight: 600;
+    }
+
+    .ob-feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .ob-feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .1);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .ob-feature-icon {
+      width: 36px;
+      height: 36px;
+      background: rgba(255, 110, 0, .25);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .ob-feature-text {
+      flex: 1;
+    }
+
+    .ob-feature-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: white;
+    }
+
+    .ob-feature-desc {
+      font-size: 11px;
+      color: rgba(255, 255, 255, .55);
+      margin-top: 1px;
+    }
+
+    /* Step 2: Interest */
+    .ob-int-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .ob-int-card {
+      background: rgba(255, 255, 255, .07);
+      border: 2px solid rgba(255, 255, 255, .1);
+      border-radius: 14px;
+      padding: 16px 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+    }
+
+    .ob-int-card:hover {
+      background: rgba(255, 255, 255, .1);
+    }
+
+    .ob-int-card.sel {
+      background: rgba(255, 110, 0, .18);
+      border-color: var(--orange);
+    }
+
+    .ob-int-check {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--orange);
+      color: white;
+      font-size: 10px;
+      font-weight: 900;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(255, 110, 0, .4);
+    }
+
+    .ob-int-card.sel .ob-int-check {
+      display: flex;
+    }
+
+    .ob-int-emoji {
+      font-size: 30px;
+      margin-bottom: 7px;
+    }
+
+    .ob-int-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, .92);
+    }
+
+    .ob-int-desc {
+      font-size: 10px;
+      color: rgba(255, 255, 255, .5);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+
+    .ob-sel-count {
+      font-size: 12px;
+      color: rgba(255, 255, 255, .5);
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .ob-sel-count strong {
+      color: var(--orange-mid);
+      font-weight: 900;
+    }
+
+    /* Step 3: Loading */
+    .ob-loading-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .ob-load-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, .07);
+      border-radius: 12px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all .4s ease;
+    }
+
+    .ob-load-row.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .ob-load-ico {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .ob-load-ico.wait {
+      background: rgba(255, 255, 255, .12);
+    }
+
+    .ob-load-ico.spin {
+      background: rgba(255, 255, 255, .12);
+      border: 2px solid transparent;
+      border-top-color: var(--orange);
+      animation: spin .7s linear infinite;
+    }
+
+    .ob-load-ico.done {
+      background: var(--orange);
+      color: white;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .ob-load-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, .85);
+    }
+
+    /* Primary CTA */
+    .btn-primary {
+      width: 100%;
+      padding: 16px;
+      background: var(--grad);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 900;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: opacity var(--tr);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary:hover {
+      opacity: .88;
+    }
+
+    .btn-primary:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    /* ═══════════════════════════════════════
+       CHAT SCREEN
+    ═══════════════════════════════════════ */
+    #screen-chat {
+      display: flex;
+      flex-direction: column;
+      background: var(--g100);
+      height: 100%;
+    }
+
+    /* [제거됨] Quick Topics Bar (상단 빠른 질문 바는 제거) */
+    /* 하단 입력창의 빠른 질문 단축키(input-shortcuts)만 유지 */
+    .qt-label {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--g400);
+      letter-spacing: .4px;
+      margin-bottom: 7px;
+    }
+
+    .qt-scroll {
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .qt-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .qt-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      border-radius: var(--r-full);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1.5px solid var(--g200);
+      color: var(--g700);
+      background: white;
+      white-space: nowrap;
+      transition: all var(--tr);
+      flex-shrink: 0;
+      font-family: var(--font);
+    }
+
+    .qt-chip:hover,
+    .qt-chip.active {
+      border-color: var(--orange);
+      color: var(--orange);
+      background: var(--orange-pale);
+    }
+
+    .qt-chip.hot {
+      background: var(--grad);
+      border-color: transparent;
+      color: white;
+    }
+
+    /* Messages */
+    .chat-messages {
+      flex: 1;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: var(--g200) transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: var(--g200);
+      border-radius: 2px;
+    }
+
+    .date-sep {
+      text-align: center;
+      font-size: 11px;
+      color: var(--g400);
+      font-weight: 600;
+      position: relative;
+      margin: 4px 0;
+    }
+
+    .date-sep::before,
+    .date-sep::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 28%;
+      height: 1px;
+      background: var(--g200);
+    }
+
+    .date-sep::before {
+      left: 0;
+    }
+
+    .date-sep::after {
+      right: 0;
+    }
+
+    .msg-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .msg-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .msg-row.user {
+      flex-direction: row-reverse;
+    }
+
+    .msg-av {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+    }
+
+    .msg-av.ai {
+      background: var(--grad);
+      box-shadow: 0 2px 10px rgba(255, 110, 0, .28);
+    }
+
+    .msg-av.user {
+      background: var(--g700);
+    }
+
+    .msg-body {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      max-width: calc(100% - 48px);
+    }
+
+    .msg-row.user .msg-body {
+      align-items: flex-end;
+    }
+
+    .msg-from {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--g500);
+      padding-left: 4px;
+    }
+
+    .bubble {
+      padding: 11px 15px;
+      border-radius: 18px;
+      font-size: 13px;
+      line-height: 1.65;
+      word-break: break-word;
+    }
+
+    .bubble.ai {
+      background: white;
+      color: var(--g800);
+      border: 1px solid var(--g200);
+      border-bottom-left-radius: 5px;
+      box-shadow: var(--sh-sm);
+    }
+
+    .bubble.user {
+      background: var(--grad);
+      color: white;
+      border-bottom-right-radius: 5px;
+      box-shadow: var(--sh-or);
+    }
+
+    .msg-time {
+      font-size: 10px;
+      color: var(--g400);
+      padding: 0 4px;
+    }
+
+    /* Rich Insight Card (inside bubble) */
+    .rich-card {
+      background: var(--g50);
+      border: 1px solid var(--g200);
+      border-radius: var(--r-md);
+      padding: 12px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .rich-card-hd {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--g700);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Mini bar chart */
+    .mbar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 5px;
+    }
+
+    .mbar-lbl {
+      font-size: 11px;
+      color: var(--g600);
+      width: 68px;
+      flex-shrink: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mbar-track {
+      flex: 1;
+      height: 7px;
+      background: var(--g200);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .mbar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--grad);
+      transition: width 1.2s ease;
+    }
+
+    .mbar-val {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--g700);
+      width: 38px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* Stat grid */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .stat-cell {
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: white;
+      border-left: 3px solid var(--orange);
+    }
+
+    .stat-cell.pink {
+      border-color: var(--pink);
+    }
+
+    .stat-cell.blue {
+      border-color: var(--info);
+    }
+
+    .stat-cell.green {
+      border-color: var(--ok);
+    }
+
+    .stat-val {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--orange);
+    }
+
+    .stat-cell.pink .stat-val {
+      color: var(--pink);
+    }
+
+    .stat-cell.blue .stat-val {
+      color: var(--info);
+    }
+
+    .stat-cell.green .stat-val {
+      color: var(--ok);
+    }
+
+    .stat-desc {
+      font-size: 10px;
+      color: var(--g500);
+      margin-top: 1px;
+    }
+
+    /* Action card */
+    .act-card {
+      background: var(--g50);
+      border: 1px solid var(--g200);
+      border-radius: var(--r-md);
+      padding: 12px;
+      margin-top: 8px;
+    }
+
+    .act-card-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--g700);
+      margin-bottom: 8px;
+    }
+
+    .act-row {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .act-chip {
+      padding: 8px 16px;
+      border-radius: var(--r-full);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all var(--tr);
+      border: none;
+      font-family: var(--font);
+    }
+
+    .act-chip.primary {
+      background: var(--grad);
+      color: white;
+      box-shadow: var(--sh-or);
+    }
+
+    .act-chip.secondary {
+      background: white;
+      color: var(--g700);
+      border: 1px solid var(--g300);
+    }
+
+    .act-chip.danger {
+      background: var(--err-pale);
+      color: var(--err);
+      border: 1px solid #fecaca;
+    }
+
+    .act-chip:active {
+      transform: scale(.95);
+    }
+
+    /* Suggestion pills */
+    .sug-row {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      padding-left: 42px;
+    }
+
+    .sug {
+      padding: 7px 14px;
+      border-radius: var(--r-full);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1.5px solid var(--orange);
+      color: var(--orange);
+      background: white;
+      transition: all var(--tr);
+      font-family: var(--font);
+    }
+
+    .sug:hover,
+    .sug:active {
+      background: var(--orange);
+      color: white;
+    }
+
+    /* Typing indicator */
+    .typing-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .typing-bubble {
+      background: white;
+      border: 1px solid var(--g200);
+      border-radius: 18px;
+      border-bottom-left-radius: 5px;
+      padding: 13px 16px;
+      box-shadow: var(--sh-sm);
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .dot-anim {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--g400);
+      animation: typeBounce .6s ease infinite alternate;
+    }
+
+    .dot-anim:nth-child(2) {
+      animation-delay: .2s;
+    }
+
+    .dot-anim:nth-child(3) {
+      animation-delay: .4s;
+    }
+
+    @keyframes typeBounce {
+      from {
+        transform: translateY(0);
+        opacity: .4
+      }
+
+      to {
+        transform: translateY(-5px);
+        opacity: 1
+      }
+    }
+
+    /* ── Chat Input ─────────────────────── */
+    .chat-input-area {
+      background: white;
+      border-top: 1px solid var(--g200);
+      padding: 10px 14px;
+      padding-bottom: 110px;
+      /* Leave space for floating nav */
+      flex-shrink: 0;
+    }
+
+    .input-shortcuts {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .input-shortcuts::-webkit-scrollbar {
+      display: none;
+    }
+
+    .sc-btn {
+      padding: 5px 13px;
+      border-radius: var(--r-full);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--g200);
+      color: var(--g600);
+      background: var(--g50);
+      white-space: nowrap;
+      flex-shrink: 0;
+      font-family: var(--font);
+      transition: all var(--tr);
+    }
+
+    .sc-btn:hover {
+      background: var(--orange-pale);
+      color: var(--orange);
+      border-color: var(--orange);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .input-wrap {
+      flex: 1;
+      background: var(--g100);
+      border-radius: 24px;
+      border: 1.5px solid var(--g200);
+      display: flex;
+      align-items: flex-end;
+      padding: 10px 14px;
+      gap: 8px;
+      transition: border-color var(--tr);
+    }
+
+    .input-wrap:focus-within {
+      border-color: var(--orange);
+      background: white;
+    }
+
+    .chat-ta {
+      flex: 1;
+      border: none;
+      background: none;
+      outline: none;
+      font-size: 13px;
+      color: var(--g800);
+      resize: none;
+      max-height: 96px;
+      min-height: 22px;
+      line-height: 1.5;
+      font-family: var(--font);
+    }
+
+    .chat-ta::placeholder {
+      color: var(--g400);
+    }
+
+    .mic-btn {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--g400);
+      font-size: 15px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      flex-shrink: 0;
+      border-radius: 50%;
+      transition: all var(--tr);
+    }
+
+    .mic-btn.active {
+      color: var(--err);
+      animation: micPulse 1s ease infinite;
+    }
+
+    @keyframes micPulse {
+
+      0%,
+      100% {
+        transform: scale(1)
+      }
+
+      50% {
+        transform: scale(1.2)
+      }
+    }
+
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--grad);
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--sh-or);
+      transition: all var(--tr);
+      flex-shrink: 0;
+    }
+
+    .send-btn:active {
+      transform: scale(.92);
+    }
+
+    .send-btn:disabled {
+      opacity: .4;
+      background: var(--g300);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* ═══════════════════════════════════════
+       HOME / DASHBOARD SCREEN
+    ═══════════════════════════════════════ */
+    #screen-home {
+      background: var(--g50);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Alert Banner */
+    .alert-banner {
+      background: linear-gradient(135deg, #FFF4EC, #FDE7F4);
+      border: 1px solid #FFD4B0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-banner-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .alert-banner-text {
+      flex: 1;
+    }
+
+    .alert-banner-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--g800);
+    }
+
+    .alert-banner-sub {
+      font-size: 11px;
+      color: var(--g500);
+      margin-top: 2px;
+    }
+
+    .alert-banner-cta {
+      padding: 7px 14px;
+      border-radius: var(--r-full);
+      background: var(--grad);
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      font-family: var(--font);
+      white-space: nowrap;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid var(--g200);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--sh-sm);
+    }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      right: -12px;
+      bottom: -12px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      opacity: .06;
+    }
+
+    .kpi-card.sales::after {
+      background: var(--orange);
+    }
+
+    .kpi-card.count::after {
+      background: var(--ok);
+    }
+
+    .kpi-card.avg::after {
+      background: var(--info);
+    }
+
+    .kpi-card.goal::after {
+      background: var(--purple);
+    }
+
+    .kpi-lbl {
+      font-size: 11px;
+      color: var(--g500);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .kpi-val {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--g900);
+      letter-spacing: -.5px;
+    }
+
+    .kpi-val small {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--g500);
+    }
+
+    .kpi-chg {
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .kpi-chg.up {
+      color: var(--ok);
+    }
+
+    .kpi-chg.down {
+      color: var(--err);
+    }
+
+    /* Progress Bar (goal) */
+    .goal-bar-wrap {
+      margin-top: 6px;
+    }
+
+    .goal-bar-track {
+      height: 5px;
+      background: var(--g200);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .goal-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--grad);
+      transition: width 1.2s ease;
+    }
+
+    /* Section card */
+    .sec-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid var(--g200);
+      box-shadow: var(--sh-sm);
+    }
+
+    .sec-hd {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--g900);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sec-hd-more {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--orange);
+      cursor: pointer;
+    }
+
+    /* Alert items */
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 7px;
+      cursor: pointer;
+      transition: all var(--tr);
+    }
+
+    .alert-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .alert-item.urgent {
+      background: var(--err-pale);
+      border: 1px solid #fecaca;
+    }
+
+    .alert-item.warn {
+      background: var(--warn-pale);
+      border: 1px solid #fde68a;
+    }
+
+    .alert-item.info {
+      background: var(--info-pale);
+      border: 1px solid #bfdbfe;
+    }
+
+    .alert-item.ok {
+      background: var(--ok-pale);
+      border: 1px solid #bbf7d0;
+    }
+
+    .alert-item:active {
+      transform: scale(.99);
+    }
+
+    .alert-ico {
+      font-size: 20px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .alert-txt {
+      flex: 1;
+    }
+
+    .alert-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--g800);
+      line-height: 1.4;
+    }
+
+    .alert-desc {
+      font-size: 11px;
+      color: var(--g500);
+      margin-top: 2px;
+    }
+
+    .alert-arr {
+      color: var(--g400);
+      font-size: 11px;
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+
+    /* Ranking list */
+    .rank-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--g100);
+    }
+
+    .rank-item:last-child {
+      border-bottom: none;
+    }
+
+    .rank-no {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 900;
+      flex-shrink: 0;
+      color: white;
+    }
+
+    .rank-no.r1 {
+      background: linear-gradient(135deg, #FF6E00, #FF8C33);
+    }
+
+    .rank-no.r2 {
+      background: linear-gradient(135deg, #555, #888);
+    }
+
+    .rank-no.r3 {
+      background: linear-gradient(135deg, #CD7F32, #E5A262);
+    }
+
+    .rank-no.rN {
+      background: var(--g200);
+      color: var(--g600);
+    }
+
+    .rank-name {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--g800);
+    }
+
+    .rank-cnt {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--g600);
+    }
+
+    .rank-bar {
+      width: 60px;
+      height: 5px;
+      background: var(--g200);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-left: 4px;
+    }
+
+    .rank-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--grad);
+    }
+
+    /* Hourly chart (simple) */
+    .hourly-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 52px;
+      padding: 0 4px;
+    }
+
+    .hbar {
+      flex: 1;
+      border-radius: 3px 3px 0 0;
+      background: var(--g200);
+      position: relative;
+      transition: all .3s;
+      cursor: pointer;
+      min-width: 0;
+    }
+
+    .hbar.active {
+      background: var(--grad);
+    }
+
+    .hbar:hover {
+      opacity: .8;
+    }
+
+    .hourly-labels {
+      display: flex;
+      gap: 4px;
+      padding: 4px 4px 0;
+    }
+
+    .hourly-labels span {
+      flex: 1;
+      text-align: center;
+      font-size: 9px;
+      color: var(--g400);
+      min-width: 0;
+    }
+
+    /* Weather widget */
+    .weather-widget {
+      background: linear-gradient(135deg, #0EA5E9, #7C3AED);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .weather-icon {
+      font-size: 36px;
+    }
+
+    .weather-info {
+      flex: 1;
+    }
+
+    .weather-temp {
+      font-size: 22px;
+      font-weight: 900;
+      color: white;
+    }
+
+    .weather-desc {
+      font-size: 12px;
+      color: rgba(255, 255, 255, .75);
+      margin-top: 2px;
+    }
+
+    .weather-tip {
+      background: rgba(255, 255, 255, .15);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 11px;
+      color: white;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, .2);
+    }
+
+    /* ═══════════════════════════════════════
+       NOTICE SCREEN
+    ═══════════════════════════════════════ */
+    #screen-notice {
+      background: var(--g50);
+    }
+
+    .notice-top {
+      padding: 14px;
+      background: white;
+      border-bottom: 1px solid var(--g200);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .notice-top-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .notice-top-title {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--g900);
+    }
+
+    .notice-unread-badge {
+      background: var(--err);
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: var(--r-full);
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 1px;
+    }
+
+    .filter-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-pill {
+      padding: 7px 16px;
+      border-radius: var(--r-full);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1.5px solid var(--g200);
+      color: var(--g600);
+      background: white;
+      white-space: nowrap;
+      flex-shrink: 0;
+      font-family: var(--font);
+      transition: all var(--tr);
+    }
+
+    .filter-pill.active {
+      background: var(--orange);
+      color: white;
+      border-color: var(--orange);
+    }
+
+    .notice-list {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .notice-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid var(--g200);
+      cursor: pointer;
+      transition: all var(--tr);
+      box-shadow: var(--sh-sm);
+    }
+
+    .notice-card.unread {
+      border-left: 3.5px solid var(--orange);
+    }
+
+    .notice-card:active {
+      transform: scale(.99);
+      box-shadow: none;
+    }
+
+    .nc-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+
+    .nc-badge {
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .nc-badge.urgent {
+      background: var(--err-pale);
+      color: var(--err);
+    }
+
+    .nc-badge.promo {
+      background: var(--orange-pale);
+      color: var(--orange);
+    }
+
+    .nc-badge.edu {
+      background: var(--info-pale);
+      color: var(--info);
+    }
+
+    .nc-badge.order {
+      background: var(--ok-pale);
+      color: var(--ok);
+    }
+
+    .nc-badge.general {
+      background: var(--g100);
+      color: var(--g600);
+    }
+
+    .nc-title {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--g800);
+      line-height: 1.4;
+    }
+
+    .nc-unread-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--orange);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .nc-preview {
+      font-size: 12px;
+      color: var(--g500);
+      line-height: 1.5;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .nc-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nc-date {
+      font-size: 11px;
+      color: var(--g400);
+    }
+
+    .nc-action {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--orange);
+    }
+
+    /* ═══════════════════════════════════════
+       PROFILE SCREEN
+    ═══════════════════════════════════════ */
+    #screen-profile {
+      background: var(--g50);
+    }
+
+    .p-footer {
+      text-align: center;
+      padding: 20px 16px 24px;
+      color: var(--g400);
+      font-size: 11px;
+    }
+
+    .p-footer-brand {
+      background: var(--grad);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 900;
+      font-size: 13px;
+      margin-bottom: 4px;
+      display: inline-block;
+    }
+
+    /* ═══════════════════════════════════════
+       TOAST
+    ═══════════════════════════════════════ */
+    .toast-container {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      align-items: center;
+      width: 90%;
+      max-width: 380px;
+    }
+
+    .toast {
+      background: #1a1a2e;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastIn .3s ease;
+      border-left: 3px solid var(--orange);
+      pointer-events: all;
+    }
+
+    .toast.success {
+      border-color: var(--ok);
+    }
+
+    .toast.warn {
+      border-color: var(--warn);
+    }
+
+    .toast.err {
+      border-color: var(--err);
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* Scrollbar clean */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--g200) transparent;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-root">
+
+    <!-- ══ STATUS BAR ══════════════════════ -->
+    <div class="status-bar">
+      <span class="status-time" id="appTime">9:41</span>
+      <div class="status-icons">
+        <i class="fas fa-signal"></i>
+        <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">5G</span>
+        <i class="fas fa-wifi"></i>
+        <i class="fas fa-battery-three-quarters"></i>
+      </div>
+    </div>
+
+    <!-- ══ APP HEADER ══════════════════════ -->
+    <div class="app-header">
+      <div class="app-header-top">
+        <button class="header-icon-btn" onclick="showNotifications()">
+          <i class="fas fa-bell"></i>
+        </button>
+        <div class="header-info">
+          <div class="header-title">DUNKIN AI 파트너</div>
+          <div class="header-sub">
+            <div class="live-dot"></div>
+            던킨 SPC2023 · 점주
+          </div>
+        </div>
+        <!-- 요일 및 날씨 정보 (고도화 버전) -->
+        <div class="header-weather" onclick="toggleWeatherInfo(event)">
+          <div class="weather-main">
+            <i class="fas fa-sun" style="color:#FFD700"></i>
+            <span class="weather-temp">14°</span>
+          </div>
+          <div class="weather-date">3.24 (화) 13:00 </div>
+
+          <!-- 날씨 3일 예보 팝업 -->
+          <div class="weather-popup" id="weatherPopup">
+            <div class="wp-title">3일 날씨 예보</div>
+            <div class="wp-row">
+              <span class="wp-day">오늘</span>
+              <i class="fas fa-sun wp-icon" style="color:#FFD700"></i>
+              <span class="wp-desc">맑음</span>
+              <span class="wp-temp">16°/2°</span>
+            </div>
+            <div class="wp-row">
+              <span class="wp-day">내일</span>
+              <i class="fas fa-cloud-sun wp-icon" style="color:#f59e0b"></i>
+              <span class="wp-desc">구름조금</span>
+              <span class="wp-temp">18°/4°</span>
+            </div>
+            <div class="wp-row">
+              <span class="wp-day">모레</span>
+              <i class="fas fa-cloud-showers-heavy wp-icon" style="color:#3b82f6"></i>
+              <span class="wp-desc">오후 비</span>
+              <span class="wp-temp">13°/8°</span>
+            </div>
+          </div>
+        </div>
+        <div class="header-avatar" onclick="switchTab('profile', null)">👤</div>
+      </div>
+    </div> <!-- /app-header -->
+
+
+    <!-- ══ SCREENS ══════════════════════════ -->
+    <div class="screens">
+
+      <!-- ── ONBOARDING OVERLAY ─────────────── -->
+      <div class="onboard-overlay" id="onboardOverlay">
+
+        <div class="ob-header" style="margin-bottom:16px;">
+          <div class="ob-logo" style="width:48px;height:48px;margin:0 auto 10px;">🤖</div>
+          <div class="ob-title" style="font-size:20px;margin-bottom:4px;">AI 인사이트 레포트</div>
+          <div class="ob-sub" style="font-size:12px;">점포 데이터를 분석해<br>최적의 인사이트를 제공합니다</div>
+        </div>
+
+        <div class="ob-step-track" style="margin-bottom:16px;">
+          <div class="ob-step-node curr" id="sn1">1</div>
+          <div class="ob-step-line" id="sl1"></div>
+          <div class="ob-step-node wait" id="sn2">2</div>
+          <div class="ob-step-line" id="sl2"></div>
+          <div class="ob-step-node wait" id="sn3">3</div>
+        </div>
+
+        <!-- Panel 1: Welcome -->
+        <div class="ob-panel active" id="ob-p1">
+          <div class="ob-welcome-card" style="margin-bottom:12px; padding:12px;">
+            <div class="ob-welcome-greeting" style="margin-bottom:12px;">
+              <div class="ob-avatar-ring" style="width:36px;height:36px;font-size:16px;">👤</div>
+              <div>
+                <div class="ob-greet-name" style="font-size:14px;">홍길동 점주님 👋</div>
+                <div class="ob-greet-store" style="font-size:11px;">던킨 SPC2023 · #1234</div>
+              </div>
+            </div>
+            <div class="ob-kpi-grid" style="gap:6px;">
+              <div class="ob-kpi-cell" style="padding:6px;">
+                <div class="ob-kpi-val" style="font-size:14px;">147<small>만</small></div>
+                <div class="ob-kpi-lbl" style="font-size:10px;">전일 매출</div>
+              </div>
+              <div class="ob-kpi-cell" style="padding:6px;">
+                <div class="ob-kpi-val" style="font-size:14px;">342<small>건</small></div>
+                <div class="ob-kpi-lbl" style="font-size:10px;">전일 주문 건수</div>
+              </div>
+              <div class="ob-kpi-cell" style="padding:6px;">
+                <div class="ob-kpi-val" style="font-size:14px;">12<small>%</small></div>
+                <div class="ob-kpi-lbl" style="font-size:10px;">전일 폐기율</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ob-feature-list" style="gap:8px; margin-bottom:12px;">
+            <div class="ob-feature-item" style="padding:10px;">
+              <div class="ob-feature-icon" style="width:30px;height:30px;font-size:14px;">📊</div>
+              <div class="ob-feature-text">
+                <div class="ob-feature-title" style="font-size:13px;">실시간 매출 분석</div>
+                <div class="ob-feature-desc" style="font-size:11px; margin-top:2px;">시간대별 트렌드와 베스트셀러</div>
+              </div>
+            </div>
+            <div class="ob-feature-item" style="padding:10px;">
+              <div class="ob-feature-icon" style="width:30px;height:30px;font-size:14px;">📦</div>
+              <div class="ob-feature-text">
+                <div class="ob-feature-title" style="font-size:13px;">스마트 발주 관리</div>
+                <div class="ob-feature-desc" style="font-size:11px; margin-top:2px;">AI가 재고 예측 후 자동 발주 제안</div>
+              </div>
+            </div>
+            <div class="ob-feature-item" style="padding:10px;">
+              <div class="ob-feature-icon" style="width:30px;height:30px;font-size:14px;">🌤️</div>
+              <div class="ob-feature-text">
+                <div class="ob-feature-title" style="font-size:13px;">날씨 기반 메뉴 추천</div>
+                <div class="ob-feature-desc" style="font-size:11px; margin-top:2px;">날씨·기온 기반 수요 변화 예측</div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-primary" onclick="nextObStep(2)" style="margin-top:0; padding:12px;">
+            시작하기 <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <!-- Panel 2: Interests -->
+        <div class="ob-panel" id="ob-p2">
+          <div style="font-size:14px;font-weight:800;color:white;margin-bottom:14px;">
+            주로 어떤 정보가 필요하신가요? <span style="color:rgba(255,255,255,.5);font-size:12px;">(최대 3개)</span>
+          </div>
+
+          <div class="ob-int-grid" id="intGrid">
+            <div class="ob-int-card sel" onclick="toggleInt(this)">
+              <div class="ob-int-check"><i class="fas fa-check"></i></div>
+              <div class="ob-int-emoji">🍦</div>
+              <div class="ob-int-name">트렌드 분석</div>
+              <div class="ob-int-desc">맛 트렌드 및 추천 패턴</div>
+            </div>
+            <div class="ob-int-card sel" onclick="toggleInt(this)">
+              <div class="ob-int-check"><i class="fas fa-check"></i></div>
+              <div class="ob-int-emoji">🌤️</div>
+              <div class="ob-int-name">날씨 예측</div>
+              <div class="ob-int-desc">날씨 연동 수요 분석</div>
+            </div>
+            <div class="ob-int-card sel" onclick="toggleInt(this)">
+              <div class="ob-int-check"><i class="fas fa-check"></i></div>
+              <div class="ob-int-emoji">👥</div>
+              <div class="ob-int-name">행동 패턴</div>
+              <div class="ob-int-desc">고객 유형/시간대 분석</div>
+            </div>
+            <div class="ob-int-card" onclick="toggleInt(this)">
+              <div class="ob-int-check"><i class="fas fa-check"></i></div>
+              <div class="ob-int-emoji">⚠️</div>
+              <div class="ob-int-name">재고 리스크</div>
+              <div class="ob-int-desc">소진 임박 조기 경보</div>
+            </div>
+            <div class="ob-int-card" onclick="toggleInt(this)">
+              <div class="ob-int-check"><i class="fas fa-check"></i></div>
+              <div class="ob-int-emoji">🎯</div>
+              <div class="ob-int-name">마케팅 제안</div>
+              <div class="ob-int-desc">맞춤형 매출 증대 전략</div>
+            </div>
+            <div class="ob-int-card" onclick="toggleInt(this)">
+              <div class="ob-int-check"><i class="fas fa-check"></i></div>
+              <div class="ob-int-emoji">📅</div>
+              <div class="ob-int-name">공휴일 대응</div>
+              <div class="ob-int-desc">특수일 인력/재고 최적화</div>
+            </div>
+          </div>
+          <button class="btn-primary" id="btn-ob-next" onclick="nextObStep(3)"
+            style="margin-top:20px; padding:15px; font-weight:800;">
+            선택 완료 ✨
+          </button>
+        </div>
+
+        <!-- Panel 3: Loading -->
+        <div class="ob-panel" id="ob-p3">
+          <div style="font-size:16px;font-weight:800;color:white;margin-bottom:10px;text-align:center;">리포트 생성 중</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.6);text-align:center;margin-bottom:20px;">
+            매장 데이터와 인근 트렌드를 분석하여<br>최적의 가이드를 생성하고 있습니다.
+          </div>
+          <div class="ob-loader-wrap">
+            <div class="ob-loader-fill" id="ob-loader"></div>
+          </div>
+          <div id="ob-loading-txt" style="font-size:12px;color:rgba(255,255,255,.4);text-align:center;margin-top:15px;">
+            시간대별 매출 패턴 분석 중...
+          </div>
+        </div>
+      </div>
+      <!-- /onboard-overlay -->
+
+      <!-- ── CHAT SCREEN ─────────────────────── -->
+      <!-- [수정] 상단 빠른 질문 바(quick-topics-bar) 제거 → 하단 input-shortcuts만 유지 -->
+      <div class="screen" id="screen-chat">
+
+        <!-- Messages -->
+        <div class="chat-messages" id="chatMessages">
+          <div class="date-sep">2026년 3월 13일 (금)</div>
+
+          <!-- AI Welcome -->
+          <div class="msg-group">
+            <div class="msg-row">
+              <div class="msg-av ai" style="font-size:11px; font-weight:950; letter-spacing:-0.5px;">AI</div>
+              <div class="msg-body">
+                <div class="msg-from">AI 비서</div>
+                <div class="bubble ai">
+                  안녕하세요, <strong>던킨 SPC2023</strong> 홍길동 점주님! 👋<br><br>
+                  오늘 현재까지 <strong>923,000원</strong>의 매출을 달성했어요. 전일 대비 <strong style="color:#22C55E">+8.3%</strong> 좋은
+                  흐름입니다 🎉<br><br>
+                  무엇을 도와드릴까요?
+                </div>
+                <div class="msg-time">오전 9:00</div>
+              </div>
+            </div>
+            <div class="sug-row">
+              <button class="sug" onclick="quickAsk('오늘 시간대별 매출 알려줘')">📊 시간대별 매출</button>
+              <button class="sug" onclick="quickAsk('오늘 베스트셀러 알려줘')">🏆 베스트셀러</button>
+              <button class="sug" onclick="quickAsk('지금 재고 현황 알려줘')">📦 재고 현황</button>
+            </div>
+          </div>
+
+          <!-- AI Proactive Alert -->
+          <div class="msg-group">
+            <div class="msg-row">
+              <div class="msg-av ai" style="font-size:11px; font-weight:950; letter-spacing:-0.5px;">AI</div>
+              <div class="msg-body">
+                <div class="msg-from">AI 비서</div>
+                <div class="bubble ai">
+                  ⚡ <strong>지금 확인이 필요한 사항</strong>이 있어요:<br><br>
+                  🔴 <strong>커피 원두</strong> 재고 부족 (잔여 2kg · 3일치 미만)<br>
+                  🟡 <strong>기프티콘 이벤트</strong> 등록 마감 <strong>D-3</strong> (3월 15일)<br>
+                  🌧️ 오후 <strong>강수확률 72%</strong> — HOT 메뉴 준비 권장
+                </div>
+                <div class="msg-time">오전 9:01</div>
+                <div class="act-card">
+                  <div class="act-card-title">⚡ 빠른 실행</div>
+                  <div class="act-row">
+                    <button class="act-chip primary" onclick="quickAsk('커피 원두 발주해줘')">📦 발주하기</button>
+                    <button class="act-chip secondary" onclick="quickAsk('기프티콘 이벤트 등록 어떻게 해?')">🎯 이벤트 등록</button>
+                    <button class="act-chip secondary" onclick="quickAsk('날씨 기반 메뉴 추천해줘')">🌤️ 메뉴 추천</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /chat-messages -->
+
+        <!-- Input Area (하단 빠른 질문 단축키 포함) -->
+        <div class="chat-input-area">
+          <div class="input-shortcuts">
+            <button class="sc-btn" onclick="quickAsk('📦 발주')">📦 발주</button>
+            <button class="sc-btn" onclick="quickAsk('📊 매출')">📊 매출</button>
+            <button class="sc-btn" onclick="quickAsk('📢 공지 요약')">📢 공지</button>
+            <button class="sc-btn" onclick="quickAsk('🎯 프로모션')">🎯 행사</button>
+            <button class="sc-btn" onclick="quickAsk('🌤️ 날씨')">🌤️ 날씨</button>
+          </div>
+          <div class="input-row">
+            <div class="input-wrap">
+              <button class="mic-btn" id="micBtn" onclick="toggleMic()">
+                <i class="fas fa-microphone"></i>
+              </button>
+              <textarea class="chat-ta" id="chatInput" placeholder="AI 비서에게 질문하세요..." rows="1"
+                onkeydown="handleKeydown(event)" oninput="autoResize(this)"></textarea>
+            </div>
+            <button class="send-btn" id="sendBtn" onclick="sendChat()" disabled>
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /screen-chat -->
+
+      <!-- ── HOME / DASHBOARD SCREEN ────────── -->
+      <!-- [수정] 상단 store-stats-row (매출/거래건수/목표 중복 카드) 제거 → KPI Grid만 유지 -->
+      <div class="screen" id="screen-home">
+
+        <!-- KPI Grid (Web Style) -->
+
+        <!-- KPI Grid (Web Style) -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-lbl"><i class="fas fa-coins"></i> 오늘 매출</div>
+            <div class="kpi-val">923,000<small>원</small></div>
+            <div class="kpi-chg up">전주 동요일 대비 ↑ +8.3%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-lbl"><i class="fas fa-receipt"></i> 실시간 주문</div>
+            <div class="kpi-val">184<small>건</small></div>
+            <div class="kpi-chg up">전주 동요일 대비 ↑ +12%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-lbl"><i class="fas fa-cookie-bite"></i> 판매/생산</div>
+            <div class="kpi-val">120/200<small>개</small></div>
+            <div class="kpi-chg" style="color:var(--orange);">생산 대비 판매 60%</div>
+          </div>
+          <div class="kpi-card" style="position:relative; cursor:pointer;" onclick="toggleChartTooltip(this)">
+            <!-- KPI 툴팁 -->
+            <div class="bar-tooltip"
+              style="bottom:80px; left:auto; right:0px; transform:translateY(10px); width:130px; text-align:center;">
+              전주 동요일 매출 대비<br><span style="color:var(--ok); font-weight:900;">목표 치 1,200,000원</span>
+              <!-- CSS ::after 오버라이드 대신 개별 화살표 위치 지정 필요, 여기서는 중앙 정렬을 위해 right:0, left:0, margin:auto 트릭 활용 -->
+            </div>
+
+            <div class="kpi-lbl"><i class="fas fa-bullseye"></i> 일 매출 달성률
+              <i class="fas fa-question-circle" style="margin-left:auto; color:var(--g300); font-size:12px;"></i>
+            </div>
+            <div class="kpi-val">78<small>%</small></div>
+            <div class="goal-gauge-wrap" style="margin-top:14px;">
+              <div class="goal-gauge-track">
+                <div class="goal-gauge-fill" style="width:78%"></div>
+              </div>
+              <div class="goal-gauge-labels"><span>0%</span><span>100%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 시간대별 예상 매출 차트 -->
+        <div class="chart-section">
+          <div class="chart-card">
+            <div class="chart-hd">
+              <div class="chart-title">📈 시간대별 예상 매출</div>
+              <div class="chart-legend">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background:var(--orange)"></div>오늘
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background:var(--g200)"></div>전주
+                </div>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <div class="chart-y-axis">
+                <span>40만</span>
+                <span>20만</span>
+                <span>0</span>
+              </div>
+              <div class="m-chart-bars">
+                <div class="m-chart-col" onclick="toggleChartTooltip(this)">
+                  <div class="bar-tooltip">오늘 12만<br>전주 20만</div>
+                  <div class="m-bars">
+                    <div class="m-bar last-week" style="height:38%;"></div>
+                    <div class="m-bar this-week" style="height:30%;"></div>
+                  </div>
+                  <div class="m-label">09시</div>
+                </div>
+                <div class="m-chart-col" onclick="toggleChartTooltip(this)">
+                  <div class="bar-tooltip">오늘 21만<br>전주 18만</div>
+                  <div class="m-bars">
+                    <div class="m-bar last-week" style="height:48%;"></div>
+                    <div class="m-bar this-week" style="height:55%;"></div>
+                  </div>
+                  <div class="m-label">11시</div>
+                </div>
+                <div class="m-chart-col" onclick="toggleChartTooltip(this)">
+                  <div class="bar-tooltip" style="display:block; opacity:1;">오늘 34만<br>전주 24만</div>
+                  <div class="m-bars">
+                    <div class="m-bar last-week" style="height:65%;"></div>
+                    <div class="m-bar this-week" style="height:82%;"></div>
+                  </div>
+                  <div class="m-label" style="color:var(--orange);font-weight:900;">13시 ↑</div>
+                </div>
+                <div class="m-chart-col" onclick="toggleChartTooltip(this)">
+                  <div class="bar-tooltip">오늘 34만<br>전주 28만</div>
+                  <div class="m-bars">
+                    <div class="m-bar last-week" style="height:82%;"></div>
+                    <div class="m-bar this-week" style="height:88%;"></div>
+                  </div>
+                  <div class="m-label">15시</div>
+                </div>
+                <div class="m-chart-col" onclick="toggleChartTooltip(this)">
+                  <div class="bar-tooltip">오늘 26만<br>전주 22만</div>
+                  <div class="m-bars">
+                    <div class="m-bar last-week" style="height:68%;"></div>
+                    <div class="m-bar this-week" style="height:72%;"></div>
+                  </div>
+                  <div class="m-label">17시</div>
+                </div>
+              </div>
+            </div>
+            <div style="font-size:10px; color:var(--g400); margin-top:10px; text-align:center; font-weight:600;">AI 예측:
+              13시 피크 타임 예상 (지난주 대비 17% 상승)</div>
+          </div>
+        </div>
+
+        <!-- 도넛 재고 임박 알림 -->
+        <div class="donut-stock-section">
+          <div
+            style="font-size:14px; font-weight:900; color:var(--g800); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <i class="fas fa-exclamation-triangle" style="color:var(--err)"></i> 도넛 재고 소진 임박
+          </div>
+          <div class="donut-grid">
+            <div class="donut-card">
+              <div class="donut-img-area" style="background:#fff8f4;"><img src="donut_glazed.png" alt="글레이즈드"></div>
+              <div class="donut-info">
+                <div class="donut-name">글레이즈드 도넛</div>
+                <div class="donut-remain">잔여 8개 (위험)</div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                  <div class="donut-meter" style="flex:1;">
+                    <div class="donut-meter-fill" style="width:15%"></div>
+                  </div>
+                  <div style="font-size:10px; font-weight:800; color:var(--g500);">생산 120개</div>
+                </div>
+                <div class="donut-action"
+                  onclick="switchTab('chat',document.getElementById('tab-chat'));quickAsk('글레이즈드 도넛 점포 알림, 근무자한테 알림을 할까요?')">
+                  점포 알림 →</div>
+              </div>
+            </div>
+            <div class="donut-card">
+              <div class="donut-img-area" style="background:#fdf2f8;"><img src="donut_choco.png" alt="초코"></div>
+              <div class="donut-info">
+                <div class="donut-name">초코 올드패션드</div>
+                <div class="donut-remain">잔여 14개 (주의)</div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                  <div class="donut-meter" style="flex:1;">
+                    <div class="donut-meter-fill" style="width:28%; background:var(--warn);"></div>
+                  </div>
+                  <div style="font-size:10px; font-weight:800; color:var(--g500);">생산 80개</div>
+                </div>
+                <div class="donut-action"
+                  onclick="switchTab('chat',document.getElementById('tab-chat'));quickAsk('초코 올드패션드 점포 알림, 근무자한테 알림을 할까요?')">
+                  점포 알림 →</div>
+              </div>
+            </div>
+            <div class="donut-card">
+              <div class="donut-img-area" style="background:#fff0f6;"><img src="donut_strawberry.png" alt="딸기"></div>
+              <div class="donut-info">
+                <div class="donut-name">딸기 크림 도넛</div>
+                <div class="donut-remain">잔여 19개 (주의)</div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                  <div class="donut-meter" style="flex:1;">
+                    <div class="donut-meter-fill" style="width:35%; background:var(--warn);"></div>
+                  </div>
+                  <div style="font-size:10px; font-weight:800; color:var(--g500);">생산 60개</div>
+                </div>
+                <div class="donut-action"
+                  onclick="switchTab('chat',document.getElementById('tab-chat'));quickAsk('딸기 크림 도넛 점포 알림, 근무자한테 알림을 할까요?')">
+                  점포 알림 →</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 오늘의 빠른 업무 현황 -->
+        <div class="quick-action-bar">
+          <div class="qa-label">⚡ 오늘의 주요 업무 현황</div>
+          <div class="qa-status-row">
+            <div class="qa-status-item">
+              <div class="qa-status-left">
+                <div class="qa-status-icon order">⚡</div>
+                <div class="qa-status-info">
+                  <div class="qa-status-title">도넛 주문</div>
+                  <div class="qa-status-desc">마감 시간 1시간 전 안내 예정</div>
+                </div>
+              </div>
+              <div class="qa-badge done"><i class="fas fa-check-circle"></i> 완료</div>
+            </div>
+            <div class="qa-status-item">
+              <div class="qa-status-left">
+                <div class="qa-status-icon prod">🍩</div>
+                <div class="qa-status-info">
+                  <div class="qa-status-title">생산 등록</div>
+                  <div class="qa-status-desc">오늘 120개 중 82개 처리됨</div>
+                </div>
+              </div>
+              <div class="qa-badge pending"><i class="fas fa-clock"></i> 진행중</div>
+            </div>
+          </div>
+          <div class="qa-btn-row" style="margin-top:4px;">
+            <button class="qa-btn primary"
+              onclick="switchTab('chat',document.getElementById('tab-chat'));quickAsk('빠른 주문 도와줘. 현재 재고 부족 품목 위주로 추천해줘')">
+              <i class="fas fa-bolt"></i>
+              <span>퀵 오더</span>
+            </button>
+            <button class="qa-btn secondary"
+              onclick="switchTab('chat',document.getElementById('tab-chat'));quickAsk('오늘 생산 등록 도와줘. 오늘 생산할 품목 목록 보여줘')">
+              <i class="fas fa-cookie-bite"></i>
+              <span>생산 등록</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 매장 통합 운영 데이터 -->
+        <div class="op-data-section">
+          <div class="op-card">
+            <div class="op-hd"><i class="fas fa-boxes" style="color:var(--orange)"></i> 실시간 원재료 재고</div>
+            <div class="op-row"><span class="op-lbl">원두 (블렌드)</span><span class="op-val" style="color:var(--err)">1.2kg
+                (위험)</span></div>
+            <div class="op-row"><span class="op-lbl">글레이즈드 시럽</span><span class="op-val" style="color:var(--ok)">8.5L
+                (충분)</span></div>
+            <div class="op-row"><span class="op-lbl">서울우유 (1L)</span><span class="op-val">12팩 (보통)</span></div>
+          </div>
+
+          <div class="op-card">
+            <div class="op-hd"><i class="fas fa-users" style="color:var(--info)"></i> 근무 팀 현황</div>
+            <div class="team-item">
+              <div class="team-avatar">👩</div>
+              <div class="team-info">
+                <div class="team-name">김하나 (점주)</div>
+                <div class="team-time">08:00 - 18:00 (근무 중)</div>
+              </div>
+              <div class="op-badge ok">현장</div>
+            </div>
+            <div class="team-item">
+              <div class="team-avatar">🧑</div>
+              <div class="team-info">
+                <div class="team-name">이민수 (스태프)</div>
+                <div class="team-time">12:00 - 20:00 (근무 중)</div>
+              </div>
+              <div class="op-badge ok">현장</div>
+            </div>
+          </div>
+
+          <div class="op-card">
+            <div class="op-hd"><i class="fas fa-bell" style="color:var(--warn)"></i> 시스템 공지</div>
+            <div style="font-size:11px; color:var(--g600); line-height:1.6;">
+              • [POS] 보안 업데이트 예정 (23:00)<br>
+              • [IoT] 쇼케이스 온도 정상 (4.2°C)<br>
+              • [Order] 신규 배달 주문 2건 대기
+            </div>
+          </div>
+        </div>
+
+        <!-- 하단 여백 공간 (내비게이션 겹침 방지용 Spacer) -->
+        <div style="height: 40px; flex-shrink: 0;"></div>
+
+      </div><!-- /screen-home -->
+
+      <!-- ── NOTICE SCREEN ───────────────────── -->
+      <!-- Notice Screen Removed -->
+
+      <!-- ── PROFILE (SETTINGS) SCREEN ──────────────── -->
+      <div class="screen" id="screen-profile">
+        <div class="app-header" style="padding:24px 20px; background:var(--grad); border-radius:0 0 24px 24px;">
+          <div style="display:flex; align-items:center; gap:16px;">
+            <div class="ob-avatar-ring"
+              style="width:64px; height:64px; font-size:32px; background:rgba(255,255,255,0.2); border:2px solid white; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+              👤</div>
+            <div>
+              <div class="ob-greet-name" style="font-size:20px; font-weight:900; color:white;">홍길동 점주님</div>
+              <div class="ob-greet-store" style="font-size:12px; color:rgba(255,255,255,0.8);">던킨 강남역점 (#1234)</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:20px; display:flex; flex-direction:column; gap:10px;">
+          <div class="quick-long-btn">계정 설정</div>
+          <div class="quick-long-btn">알림 설정</div>
+          <div class="quick-long-btn">보안 및 인증</div>
+          <div class="quick-long-btn">서비스 이용 약관</div>
+          <div class="quick-long-btn" style="color:var(--err);">로그아웃</div>
+        </div>
+      </div>
+
+      <!-- 퀵오더 화면 제거됨 - 기능이 실시간 점포 화면으로 이동 -->
+
+      <!-- ── DASHBOARD SCREEN (AI Insights) ──────────────── -->
+      <div class="screen" id="screen-dashboard">
+        <div
+          style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; text-align:center; color:var(--g400);">
+          <i class="fas fa-chart-line" style="font-size:48px; margin-bottom:16px; color:var(--g200);"></i>
+          <div style="font-size:18px; font-weight:800; color:var(--g800);">AI 인사이트</div>
+          <div style="font-size:13px; margin-top:8px;">매장 데이터를 정밀 분석한<br>인사이트 레포트가 준비 중입니다.</div>
+        </div>
+      </div>
+
+      <!-- ── POS SCREEN (Hamburger Menu Mockup) ──────────────── -->
+      <div class="screen" id="screen-pos">
+        <div class="pos-mockup-header"
+          style="background:#E91E8C; padding:15px; color:white; font-weight:800; display:flex; align-items:center; gap:10px;">
+          <i class="fas fa-bars"></i>
+          <span>전체메뉴</span>
+        </div>
+        <div class="pos-mockup-body" style="display:flex; height:100%;">
+          <div class="pos-side-nav" style="width:35%; background:white; height:100%; border-right:1px solid #eee;">
+            <div class="pos-side-item active"
+              style="padding:15px; display:flex; flex-direction:column; align-items:center; background:#333; color:white;">
+              <i class="fas fa-chart-bar" style="margin-bottom:5px;"></i>
+              <span style="font-size:11px; font-weight:800;">매출관리</span>
+            </div>
+            <div class="pos-side-item"
+              style="padding:15px; display:flex; flex-direction:column; align-items:center; border-bottom:1px solid #eee;">
+              <i class="fas fa-gift" style="margin-bottom:5px; color:#666;"></i>
+              <span style="font-size:11px; font-weight:700; color:#333;">주문관리</span>
+            </div>
+            <div class="pos-side-item"
+              style="padding:15px; display:flex; flex-direction:column; align-items:center; border-bottom:1px solid #eee;">
+              <i class="fas fa-store" style="margin-bottom:5px; color:#666;"></i>
+              <span style="font-size:11px; font-weight:700; color:#333;">점포관리</span>
+            </div>
+            <div class="pos-side-item"
+              style="padding:15px; display:flex; flex-direction:column; align-items:center; border-bottom:1px solid #eee;">
+              <i class="fas fa-box" style="margin-bottom:5px; color:#666;"></i>
+              <span style="font-size:11px; font-weight:700; color:#333;">재고관리</span>
+            </div>
+          </div>
+          <div class="pos-content-mock" style="flex:1; background:#444;">
+            <div class="pos-list-item"
+              style="padding:15px; border-bottom:1px solid rgba(255,255,255,0.1); color:white; display:flex; justify-content:space-between;">
+              <span>점포별 매출현황</span>
+              <i class="fas fa-chevron-right"></i>
+            </div>
+            <div class="pos-list-item"
+              style="padding:15px; border-bottom:1px solid rgba(255,255,255,0.1); color:white; display:flex; justify-content:space-between;">
+              <span>일자별 종합 매출현황</span>
+              <i class="fas fa-chevron-right"></i>
+            </div>
+            <div class="pos-list-item"
+              style="padding:15px; border-bottom:1px solid rgba(255,255,255,0.1); color:white; display:flex; justify-content:space-between;">
+              <span>상품별 매출현황</span>
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AI 매장 관리 SCREEN ──────────────── -->
+      <div class="screen" id="screen-aiot">
+        <div
+          style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; text-align:center; gap:16px;">
+          <div
+            style="width:72px;height:72px;background:linear-gradient(135deg,#e0f2fe,#ede9fe);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;">
+            🏭</div>
+          <div style="font-size:18px; font-weight:900; color:var(--g800);">AI 매장 관리</div>
+          <div style="font-size:13px; color:var(--g400); line-height:1.6;"><strong>다양한 AIoT 서비스</strong>가<br>준비 중입니다.
+          </div>
+          <div
+            style="padding:8px 20px;background:linear-gradient(135deg,#FF6E00,#E91E8C);color:white;border-radius:20px;font-size:12px;font-weight:700;">
+            Coming Soon</div>
+        </div>
+      </div>
+
+    </div><!-- /screens -->
+
+    <!-- ══ NAV TABS ══════════════════════════ -->
+    <div class="nav-container">
+      <div class="nav-main-pill">
+        <button class="nav-tab active" id="tab-home" onclick="switchTab('home',this)">
+          <i class="fas fa-store"></i>
+          <span class="tab-label">실시간 점포</span>
+        </button>
+        <button class="nav-tab" id="tab-dashboard" onclick="switchTab('dashboard',this); openOnboarding()">
+          <i class="fas fa-chart-line"></i>
+          <span class="tab-label">AI 인사이트</span>
+        </button>
+        <!-- 퀵오더 탭 제거됨 - 실시간 점포 화면 내 버튼으로 이동 -->
+        <button class="nav-tab" id="tab-aiot" onclick="switchTab('aiot',this)">
+          <i class="fas fa-microchip"></i>
+          <span class="tab-label">AI매장</span>
+        </button>
+        <button class="nav-tab" id="tab-pos" onclick="switchTab('pos',this)">
+          <i class="fas fa-bars"></i>
+          <span class="tab-label">POS</span>
+        </button>
+      </div>
+      <button class="nav-ai-btn" id="tab-chat" onclick="switchTab('chat',this)">
+        <div class="nav-ai-icon" style="background:none; box-shadow:none; position:relative; width:48px; height:48px;">
+          <!-- 정교한 말풍선 SVG 구현 (FontAwesomefa-comment 기반) -->
+          <svg viewBox="0 0 512 512"
+            style="width:48px; height:48px; position:absolute; top:0; left:0; filter:drop-shadow(0 4px 8px rgba(255,110,0,0.3));">
+            <defs>
+              <linearGradient id="aiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FF6E00" />
+                <stop offset="100%" stop-color="#E91E8C" />
+              </linearGradient>
+            </defs>
+            <path fill="url(#aiGrad)"
+              d="M256 32C114.6 32 0 125.1 0 240c0 49.6 21.4 95 57 130.7C44.5 421.1 2.7 466 2.2 466.5c-2.2 2.3-2.8 5.7-1.5 8.7S4.8 480 8 480c66.3 0 116-31.8 140.6-51.4 32.7 12.3 69 19.4 107.4 19.4 141.4 0 256-93.1 256-208S397.4 32 256 32z">
+            </path>
+          </svg>
+          <span
+            style="position:relative; z-index:1; color:white; font-size:16px; font-weight:900; letter-spacing:-0.5px; margin-top:-6px;">AI</span>
+        </div>
+      </button>
+    </div>
+
+  </div><!-- /app-root -->
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    /* ═══════════════════════════════════════
+       CLOCK & DATE
+    ═══════════════════════════════════════ */
+    function tick() {
+      const now = new Date();
+      const el = document.getElementById('appTime');
+      if (el) {
+        const h = now.getHours().toString().padStart(2, '0');
+        const m = now.getMinutes().toString().padStart(2, '0');
+        el.textContent = `${h}:${m}`;
+      }
+    }
+    setInterval(tick, 1000); tick();
+
+    /* ═══════════════════════════════════════
+       WEATHER POPUP
+    ═══════════════════════════════════════ */
+    function toggleWeatherInfo(e) {
+      e.stopPropagation();
+      const pop = document.getElementById('weatherPopup');
+      pop.classList.toggle('show');
+    }
+
+    // 외부 클릭 시 닫기
+    window.addEventListener('click', (e) => {
+      const pop = document.getElementById('weatherPopup');
+      if (pop && pop.classList.contains('show')) {
+        if (!pop.contains(e.target)) {
+          pop.classList.remove('show');
+        }
+      }
+    });
+
+    /* ═══════════════════════════════════════
+       TAB SWITCH
+    ═══════════════════════════════════════ */
+    function switchTab(id, btn) {
+      document.querySelectorAll('.nav-tab, .nav-ai-btn').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+      if (btn) {
+        btn.classList.add('active');
+      } else {
+        const matchedTab = document.getElementById('tab-' + id);
+        if (matchedTab) matchedTab.classList.add('active');
+      }
+
+      const scr = document.getElementById('screen-' + id);
+      if (scr) { scr.classList.add('active'); }
+
+      if (id !== 'dashboard') { closeOnboarding(); }
+    }
+
+    /* ═══════════════════════════════════════
+       ONBOARDING
+    ═══════════════════════════════════════ */
+    let selCount = 3;
+
+    function toggleInt(card) {
+      const isSel = card.classList.contains('sel');
+      const selCards = document.querySelectorAll('.ob-int-card.sel');
+      if (!isSel && selCards.length >= 3) {
+        showToast('최대 3개까지 선택할 수 있어요', 'warn'); return;
+      }
+      card.classList.toggle('sel');
+      selCount = document.querySelectorAll('.ob-int-card.sel').length;
+      document.getElementById('intCount').textContent = selCount;
+      document.getElementById('btnObNext2').disabled = selCount < 1;
+    }
+
+    function nextObStep(step) {
+      if (step === 2) {
+        // Step 1 → 2
+        document.getElementById('ob-p1').classList.remove('active');
+        document.getElementById('ob-p2').classList.add('active');
+        document.getElementById('sn1').className = 'ob-step-node done';
+        document.getElementById('sn1').textContent = '✓';
+        document.getElementById('sl1').classList.add('done');
+        document.getElementById('sn2').className = 'ob-step-node curr';
+      } else if (step === 3) {
+        // Step 2 → 3
+        document.getElementById('ob-p2').classList.remove('active');
+        document.getElementById('ob-p3').classList.add('active');
+        document.getElementById('sn2').className = 'ob-step-node done';
+        document.getElementById('sn2').textContent = '✓';
+        document.getElementById('sl2').classList.add('done');
+        document.getElementById('sn3').className = 'ob-step-node curr';
+        runLoadingAnimation();
+      }
+    }
+
+    function runLoadingAnimation() {
+      const rows = document.querySelectorAll('.ob-load-row');
+      const texts = [
+        '매출 데이터 불러오는 중...',
+        '발주·재고 현황 확인 중...',
+        '날씨 데이터 연동 중...',
+        'AI 인사이트 생성 중...',
+        '맞춤 대시보드 구성 완료!'
+      ];
+
+      rows.forEach((row, i) => {
+        setTimeout(() => {
+          row.classList.add('show');
+          const ico = row.querySelector('.ob-load-ico');
+          ico.className = 'ob-load-ico spin';
+          setTimeout(() => {
+            ico.className = 'ob-load-ico done';
+            ico.textContent = '✓';
+            row.querySelector('.ob-load-text').textContent = texts[i];
+          }, 800);
+        }, i * 700);
+      });
+
+      // Finish → hide overlay and show chat as main
+      setTimeout(() => {
+        document.getElementById('sn3').className = 'ob-step-node done';
+        document.getElementById('sn3').textContent = '✓';
+        setTimeout(() => {
+          const overlay = document.getElementById('onboardOverlay');
+          overlay.classList.add('hiding');
+          setTimeout(() => overlay.style.display = 'none', 450);
+          // 온보딩 완료 → 대시보드 화면으로 이동
+          switchTab('dashboard', document.getElementById('tab-dashboard'));
+          // 채팅에 완료 메시지 추가
+          const msgs = document.getElementById('chatMessages');
+          if (msgs && !window._obReportShown) {
+            window._obReportShown = true;
+            msgs.innerHTML += `<div class="msg-group"><div class="msg-row"><div class="msg-av ai">🤖</div><div class="msg-body"><div class="msg-from">DUNKIN AI 어시스턴트</div><div class="bubble ai" style="border:1.5px solid var(--orange);box-shadow:var(--sh-or)">📊 <strong>점주님 맞춤형 데일리 리포트가 완성되었습니다.</strong><br><br><span style="font-size:11px;color:var(--g600)">* 모바일 환경의 맞춤 대시보드 리포팅 뷰어 기능은 본 시연의 다음 개발 단계에서 구현될 예정입니다.</span></div></div></div></div>`;
+            setTimeout(() => msgs.scrollTop = msgs.scrollHeight, 100);
+          }
+        }, 600);
+      }, rows.length * 700 + 1000);
+    }
+
+    function closeOnboarding() {
+      const overlay = document.getElementById('onboardOverlay');
+      if (overlay) {
+        overlay.classList.add('hiding');
+        setTimeout(() => overlay.style.display = 'none', 450);
+      }
+    }
+    function openOnboarding() {
+      const overlay = document.getElementById('onboardOverlay');
+      if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.classList.remove('hiding');
+        // 초기화 과정 필요 (Step 1으로 되돌리기)
+        document.getElementById('ob-p1').classList.add('active');
+        document.getElementById('ob-p2').classList.remove('active');
+        document.getElementById('ob-p3').classList.remove('active');
+        document.getElementById('sn1').className = 'ob-step-node curr';
+        document.getElementById('sn1').textContent = '1';
+        document.getElementById('sl1').classList.remove('done');
+        document.getElementById('sn2').className = 'ob-step-node wait';
+        document.getElementById('sn2').textContent = '2';
+        document.getElementById('sl2').classList.remove('done');
+        document.getElementById('sn3').className = 'ob-step-node wait';
+        document.getElementById('sn3').textContent = '3';
+
+        document.querySelectorAll('.ob-load-row').forEach(row => {
+          row.classList.remove('show');
+          const ico = row.querySelector('.ob-load-ico');
+          if (ico) {
+            ico.className = 'ob-load-ico wait';
+            ico.textContent = '';
+          }
+        });
+
+        document.querySelectorAll('.ob-int-card').forEach(c => c.classList.remove('sel'));
+        selCount = 0;
+        document.getElementById('intCount').textContent = '0';
+        document.getElementById('btnObNext2').disabled = true;
+      }
+    }
+
+    // Auto-start onboarding check (skip if already seen)
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('onboardOverlay').style.display = 'none';
+      switchTab('home', document.getElementById('tab-home'));
+      initNotices();
+      initHourlyChart();
+    });
+
+    /* ═══════════════════════════════════════
+       CHAT
+    ═══════════════════════════════════════ */
+    const INPUT = document.getElementById('chatInput');
+    const SEND_BTN = document.getElementById('sendBtn');
+
+    if (INPUT) {
+      INPUT.addEventListener('input', () => {
+        SEND_BTN.disabled = INPUT.value.trim() === '';
+      });
+    }
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 96) + 'px';
+      SEND_BTN.disabled = el.value.trim() === '';
+    }
+
+    function handleKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!SEND_BTN.disabled) sendChat();
+      }
+    }
+
+    let micActive = false;
+    function toggleMic() {
+      micActive = !micActive;
+      const btn = document.getElementById('micBtn');
+      btn.classList.toggle('active', micActive);
+      btn.querySelector('i').className = micActive ? 'fas fa-microphone-slash' : 'fas fa-microphone';
+      if (micActive) showToast('음성 인식 기능은 준비 중입니다', 'info');
+      else { micActive = false; btn.classList.remove('active'); }
+    }
+
+    function sendChat() {
+      const val = INPUT.value.trim();
+      if (!val) return;
+      addUserMsg(val);
+      INPUT.value = ''; autoResize(INPUT);
+      SEND_BTN.disabled = true;
+      showTyping();
+      setTimeout(() => {
+        removeTyping();
+        addAiResponse(val);
+      }, 1400 + Math.random() * 600);
+    }
+
+    function quickAsk(text) {
+      switchTab('chat', document.getElementById('tab-chat'));
+      setTimeout(() => {
+        addUserMsg(text);
+        showTyping();
+        setTimeout(() => {
+          removeTyping();
+          addAiResponse(text);
+        }, 1400 + Math.random() * 600);
+      }, 100);
+    }
+
+    function addUserMsg(text) {
+      const msgs = document.getElementById('chatMessages');
+      const now = new Date();
+      const t = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const div = document.createElement('div');
+      div.className = 'msg-group';
+      div.innerHTML = `
+    <div class="msg-row user">
+      <div class="msg-av user">👤</div>
+      <div class="msg-body">
+        <div class="bubble user">${escHtml(text)}</div>
+        <div class="msg-time">${t}</div>
+      </div>
+    </div>`;
+      msgs.appendChild(div);
+      scrollBottom();
+    }
+
+    let typingEl = null;
+    function showTyping() {
+      const msgs = document.getElementById('chatMessages');
+      typingEl = document.createElement('div');
+      typingEl.className = 'typing-row';
+      typingEl.id = 'typingIndicator';
+      typingEl.innerHTML = `
+    <div class="msg-av ai">🤖</div>
+    <div class="typing-bubble">
+      <div class="dot-anim"></div>
+      <div class="dot-anim"></div>
+      <div class="dot-anim"></div>
+    </div>`;
+      msgs.appendChild(typingEl);
+      scrollBottom();
+    }
+
+    function removeTyping() {
+      if (typingEl) { typingEl.remove(); typingEl = null; }
+    }
+
+    function scrollBottom() {
+      const msgs = document.getElementById('chatMessages');
+      setTimeout(() => msgs.scrollTop = msgs.scrollHeight, 50);
+    }
+
+    function escHtml(t) {
+      return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* ── AI Response Logic ─────────────── */
+    function addAiResponse(q) {
+      const msgs = document.getElementById('chatMessages');
+      const now = new Date();
+      const t = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const resp = getAiResponse(q.toLowerCase());
+      const div = document.createElement('div');
+      div.className = 'msg-group';
+      div.innerHTML = `
+    <div class="msg-row">
+      <div class="msg-av ai">🤖</div>
+      <div class="msg-body">
+        <div class="msg-from">AI 비서</div>
+        <div class="bubble ai">${resp.text}</div>
+        <div class="msg-time">${t}</div>
+        ${resp.card ? resp.card : ''}
+        ${resp.sugs ? `<div class="sug-row">${resp.sugs.map(s => `<button class="sug" onclick="quickAsk('${s}')">${s}</button>`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+      msgs.appendChild(div);
+      scrollBottom();
+    }
+
+    function getAiResponse(q) {
+      if (q.includes('빠른 주문') || q.includes('퀵오더') || q.includes('퀵 주문')) {
+        return {
+          text: '⚡ <strong>빠른 주문</strong> 도우미입니다.<br><br>현재 <span style="color:#EF4444">재고 부족</span> 품목 기준 추천드립니다.<br>🔴 <strong>커피 원두</strong> — 잔여 2kg (긴급)<br>🟡 <strong>포장용기 L</strong> — 잔여 150개',
+          card: `<div class="act-card">
+        <div class="act-card-title">📦 즉시 발주 추천</div>
+        <div class="act-row">
+          <button class="act-chip primary" onclick="showToast('커피 원두 5kg 발주 완료!', 'success')">⚡ 원두 즉시 발주</button>
+          <button class="act-chip secondary" onclick="quickAsk('전체 재고 현황 알려줘')">전체 재고 보기</button>
+        </div>
+      </div>`,
+          sugs: ['우유 추가 발주', '발주 내역 확인', '재고 예측 분석']
+        };
+      }
+      if (q.includes('생산 등록') || q.includes('생산')) {
+        return {
+          text: '🍩 <strong>생산 등록</strong> 도우미입니다.<br><br>오늘 날씨 기반 <strong>HOT 음료 수요 증가</strong>가 예측됩니다.<br>아래 품목 우선 생산을 권장합니다.',
+          card: `<div class="rich-card">
+        <div class="rich-card-hd">🏭 오늘 생산 권장 목록</div>
+        <div class="mbar"><div class="mbar-lbl">아메리카노</div><div class="mbar-track"><div class="mbar-fill" style="width:95%"></div></div><div class="mbar-val">120개</div></div>
+        <div class="mbar"><div class="mbar-lbl">카페라떼</div><div class="mbar-track"><div class="mbar-fill" style="width:75%"></div></div><div class="mbar-val">90개</div></div>
+        <div class="mbar"><div class="mbar-lbl">초코 도넛</div><div class="mbar-track"><div class="mbar-fill" style="width:60%"></div></div><div class="mbar-val">72개</div></div>
+      </div>`,
+          sugs: ['생산 완료 등록', '날씨 기반 수요 분석', '오늘 판매 현황']
+        };
+      }
+      if (q.includes('발주') || q.includes('재고')) {
+        return {
+          text: '📦 <strong>발주·재고 현황</strong>입니다.<br><br>🔴 <strong>커피 원두</strong> — 잔여 2kg (3일치 미만, 긴급 발주 필요)<br>🟡 <strong>포장용기 L</strong> — 잔여 150개 (1주일치)<br>🟢 <strong>도넛 믹스</strong> — 정상 (10일치)',
+          card: `<div class="act-card">
+        <div class="act-card-title">⚡ 자동 발주 추천</div>
+        <div class="act-row">
+          <button class="act-chip primary" onclick="showToast('커피 원두 5kg 발주 완료!', 'success')">📦 원두 5kg 발주</button>
+          <button class="act-chip secondary" onclick="showToast('발주 목록을 확인하세요', 'info')">전체 발주 보기</button>
+        </div>
+      </div>`,
+          sugs: ['발주 내역 확인', '재고 예측 분석']
+        };
+      }
+      if (q.includes('매출')) {
+        return {
+          text: '📊 <strong>오늘 매출 현황</strong>입니다.<br><br>현재까지 <strong>923,000원</strong> 달성 (전일 대비 <span style="color:#22C55E">+8.3%</span>)<br>거래건수 <strong>342건</strong> · 객단가 <strong>3.6만원</strong><br>목표 <strong>78%</strong> 달성 중입니다.',
+          card: `<div class="rich-card">
+        <div class="rich-card-hd">📈 시간대별 매출 TOP</div>
+        <div class="mbar"><div class="mbar-lbl">오전 8~10시</div><div class="mbar-track"><div class="mbar-fill" style="width:90%"></div></div><div class="mbar-val">312만</div></div>
+        <div class="mbar"><div class="mbar-lbl">점심 12~14시</div><div class="mbar-track"><div class="mbar-fill" style="width:75%"></div></div><div class="mbar-val">258만</div></div>
+        <div class="mbar"><div class="mbar-lbl">오후 15~17시</div><div class="mbar-track"><div class="mbar-fill" style="width:55%"></div></div><div class="mbar-val">189만</div></div>
+      </div>`,
+          sugs: ['어제 매출 비교', '이번 주 매출 트렌드', '베스트셀러 분석']
+        };
+      }
+      if (q.includes('날씨')) {
+        return {
+          text: '🌧️ <strong>오늘 날씨 기반 분석</strong>입니다.<br><br>현재 12°C · 오후 강수확률 <strong>72%</strong><br><br>비 오는 날 HOT 음료 수요가 평균 <strong>+34%</strong> 증가해요. 아메리카노·라떼 재료를 충분히 준비하세요!',
+          card: `<div class="rich-card">
+        <div class="rich-card-hd">🍵 날씨별 메뉴 추천</div>
+        <div class="stat-grid">
+          <div class="stat-cell"><div class="stat-val">+34%</div><div class="stat-desc">HOT 음료 수요↑</div></div>
+          <div class="stat-cell pink"><div class="stat-val">+18%</div><div class="stat-desc">도넛류 수요↑</div></div>
+          <div class="stat-cell blue"><div class="stat-val">-22%</div><div class="stat-desc">ICE 음료↓</div></div>
+          <div class="stat-cell green"><div class="stat-val">72%</div><div class="stat-desc">강수확률</div></div>
+        </div>
+      </div>`,
+          sugs: ['내일 날씨 예측', '날씨별 매출 분석']
+        };
+      }
+      if (q.includes('프로모션') || q.includes('이벤트')) {
+        return {
+          text: '🎯 <strong>진행 중인 프로모션</strong>입니다.<br><br>① <strong>기프티콘 특가 이벤트</strong> · 마감 D-3 (3월 15일)<br>② <strong>봄맞이 신메뉴 캠페인</strong> · 3월 10일 ~ 31일<br>③ <strong>APP 다운로드 쿠폰</strong> · 진행 중',
+          card: `<div class="act-card">
+        <div class="act-card-title">빠른 액션</div>
+        <div class="act-row">
+          <button class="act-chip primary" onclick="showToast('이벤트 등록 페이지로 이동합니다', 'info')">🎯 이벤트 등록</button>
+          <button class="act-chip secondary" onclick="showToast('프로모션 상세 준비 중', 'info')">상세 보기</button>
+        </div>
+      </div>`,
+          sugs: ['이번 달 프로모션 전체', '지난 이벤트 성과']
+        };
+      }
+      if (q.includes('공지')) {
+        return {
+          text: '📢 <strong>오늘 주요 공지</strong> 요약입니다.<br><br>🚨 <strong>[긴급]</strong> 매장 냉동고 온도 점검 요청 (오늘 오후 6시까지)<br>🎯 <strong>[프로모션]</strong> 봄 신메뉴 운영 가이드 배포<br>📚 <strong>[교육]</strong> 4월 위생 교육 일정 공지',
+          sugs: ['긴급 공지 전체 보기', '교육 일정 확인', '공지 구독 설정']
+        };
+      }
+      if (q.includes('직원') || q.includes('교육')) {
+        return {
+          text: '👥 <strong>직원 현황</strong>입니다.<br><br>재직 <strong>8명</strong> · 금일 출근 <strong>6명</strong><br>교육 미이수 <strong>2명</strong> (김○○, 이○○ · 위생교육)<br>이번 주 초과근무: 총 <strong>12시간</strong>',
+          card: `<div class="act-card">
+        <div class="act-card-title">교육 독려 메시지 발송</div>
+        <div class="act-row">
+          <button class="act-chip primary" onclick="showToast('교육 독려 메시지를 발송했습니다', 'success')">📨 메시지 발송</button>
+          <button class="act-chip secondary" onclick="showToast('직원 상세 관리 준비 중', 'info')">직원 상세 보기</button>
+        </div>
+      </div>`,
+          sugs: ['근태 현황', '이번 달 급여 현황']
+        };
+      }
+      if (q.includes('리뷰') || q.includes('고객')) {
+        return {
+          text: '⭐ <strong>최근 고객 리뷰 분석</strong>입니다.<br><br>평균 평점 <strong>4.2 / 5.0</strong> (지난 주 대비 +0.1)<br><br>👍 <strong>긍정</strong>: "커피가 맛있어요", "친절해요"<br>👎 <strong>개선 필요</strong>: "대기 시간이 길어요" (3건)',
+          card: `<div class="rich-card">
+        <div class="rich-card-hd">⭐ 평점 분포</div>
+        <div class="mbar"><div class="mbar-lbl">⭐⭐⭐⭐⭐</div><div class="mbar-track"><div class="mbar-fill" style="width:55%"></div></div><div class="mbar-val">55%</div></div>
+        <div class="mbar"><div class="mbar-lbl">⭐⭐⭐⭐</div><div class="mbar-track"><div class="mbar-fill" style="width:30%"></div></div><div class="mbar-val">30%</div></div>
+        <div class="mbar"><div class="mbar-lbl">⭐⭐⭐ 이하</div><div class="mbar-track"><div class="mbar-fill" style="width:15%"></div></div><div class="mbar-val">15%</div></div>
+      </div>`,
+          sugs: ['리뷰 응대 템플릿', '저평점 원인 분석']
+        };
+      }
+      // default
+      return {
+        text: `"<strong>${escHtml(q)}</strong>"에 대해 확인해볼게요! 😊<br><br>매출, 발주, 날씨, 프로모션, 공지, 직원, 리뷰 등 궁금한 것을 자유롭게 물어보세요.`,
+        sugs: ['📊 오늘 매출 현황', '📦 발주 확인', '🌤️ 날씨 분석']
+      };
+    }
+
+    /* ═══════════════════════════════════════
+       HOURLY CHART
+    ═══════════════════════════════════════ */
+    function initHourlyChart() {
+      const data = [12, 28, 89, 76, 45, 38, 52, 95, 87, 63, 48, 34];
+      const labels = ['8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'];
+      const maxVal = Math.max(...data);
+      const chart = document.getElementById('hourlyChart');
+      const lbls = document.getElementById('hourlyLabels');
+      if (!chart) return;
+      chart.innerHTML = '';
+      lbls.innerHTML = '';
+      data.forEach((v, i) => {
+        const pct = Math.round((v / maxVal) * 100);
+        const bar = document.createElement('div');
+        bar.className = 'hbar' + (i === 7 ? ' active' : ''); // highlight peak
+        bar.style.height = pct + '%';
+        bar.title = `${labels[i]}시: ${v}만원`;
+        chart.appendChild(bar);
+        const lbl = document.createElement('span');
+        lbl.textContent = labels[i];
+        lbls.appendChild(lbl);
+      });
+    }
+
+    /* ═══════════════════════════════════════
+       NOTICES
+    ═══════════════════════════════════════ */
+    const NOTICES = [
+      { id: 1, type: 'urgent', title: '[긴급] 냉동고 온도 점검 요청', preview: '오늘 오후 6시까지 매장 내 냉동고 온도를 확인하고 점검 결과를 입력해 주세요.', date: '2026.03.13', unread: true },
+      { id: 2, type: 'promo', title: '봄 신메뉴 운영 가이드 배포', preview: '3월 봄 신메뉴 「벚꽃 크림 도넛」 운영 매뉴얼 및 진열 가이드가 배포되었습니다.', date: '2026.03.13', unread: true },
+      { id: 3, type: 'edu', title: '4월 위생 교육 일정 안내', preview: '4월 5일(토) 오전 10시 온라인 위생 교육이 진행됩니다. 전 직원 필수 참여 바랍니다.', date: '2026.03.12', unread: true },
+      { id: 4, type: 'order', title: '3월 4주차 발주 마감 안내', preview: '3월 4주차 발주 마감은 3월 17일(월) 오전 10시입니다. 기한 내 발주 등록 바랍니다.', date: '2026.03.12', unread: false },
+      { id: 5, type: 'promo', title: '기프티콘 이벤트 등록 마감 D-3', preview: '기프티콘 특가 이벤트 참여 등록이 3월 15일 오전 9시에 마감됩니다.', date: '2026.03.11', unread: false },
+      { id: 6, type: 'general', title: '2026년 1분기 우수 매장 선정 안내', preview: '1분기 매출 우수 매장 선정 기준과 혜택을 안내드립니다.', date: '2026.03.10', unread: false },
+    ];
+
+    let currentFilter = 'all';
+
+    function initNotices() { renderNotices(); }
+
+    function filterNotice(btn, type) {
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = type;
+      renderNotices();
+    }
+
+    function renderNotices() {
+      const list = document.getElementById('noticeList');
+      if (!list) return;
+      const filtered = currentFilter === 'all' ? NOTICES : NOTICES.filter(n => n.type === currentFilter);
+      if (filtered.length === 0) {
+        list.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--g400);font-size:13px;">해당 카테고리의 공지가 없습니다</div>`;
+        return;
+      }
+      list.innerHTML = filtered.map(n => `
+    <div class="notice-card ${n.unread ? 'unread' : ''}" onclick="readNotice(${n.id})">
+      <div class="nc-top">
+        <div class="nc-badge ${n.type}">${{ urgent: '🚨 긴급', promo: '🎯 프로모션', edu: '📚 교육', order: '📦 발주', general: '📋 일반' }[n.type]}</div>
+        <div class="nc-title">${n.title}</div>
+        ${n.unread ? '<div class="nc-unread-dot"></div>' : ''}
+      </div>
+      <div class="nc-preview">${n.preview}</div>
+      <div class="nc-foot">
+        <div class="nc-date">${n.date}</div>
+        <div class="nc-action">자세히 보기 →</div>
+      </div>
+    </div>
+  `).join('');
+    }
+
+    function readNotice(id) {
+      const n = NOTICES.find(n => n.id === id);
+      if (n) {
+        n.unread = false;
+        renderNotices();
+        showToast(`"${n.title.substring(0, 15)}..." 확인했습니다`, 'success');
+        // Update badge
+        const unreadCnt = NOTICES.filter(n => n.unread).length;
+        const badge = document.querySelector('#tab-notice .nav-badge');
+        if (badge) {
+          if (unreadCnt > 0) badge.textContent = unreadCnt;
+          else badge.style.display = 'none';
+        }
+      }
+    }
+
+    /* ═══════════════════════════════════════
+       TOAST
+    ═══════════════════════════════════════ */
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const icons = { info: 'ℹ️', success: '✅', warn: '⚠️', err: '❌' };
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span>${escHtml(msg)}`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0'; toast.style.transform = 'translateY(8px)';
+        toast.style.transition = '.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function showNotifications() {
+      showToast('알림 3건: 재고 부족, 이벤트 마감 임박, 공지 3건', 'warn');
+    }
+
+    /* ═══════════════════════════════════════
+       CHART TOOLTIP TOGGLE
+    ═══════════════════════════════════════ */
+    function toggleChartTooltip(el) {
+      // 다른 모든 툴팁 닫기
+      document.querySelectorAll('.show-tooltip').forEach(col => {
+        if (col !== el) col.classList.remove('show-tooltip');
+      });
+      // 현재 클릭한 항목 토글
+      el.classList.toggle('show-tooltip');
+    }
+  </script>
+</body>
+
+</html>

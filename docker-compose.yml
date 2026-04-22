@@ -1,0 +1,81 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: foxpos-postgres
+    environment:
+      POSTGRES_DB: foxpos
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: app_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d foxpos"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: foxpos-backend
+    working_dir: /app
+    network_mode: host
+    command: >
+      sh -c "alembic upgrade head &&
+             poetry run uvicorn app.main:app --host 0.0.0.0 --port 8100 --reload"
+    env_file:
+      - ./infra/env/backend.env
+    volumes:
+      - ./apps/backend:/app
+      - ./data/seed_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8100/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: foxpos-frontend
+    working_dir: /frontend
+    network_mode: host
+    command: >
+      sh -c "if [ ! -d node_modules ] || [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then npm ci; fi &&
+             npm run dev -- --host 0.0.0.0 --port 5173"
+    env_file:
+      - ./infra/env/frontend.env
+    volumes:
+      - ./apps/frontend:/frontend
+      - frontend_node_modules:/frontend/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: foxpos-redis
+    profiles: ["realtime"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  frontend_node_modules:
+  redis_data:
