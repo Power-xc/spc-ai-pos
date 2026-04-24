@@ -355,12 +355,12 @@ export default function AiPerformance({
                 </div>
               </div>
 
-              {/* 성과 요약 KPI */}
+              {/* 우리 매장 목표달성률 */}
               <div className="flex-1 bg-white rounded-[20px] px-[16px] pt-[14px] pb-[15px] flex flex-col gap-[10px]">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-[12px] text-[#222] leading-[18px] flex items-center gap-[4px]">
                     <span className="w-[7px] h-[4px] bg-[#3faf60] rounded-[30px]"></span>
-                    성과 요약 KPI
+                    우리 매장 목표달성률
                   </p>
                   <p className="text-[9px] text-[#888] leading-[14px]">
                     오늘 기준 핵심 지표 한눈에 보기

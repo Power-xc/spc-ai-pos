@@ -45,3 +45,5 @@ logs/
 *.bak
 *.tmp
 *.orig
+.playwright-mcp/
+pip-pos/test-results/

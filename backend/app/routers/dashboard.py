@@ -259,9 +259,14 @@ def _safe_store(store_id: str, store: dict | None) -> dict[str, str]:
     if store:
         return {
             "store_id": str(store.get("store_id") or store_id),
-            "store_name": canonical_store_name(store.get("store_id") or store_id, store.get("store_name") or store_id),
+            "store_name": canonical_store_name(
+                store.get("store_id") or store_id, store.get("store_name") or store_id
+            ),
         }
-    return {"store_id": store_id, "store_name": canonical_store_name(store_id, store_id)}
+    return {
+        "store_id": store_id,
+        "store_name": canonical_store_name(store_id, store_id),
+    }
 
 
 def _legacy_sales_empty(store_id: str) -> dict:
@@ -324,7 +329,9 @@ async def _build_legacy_sales_summary(
         "store_id": store_id,
         "today_revenue": today_revenue,
         "vs_yesterday_same_time_pct": (kpis.get("vs_yesterday") or {}).get("sales_pct"),
-        "vs_last_week_same_day_pct": (kpis.get("vs_last_week_same_dow") or {}).get("sales_pct"),
+        "vs_last_week_same_day_pct": (kpis.get("vs_last_week_same_dow") or {}).get(
+            "sales_pct"
+        ),
         "hourly_trend": hourly_trend,
         "top_selling": (
             [{"product_name": top_category, "sales_amt": today_revenue}]
@@ -404,7 +411,9 @@ async def _build_legacy_briefing(
 
     pending_orders = []
     for alert in deadline_alerts[:3]:
-        card = alert if isinstance(alert, AlertCard) else AlertCard.model_validate(alert)
+        card = (
+            alert if isinstance(alert, AlertCard) else AlertCard.model_validate(alert)
+        )
         pending_orders.append(
             {
                 "product_group": card.title,
@@ -591,6 +600,124 @@ async def get_briefing(
     return APIResponse(data=briefing)
 
 
+async def _enrich_with_production_products(
+    db, store_id: str, predictor, existing_ids: set, limit: int
+) -> list:
+    if limit <= 0:
+        return []
+    try:
+        prod_rows = await sql_queries._fetch_gold_all(
+            db,
+            f"""
+            SELECT DISTINCT item_cd AS product_id, max(item_nm) AS product_name
+            FROM {sql_queries.GOLD_SCHEMA}.new_production
+            WHERE masked_stor_cd = :store_id
+            GROUP BY item_cd
+            ORDER BY max(item_nm)
+            """,
+            {"store_id": str(store_id)},
+        )
+    except Exception:
+        logger.exception("Failed to query production products")
+        return []
+
+    if not prod_rows:
+        return []
+
+    result = []
+    for row in prod_rows:
+        product_id = str(row.get("product_id", "")).strip()
+        if not product_id or product_id in existing_ids:
+            continue
+        product_name = str(row.get("product_name", product_id))
+
+        try:
+            pattern = await predictor.get_production_pattern(db, store_id, product_id)
+            demand = await predictor.predict_daily_demand(db, store_id, product_id)
+            hourly = await predictor.predict_hourly_depletion(db, store_id, product_id)
+            inventory_rows = await sql_queries.get_store_inventory_today(db, store_id)
+            inv_row = next(
+                (r for r in inventory_rows if r["product_id"] == product_id), None
+            )
+        except Exception:
+            logger.warning(
+                "Failed to get prediction for production product %s", product_id
+            )
+            continue
+
+        if not pattern or not (
+            pattern.get("first_production") or pattern.get("second_production")
+        ):
+            continue
+
+        on_hand = float(inv_row["on_hand_eod"]) if inv_row else 0
+        category = str(inv_row.get("category", "미분류")) if inv_row else "미분류"
+        sold_qty = float(inv_row.get("sold_qty", 0) or 0) if inv_row else 0
+        stockout_minutes = (
+            int(inv_row.get("stockout_minutes", 0) or 0) if inv_row else 0
+        )
+
+        first_prod = pattern.get("first_production") if pattern else None
+        second_prod = pattern.get("second_production") if pattern else None
+        predicted_stock_1h = hourly.get("predicted_stock_1h", int(on_hand))
+        hourly_burn = hourly.get("hourly_burn_rate", 0)
+        predicted_sold = float(demand.get("predicted_sold_qty", 0) or 0)
+        recommended_qty = max(
+            0, int(predicted_sold - on_hand + max(3, predicted_sold * 0.1))
+        )
+
+        why_parts = [
+            f"최근 4주 평균 판매량 {predicted_sold:.1f}개",
+            "품절 발생 빈도 0회",
+        ]
+        if hourly_burn > 0:
+            why_parts.append(f"시간당 판매 속도 {hourly_burn:.1f}개")
+        if first_prod and first_prod.get("avg_time"):
+            why_parts.append(
+                f"4주 1차 생산 평균 {first_prod['avg_time']} / {first_prod.get('avg_qty', 0)}개"
+            )
+        else:
+            why_parts.append("4주 1차 생산 패턴 데이터 부족")
+        if second_prod and second_prod.get("avg_time"):
+            why_parts.append(
+                f"4주 2차 생산 평균 {second_prod['avg_time']} / {second_prod.get('avg_qty', 0)}개"
+            )
+        else:
+            why_parts.append("4주 2차 생산 패턴 데이터 부족")
+
+        risk_level = (
+            "HIGH"
+            if on_hand <= 0 or stockout_minutes >= 60
+            else "MEDIUM"
+            if stockout_minutes >= 20
+            else "LOW"
+        )
+
+        result.append(
+            ProductionCockpitItem(
+                product_id=product_id,
+                product_name=product_name,
+                category=category,
+                current_stock=int(on_hand),
+                predicted_stock_1h=predicted_stock_1h,
+                depletion_eta=hourly.get("depletion_eta").isoformat()
+                if isinstance(hourly.get("depletion_eta"), datetime)
+                else hourly.get("depletion_eta"),
+                hourly_burn_rate=round(hourly_burn, 2),
+                stockout_probability=0,
+                recommended_production_qty=recommended_qty,
+                first_production=first_prod,
+                second_production=second_prod,
+                risk_level=risk_level,
+                why=why_parts,
+            )
+        )
+        if len(result) >= limit:
+            break
+
+    return result
+
+
 @router.get("/production", response_model=APIResponse)
 async def get_production_dashboard(
     request: Request,
@@ -612,31 +739,153 @@ async def get_production_dashboard(
         biz_date=biz_date,
     )
 
-    items = [
-        ProductionCockpitItem(
-            product_id=item["product_id"],
-            product_name=item["product_name"],
-            category=item["category"],
-            current_stock=int(item.get("current_stock", 0) or 0),
-            predicted_stock_1h=int(item.get("predicted_stock_1h", 0) or 0),
-            depletion_eta=(
-                item["depletion_eta"].isoformat()
-                if isinstance(item.get("depletion_eta"), datetime)
-                else item.get("depletion_eta")
-            ),
-            hourly_burn_rate=round(float(item.get("hourly_burn_rate", 0) or 0), 2),
-            stockout_probability=round(float(item.get("stockout_probability", 0) or 0), 1),
-            recommended_production_qty=int(item.get("recommended_production_qty", 0) or 0),
-            first_production=item.get("first_production"),
-            second_production=item.get("second_production"),
-            risk_level=item.get("risk_level", "LOW"),
-            why=[
-                f"최근 4주 평균 판매량 {float(item.get('avg_sold_qty', 0) or 0):.1f}개",
-                f"품절 발생 빈도 {int(item.get('weeks_with_stockout', 0) or 0)}회",
-            ],
+    items = []
+    for item in risk_products[:8]:
+        current_stock = int(item.get("current_stock", 0) or 0)
+        predicted_stock_1h = int(item.get("predicted_stock_1h", 0) or 0)
+        hourly_burn = float(item.get("hourly_burn_rate", 0) or 0)
+        stockout_prob = float(item.get("stockout_probability", 0) or 0)
+        risk_level = item.get("risk_level", "LOW")
+        depletion_eta_val = item.get("depletion_eta")
+        if isinstance(depletion_eta_val, datetime):
+            depletion_eta_str = depletion_eta_val.isoformat()
+        else:
+            depletion_eta_str = depletion_eta_val
+
+        if current_stock <= 0:
+            status_label = "즉시 생산 필요"
+        elif risk_level == "HIGH":
+            status_label = "부족 위험"
+        elif risk_level == "MEDIUM":
+            status_label = "주의"
+        else:
+            status_label = "재고 적정"
+
+        why_parts = [
+            f"최근 4주 평균 판매량 {float(item.get('avg_sold_qty', 0) or 0):.1f}개",
+            f"품절 발생 빈도 {int(item.get('weeks_with_stockout', 0) or 0)}회",
+        ]
+        if hourly_burn > 0:
+            why_parts.append(f"시간당 판매 속도 {hourly_burn:.1f}개")
+        if stockout_prob > 0:
+            why_parts.append(f"품절 확률 {stockout_prob:.0f}%")
+
+        first_prod = item.get("first_production")
+        second_prod = item.get("second_production")
+        if first_prod and first_prod.get("avg_time"):
+            why_parts.append(
+                f"4주 1차 생산 평균 {first_prod['avg_time']} / {first_prod.get('avg_qty', 0)}개"
+            )
+        else:
+            why_parts.append("4주 1차 생산 패턴 데이터 부족")
+        if second_prod and second_prod.get("avg_time"):
+            why_parts.append(
+                f"4주 2차 생산 평균 {second_prod['avg_time']} / {second_prod.get('avg_qty', 0)}개"
+            )
+        else:
+            why_parts.append("4주 2차 생산 패턴 데이터 부족")
+
+        items.append(
+            ProductionCockpitItem(
+                product_id=item["product_id"],
+                product_name=item["product_name"],
+                category=item["category"],
+                current_stock=current_stock,
+                predicted_stock_1h=predicted_stock_1h,
+                depletion_eta=depletion_eta_str,
+                hourly_burn_rate=round(hourly_burn, 2),
+                stockout_probability=round(stockout_prob, 1),
+                recommended_production_qty=int(
+                    item.get("recommended_production_qty", 0) or 0
+                ),
+                first_production=first_prod,
+                second_production=second_prod,
+                risk_level=risk_level,
+                why=why_parts,
+            )
         )
-        for item in risk_products[:8]
-    ]
+
+    if len(items) < 8:
+        try:
+            production_products = await _enrich_with_production_products(
+                db,
+                store_id,
+                production_agent.predictor,
+                {it.product_id for it in items},
+                8 - len(items),
+            )
+            for pp in production_products:
+                items.append(pp)
+        except Exception:
+            logger.warning(
+                "Failed to enrich production dashboard with production-only products"
+            )
+
+    try:
+        production_products = await _enrich_with_production_products(
+            db,
+            store_id,
+            production_agent.predictor,
+            {it.product_id for it in items},
+            4,
+        )
+        for pp in production_products:
+            items.append(pp)
+    except Exception as exc:
+        import traceback
+
+        traceback.print_exc()
+        logger.warning(
+            "Failed to add production-pattern products to dashboard: %s", exc
+        )
+        if second_prod and second_prod.get("avg_time"):
+            why_parts.append(
+                f"4주 2차 생산 평균 {second_prod['avg_time']} / {second_prod.get('avg_qty', 0)}개"
+            )
+
+        items.append(
+            ProductionCockpitItem(
+                product_id=item["product_id"],
+                product_name=item["product_name"],
+                category=item["category"],
+                current_stock=current_stock,
+                predicted_stock_1h=predicted_stock_1h,
+                depletion_eta=depletion_eta_str,
+                hourly_burn_rate=round(hourly_burn, 2),
+                stockout_probability=round(stockout_prob, 1),
+                recommended_production_qty=int(
+                    item.get("recommended_production_qty", 0) or 0
+                ),
+                first_production=first_prod,
+                second_production=second_prod,
+                risk_level=risk_level,
+                why=why_parts,
+            )
+        )
+        if second_prod and second_prod.get("avg_time"):
+            why_parts.append(
+                f"4주 2차 생산 평균 {second_prod['avg_time']} / {second_prod.get('avg_qty', 0)}개"
+            )
+
+        items.append(
+            ProductionCockpitItem(
+                product_id=item["product_id"],
+                product_name=item["product_name"],
+                category=item["category"],
+                current_stock=current_stock,
+                predicted_stock_1h=predicted_stock_1h,
+                depletion_eta=depletion_eta_str,
+                hourly_burn_rate=round(hourly_burn, 2),
+                stockout_probability=round(stockout_prob, 1),
+                recommended_production_qty=int(
+                    item.get("recommended_production_qty", 0) or 0
+                ),
+                first_production=first_prod,
+                second_production=second_prod,
+                risk_level=risk_level,
+                why=why_parts,
+            )
+        )
 
     payload = DashboardProductionResponse(
         store_id=store["store_id"],
@@ -680,11 +929,21 @@ async def get_orders_dashboard(
         )
         minutes_remaining = int(snapshot.get("minutes_remaining") or 0)
         confirmed_order_count = int(snapshot.get("confirmed_order_count") or 0)
-        best_option = min(
-            response.options,
-            key=lambda option: abs(option.deviation_from_avg_pct),
-        ) if response.options else None
-        missing_item_count = 0 if confirmed_order_count > 0 else len(best_option.items) if best_option else 0
+        best_option = (
+            min(
+                response.options,
+                key=lambda option: abs(option.deviation_from_avg_pct),
+            )
+            if response.options
+            else None
+        )
+        missing_item_count = (
+            0
+            if confirmed_order_count > 0
+            else len(best_option.items)
+            if best_option
+            else 0
+        )
         if minutes_remaining <= 10:
             severity = "HIGH"
         elif minutes_remaining <= 30:
@@ -752,7 +1011,9 @@ async def get_sales_summary_dashboard(
         biz_date=kpis["biz_date"],
         today_sales_amt=float(kpis["total_sales_amt"]),
         vs_yesterday_pct=kpis.get("vs_yesterday", {}).get("sales_pct"),
-        vs_last_week_same_dow_pct=kpis.get("vs_last_week_same_dow", {}).get("sales_pct"),
+        vs_last_week_same_dow_pct=kpis.get("vs_last_week_same_dow", {}).get(
+            "sales_pct"
+        ),
         top_category=kpis.get("top_category"),
         mini_chart_data=[MiniChartPoint(**point) for point in chart],
         why=[
@@ -836,7 +1097,9 @@ async def get_home_alerts(
 
     store_id = get_request_store_id(request, None)
     if is_postgres_mode():
-        return APIResponse(data=await alert_service.list_legacy_modals(store_id, limit=20))
+        return APIResponse(
+            data=await alert_service.list_legacy_modals(store_id, limit=20)
+        )
 
     user = get_current_user_context(request, role)
     history = notification_service.get_recent(store_id, hours=24, limit=20)
@@ -860,7 +1123,9 @@ async def get_home_alerts(
         alert_cards = [_alert_to_card(alert) for alert in production_alerts]
         alert_cards.extend(deadline_alerts)
 
-    return APIResponse(data=[_alert_card_to_legacy_modal(card) for card in alert_cards[:20]])
+    return APIResponse(
+        data=[_alert_card_to_legacy_modal(card) for card in alert_cards[:20]]
+    )
 
 
 async def get_home_briefing(
@@ -887,7 +1152,9 @@ async def get_home_briefing(
             reference_datetime=_parse_demo_datetime(demo_datetime),
         )
     except Exception:
-        logger.exception("Failed to build legacy briefing payload for store_id=%s", store_id)
+        logger.exception(
+            "Failed to build legacy briefing payload for store_id=%s", store_id
+        )
         payload = {
             "yesterday_summary": _legacy_sales_empty(store_id),
             "today_production": [],
@@ -918,7 +1185,9 @@ async def get_home_sales_summary(
     try:
         payload = await _build_legacy_sales_summary(db, store_id, biz_date)
     except Exception:
-        logger.exception("Failed to build legacy sales summary for store_id=%s", store_id)
+        logger.exception(
+            "Failed to build legacy sales summary for store_id=%s", store_id
+        )
         payload = _legacy_sales_empty(store_id)
     return APIResponse(data=payload)
 
@@ -936,8 +1205,12 @@ async def get_dashboard(
     user = get_current_user_context(request, role)
     store = await _get_store_or_404(db, store_id)
 
-    alerts = await production_agent.get_current_alerts(store_id, user_id=user["user_id"], role=user["role"])
-    inventory_status = await production_agent.get_inventory_status(store_id, user_id=user["user_id"], role=user["role"])
+    alerts = await production_agent.get_current_alerts(
+        store_id, user_id=user["user_id"], role=user["role"]
+    )
+    inventory_status = await production_agent.get_inventory_status(
+        store_id, user_id=user["user_id"], role=user["role"]
+    )
     kpis = await sql_queries.get_daily_kpis(db, store_id)
     pending_deadlines = await order_agent.check_deadlines(
         store_id,
@@ -952,7 +1225,9 @@ async def get_dashboard(
             label=f"{category} 주문 확인",
             deadline=deadline,
             done=False,
-            priority="HIGH" if any(alert.title.startswith(category) for alert in pending_deadlines) else "MEDIUM",
+            priority="HIGH"
+            if any(alert.title.startswith(category) for alert in pending_deadlines)
+            else "MEDIUM",
         )
         for category, deadline in ORDER_DEADLINES.items()
     ]
@@ -973,7 +1248,8 @@ async def get_dashboard(
         store_name=store["store_name"],
         biz_date=kpis["biz_date"],
         last_updated=_now_iso(),
-        alerts=[_alert_to_card(alert) for alert in alerts] + [alert.model_dump(mode="python") for alert in pending_deadlines],
+        alerts=[_alert_to_card(alert) for alert in alerts]
+        + [alert.model_dump(mode="python") for alert in pending_deadlines],
         today_sales=TodaySales(
             total_sales_amt=float(kpis["total_sales_amt"]),
             total_sold_qty=int(kpis["total_sold_qty"]),

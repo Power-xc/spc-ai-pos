@@ -556,8 +556,8 @@ export default function Sidebar({
         {isSidebarOpen && (
           <button
             onClick={onOpenDemoDateTime}
-            className="absolute left-[20px] bottom-[28px] w-[148px] rounded-[16px] border border-[#dfe4e8] bg-[#f7f8f9] px-[12px] py-[10px] text-left cursor-pointer hover:bg-[#f2f4f6] transition-colors"
-            title={`기준 일자 및 시간 설정 (${demoDateTime.date} ${demoDateTime.time})`}
+            className="absolute left-[20px] bottom-[28px] w-[148px] rounded-[8px] border border-[#dfe4e8] bg-[#f7f8f9] px-[12px] py-[10px] text-left cursor-pointer hover:bg-[#f2f4f6] transition-colors"
+            title={`기준 일자 및 시간 설정 (${demoDateTime.date})`}
             aria-label="기준 일자 및 시간 설정"
           >
             <div className="flex items-start gap-[10px]">
@@ -573,14 +573,11 @@ export default function Sidebar({
                 </svg>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-[#555] leading-[14px]">
-                  기준 일자 및 시간
-                </p>
                 <p className="mt-[2px] text-[11px] font-bold text-[#222] leading-[14px]">
-                  {demoDateTime.date} {demoDateTime.time}
+                  {demoDateTime.date}
                 </p>
                 <p className="mt-[2px] text-[9px] text-[#888] leading-[14px]">
-                  눌러서 시연 기준값 변경
+                  클릭 시연 기준값 변경
                 </p>
               </div>
             </div>

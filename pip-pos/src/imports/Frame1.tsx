@@ -21,11 +21,13 @@ export default function Frame({ className }: { className?: string }) {
   const [selectedMenu, setSelectedMenu] = useState(
     () => localStorage.getItem("selectedMenu") ?? "종합 현황",
   );
+  const [menuRefreshNonce, setMenuRefreshNonce] = useState(0);
   const demoKey = `${demoDateTime.date}-${demoDateTime.time}`;
 
   const handleSetSelectedMenu = (menu: string) => {
     localStorage.setItem("selectedMenu", menu);
     setSelectedMenu(menu);
+    setMenuRefreshNonce((prev) => prev + 1);
   };
 
   useEffect(() => {
@@ -107,7 +109,7 @@ export default function Frame({ className }: { className?: string }) {
       />
 
       <AiPanel
-        key={`ai-panel-${selectedMenu}-${demoKey}`}
+        key={`ai-panel-${selectedMenu}-${demoKey}-${menuRefreshNonce}`}
         isAiPanelOpen={isAiPanelOpen}
         setIsAiPanelOpen={setIsAiPanelOpen}
         selectedMenu={selectedMenu}
@@ -230,7 +232,7 @@ export default function Frame({ className }: { className?: string }) {
       )}
 
       <MainContent
-        key={`main-${selectedMenu}-${demoKey}`}
+        key={`main-${selectedMenu}-${demoKey}-${menuRefreshNonce}`}
         selectedMenu={selectedMenu}
         setSelectedMenu={handleSetSelectedMenu}
         isAiPanelOpen={isAiPanelOpen}

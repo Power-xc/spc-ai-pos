@@ -64,6 +64,13 @@ export default function OverviewStats({
         className="absolute flex gap-[20px] top-[217.5px] transition-all duration-300 h-auto"
         style={{ left: `${cardLeft}px`, width: `${cardWidth}px` }}
       >
+        {statCards.length === 0 && (
+          <>
+            <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] px-[20px] py-[10px] h-[80px] animate-pulse" />
+            <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] px-[20px] py-[10px] h-[80px] animate-pulse" />
+            <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] px-[20px] py-[10px] h-[80px] animate-pulse" />
+          </>
+        )}
         {statCards.map((card) => (
           <div
             key={card.id}
@@ -277,7 +284,7 @@ export default function OverviewStats({
                   key={item.name}
                   className="flex items-center gap-[6px] justify-between"
                 >
-                  <p className="text-[8px] text-[#222] w-[70px] shrink-0 truncate font-bold">
+                  <p className="text-[8px] text-[#222] w-[auto] shrink-0 truncate font-bold">
                     {item.name}
                   </p>
                   <p className="text-[8px] font-[400] text-[#2A2A2A] w-[28px] shrink-0 text-right">

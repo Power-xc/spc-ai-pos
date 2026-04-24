@@ -209,9 +209,9 @@ async function fetchCampaignAlerts(): Promise<NotificationItem[]> {
       alerts.push({
         id: "campaign-top",
         severity: "info",
-        title: "캠페인 성과 알림",
-        detail: `최근 집계 기준 반응이 가장 높은 캠페인: "${cleanName}" (건수 ${topPromo.bill_cnt ?? 0}). 근거: 캠페인 반응 집계입니다. 지금 할 일: 프로모션 화면에서 적용 전후 차이를 확인하세요.`,
-        actionLabel: "캠페인 성과 보기",
+        title: "프로모션 성과 알림",
+        detail: `최근 집계 기준 반응이 가장 높은 프로모션: "${cleanName}" (건수 ${topPromo.bill_cnt ?? 0}). 근거: 프로모션 반응 집계입니다. 지금 할 일: 프로모션 화면에서 적용 전후 차이를 확인하세요.`,
+        actionLabel: "프로모션 성과 보기",
         actionMenu: "프로모션",
       });
     }
@@ -332,7 +332,7 @@ async function fetchMenuInsights(menu: string): Promise<NotificationItem[]> {
                 id: "menu-promo-top",
                 severity: "info",
                 title: "오늘 최다 판매 상품",
-                detail: `${name} ${qty}건 (₩${revenue.toLocaleString()}). 근거: 최근 판매 상위 상품입니다. 지금 할 일: 이 상품과 연계된 캠페인 반응을 확인하세요.`,
+                detail: `${name} ${qty}건 (₩${revenue.toLocaleString()}). 근거: 최근 판매 상위 상품입니다. 지금 할 일: 이 상품과 연계된 프로모션 반응을 확인하세요.`,
               });
             }
           }
@@ -343,7 +343,7 @@ async function fetchMenuInsights(menu: string): Promise<NotificationItem[]> {
               id: "menu-promo-rev",
               severity: weekPct < 0 ? "caution" : "info",
               title: weekPct < 0 ? "매출 전주 대비 감소" : "매출 전주 대비 증가",
-              detail: `오늘 매출 ₩${rev.toLocaleString()} (전주 대비 ${weekPct > 0 ? "+" : ""}${weekPct}%). 근거: 전주 동요일 비교입니다. 지금 할 일: ${weekPct < 0 ? "캠페인 강화를 검토하세요." : "효과가 좋은 캠페인을 유지하세요."}`,
+              detail: `오늘 매출 ₩${rev.toLocaleString()} (전주 대비 ${weekPct > 0 ? "+" : ""}${weekPct}%). 근거: 전주 동요일 비교입니다. 지금 할 일: ${weekPct < 0 ? "프로모션 강화를 검토하세요." : "효과가 좋은 프로모션을 유지하세요."}`,
             });
           }
         }

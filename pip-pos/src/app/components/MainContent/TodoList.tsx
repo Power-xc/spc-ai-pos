@@ -5,7 +5,7 @@ import {
   getProductionSummary,
 } from "../../../lib/api";
 import { getProductImageByName } from "../../../lib/productImages";
-import type { ProductionBatchItem, ProductionSummary } from "../../../types";
+import type { ProductionBatchItem, ProductionBatchStatus, ProductionSummary } from "../../../types";
 import icoReset from "../../../assets/ico-rest.svg";
 
 interface MenuProps {
@@ -14,6 +14,21 @@ interface MenuProps {
 }
 
 const PAGE_SIZE = 5;
+
+function getStatusBadgeStyle(status: ProductionBatchStatus) {
+  switch (status) {
+    case "즉시 생산 필요":
+      return { background: "#ff522c", color: "#fff" };
+    case "보충 필요":
+      return { background: "#ff9c7a", color: "#fff" };
+    case "주의":
+      return { background: "#f2c94c", color: "#3a2d00" };
+    case "재고 적정":
+      return { background: "#38a9d7", color: "#fff" };
+    default:
+      return null;
+  }
+}
 
 export default function TodoList({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
   const [summary, setSummary] = useState<ProductionSummary | null>(null);
@@ -108,10 +123,16 @@ export default function TodoList({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
                     <p className="font-bold text-[11px] text-[#222] leading-[14px] truncate w-[215px]">
                       {item.name}
                     </p>
-                    {item.status === "생산 완료" && (
-                      <div className="bg-[#38a9d7] flex items-center justify-center px-[12px] py-[2px] rounded-[20px] shrink-0">
-                        <p className="font-bold text-[9px] text-white leading-[14px]">
-                          생산 완료
+                    {item.status && getStatusBadgeStyle(item.status) && (
+                      <div
+                        className="flex items-center justify-center px-[12px] py-[2px] rounded-[20px] shrink-0"
+                        style={getStatusBadgeStyle(item.status) ?? undefined}
+                      >
+                        <p
+                          className="font-bold text-[9px] leading-[14px]"
+                          style={{ color: getStatusBadgeStyle(item.status)?.color }}
+                        >
+                          {item.status}
                         </p>
                       </div>
                     )}
@@ -120,7 +141,14 @@ export default function TodoList({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
                   <div className="flex items-center justify-between">
                     <p
                       className="text-[9px] leading-[14px] w-[215px]"
-                      style={{ color: item.aiWarning ? "#ff522c" : "#4d4d4d" }}
+                      style={{
+                        color:
+                          item.status === "즉시 생산 필요" || item.status === "보충 필요"
+                            ? "#ff522c"
+                            : item.status === "주의"
+                              ? "#c17d00"
+                              : "#4d4d4d",
+                      }}
                     >
                       {item.aiWarning ?? item.status ?? ""}
                     </p>
@@ -137,11 +165,11 @@ export default function TodoList({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
               <div className="flex flex-col gap-[6px]">
                 {/* 레이블 */}
                 <div className="flex items-center justify-between text-[9px] text-black leading-[14px] gap-[8px]">
-                  <p className="truncate">
+                  <p className="truncate leading-[14px]">
                     {item.currentStockLabel ?? `현재 보유 ${item.currentCount}개`}
                   </p>
-                  <p className="shrink-0 text-right">
-                    {item.shortageLabel ?? "재고 적정"}
+                  <p className="shrink-0 text-right leading-[14px]">
+                    {item.shortageLabel ?? "모니터링"}
                   </p>
                 </div>
                 {/* 프로그레스 바 (CSS, SVG 미사용) */}

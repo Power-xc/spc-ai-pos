@@ -28,6 +28,12 @@ const CATEGORY_TABS: OrderDetailCategory[] = [
 ];
 type SortTab = (typeof SORT_TABS)[number];
 type ActiveTab = SortTab | OrderDetailCategory;
+type ReviewGroup = {
+  key: string;
+  label?: string | null;
+  time?: string | null;
+  items: AiOrderItem[];
+};
 
 const PAGE_SIZE = 6;
 
@@ -38,6 +44,43 @@ function parsePrice(str: string): number {
 function getUnit(stockInfo: string): string {
   if (stockInfo.includes("kg")) return "kg";
   return "개";
+}
+
+function buildReviewGroups(items: AiOrderItem[]): ReviewGroup[] {
+  const anyItemHasWindow = items.some(
+    (item) => Boolean((item as AiOrderItem & { deliveryLabel?: string }).deliveryLabel),
+  );
+
+  if (!anyItemHasWindow) {
+    return [
+      {
+        key: "default",
+        label: null,
+        time: null,
+        items,
+      },
+    ];
+  }
+
+  const grouped = new Map<string, ReviewGroup>();
+  items.forEach((item, idx) => {
+    const deliveryLabel =
+      (item as AiOrderItem & { deliveryLabel?: string }).deliveryLabel ??
+      `납품 ${idx + 1}`;
+    const deliveryTime =
+      (item as AiOrderItem & { deliveryTime?: string }).deliveryTime ?? null;
+    if (!grouped.has(deliveryLabel)) {
+      grouped.set(deliveryLabel, {
+        key: deliveryLabel,
+        label: deliveryLabel,
+        time: deliveryTime,
+        items: [],
+      });
+    }
+    grouped.get(deliveryLabel)?.items.push(item);
+  });
+
+  return Array.from(grouped.values());
 }
 
 export default function ManualOrder({ onClose, onOrderComplete }: Props) {
@@ -205,9 +248,9 @@ export default function ManualOrder({ onClose, onOrderComplete }: Props) {
   // ── Step 2: 최종 검토 ──────────────────────────────────────────
   if (step === 1) {
     const DELIVERY_FEE = 3000;
-    const midpoint = Math.ceil(orderedItems.length / 2);
-    const morningItems = orderedItems.slice(0, midpoint);
-    const afternoonItems = orderedItems.slice(midpoint);
+    const groups = buildReviewGroups(orderedItems);
+    const morningItems = groups[0]?.items ?? [];
+    const afternoonItems = groups[1]?.items ?? [];
 
     const morningTotalPages = Math.max(
       1,
@@ -361,14 +404,18 @@ export default function ManualOrder({ onClose, onOrderComplete }: Props) {
             </div>
           ) : (
             <>
-              {/* 새벽 납품 그룹 */}
               <div className="flex flex-col gap-[15px] px-[20px] pt-[10px] pb-[12px]">
-                <p className="text-[11px] font-bold text-[#555] leading-[1.5]">
-                  새벽 납품{" "}
-                  <span className="text-[9px] font-normal text-[#888]">
-                    4월 19일(일) 오전 5:00 예정
-                  </span>
-                </p>
+                {(groups[0]?.label || groups[0]?.time) && (
+                  <p className="text-[11px] font-bold text-[#555] leading-[1.5]">
+                    {groups[0]?.label}
+                    {groups[0]?.time && (
+                      <span className="text-[9px] font-normal text-[#888]">
+                        {" "}
+                        {groups[0]?.time}
+                      </span>
+                    )}
+                  </p>
+                )}
                 {pagedMorning.length > 0 ? (
                   <div className="flex flex-col gap-[15px]">
                     {pagedMorning.map(renderItemRow)}
@@ -417,17 +464,21 @@ export default function ManualOrder({ onClose, onOrderComplete }: Props) {
                 </div>
               </div>
 
-              {afternoonItems.length > 0 && (
+              {groups.length > 1 && afternoonItems.length > 0 && (
                 <>
                   <div className="h-[1px] bg-[#f0f1f3]" />
-                  {/* 점심 납품 그룹 */}
                   <div className="flex flex-col gap-[15px] px-[20px] pt-[10px] pb-[12px]">
-                    <p className="text-[11px] font-bold text-[#555] leading-[1.5]">
-                      점심 납품{" "}
-                      <span className="text-[9px] font-normal text-[#888]">
-                        4월 19일(일) 오후 13:00 예정
-                      </span>
-                    </p>
+                    {(groups[1]?.label || groups[1]?.time) && (
+                      <p className="text-[11px] font-bold text-[#555] leading-[1.5]">
+                        {groups[1]?.label}
+                        {groups[1]?.time && (
+                          <span className="text-[9px] font-normal text-[#888]">
+                            {" "}
+                            {groups[1]?.time}
+                          </span>
+                        )}
+                      </p>
+                    )}
                     <div className="flex flex-col gap-[15px]">
                       {pagedAfternoon.map(renderItemRow)}
                     </div>
@@ -484,38 +535,61 @@ export default function ManualOrder({ onClose, onOrderComplete }: Props) {
           {/* 금액 요약 */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-[20px]">
-              <div className="flex flex-col items-center pb-[1px]">
-                <p className="text-[11px] text-[#333] leading-[20px]">
-                  새벽 납품 금액
-                </p>
-                <p className="font-semibold text-[12px] text-[#333] leading-[21px]">
-                  {morningAmt.toLocaleString("ko-KR")}원
-                </p>
-              </div>
-              <div
-                className="w-[18px] h-[18px] flex items-center justify-center rounded-full shrink-0"
-                style={{ background: "#b3b4b5" }}
-              >
-                <span className="text-[9px] font-bold text-white leading-none">
-                  +
-                </span>
-              </div>
-              <div className="flex flex-col items-center pb-[1px]">
-                <p className="text-[11px] text-[#333] leading-[20px]">
-                  점심 납품 금액
-                </p>
-                <p className="font-semibold text-[12px] text-[#333] leading-[21px]">
-                  {afternoonAmt.toLocaleString("ko-KR")}원
-                </p>
-              </div>
-              <div
-                className="w-[18px] h-[18px] flex items-center justify-center rounded-full shrink-0"
-                style={{ background: "#b3b4b5" }}
-              >
-                <span className="text-[9px] font-bold text-white leading-none">
-                  +
-                </span>
-              </div>
+              {groups.length > 1 ? (
+                <>
+                  <div className="flex flex-col items-center pb-[1px]">
+                    <p className="text-[11px] text-[#333] leading-[20px]">
+                      새벽 납품 금액
+                    </p>
+                    <p className="font-semibold text-[12px] text-[#333] leading-[21px]">
+                      {morningAmt.toLocaleString("ko-KR")}원
+                    </p>
+                  </div>
+                  <div
+                    className="w-[18px] h-[18px] flex items-center justify-center rounded-full shrink-0"
+                    style={{ background: "#b3b4b5" }}
+                  >
+                    <span className="text-[9px] font-bold text-white leading-none">
+                      +
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center pb-[1px]">
+                    <p className="text-[11px] text-[#333] leading-[20px]">
+                      점심 납품 금액
+                    </p>
+                    <p className="font-semibold text-[12px] text-[#333] leading-[21px]">
+                      {afternoonAmt.toLocaleString("ko-KR")}원
+                    </p>
+                  </div>
+                  <div
+                    className="w-[18px] h-[18px] flex items-center justify-center rounded-full shrink-0"
+                    style={{ background: "#b3b4b5" }}
+                  >
+                    <span className="text-[9px] font-bold text-white leading-none">
+                      +
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col items-center pb-[1px]">
+                    <p className="text-[11px] text-[#333] leading-[20px]">
+                      발주 금액
+                    </p>
+                    <p className="font-semibold text-[12px] text-[#333] leading-[21px]">
+                      {(totalAmt - DELIVERY_FEE).toLocaleString("ko-KR")}원
+                    </p>
+                  </div>
+                  <div
+                    className="w-[18px] h-[18px] flex items-center justify-center rounded-full shrink-0"
+                    style={{ background: "#b3b4b5" }}
+                  >
+                    <span className="text-[9px] font-bold text-white leading-none">
+                      +
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="flex flex-col items-center pb-[1px]">
                 <p className="text-[11px] text-[#333] leading-[20px]">배송비</p>
                 <p className="font-semibold text-[12px] text-[#333] leading-[21px]">

@@ -161,13 +161,19 @@ export function appendDemoQueryParams(
   const params = new URLSearchParams(queryIndex >= 0 ? base.slice(queryIndex + 1) : "");
 
   if (includeBizDate) {
-    params.set("biz_date", currentState.date);
+    if (!params.has("biz_date")) {
+      params.set("biz_date", currentState.date);
+    }
   }
   if (includeDemoTime) {
-    params.set("demo_time", currentState.time);
+    if (!params.has("demo_time")) {
+      params.set("demo_time", currentState.time);
+    }
   }
   if (includeDemoDateTime) {
-    params.set("demo_datetime", currentState.iso);
+    if (!params.has("demo_datetime")) {
+      params.set("demo_datetime", currentState.iso);
+    }
   }
 
   return rebuildPath(path, params);

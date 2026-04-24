@@ -64,13 +64,13 @@ function SummaryChip({
 function MetricBadge({ value }: { value: number | null | undefined }) {
   const tone =
     typeof value !== "number" || Number.isNaN(value)
-      ? { bg: "#f0f1f3", color: "#555" }
+      ? {  color: "#333" }
       : value >= 0
-        ? { bg: "#fff4f1", color: "#ff522c" }
-        : { bg: "#edf7f0", color: "#2f8a51" };
+        ? {  color: "#ff522c" }
+        : {  color: "#2f8a51" };
   return (
     <span
-      className="text-[10px] font-bold px-[7px] py-[2px] rounded-full"
+      className="text-[10px] font-bold px-[0px] py-[] rounded-full"
       style={{ backgroundColor: tone.bg, color: tone.color }}
     >
       {formatDiff(value)}
@@ -108,15 +108,15 @@ function PeerCard({
 
       <div className="grid grid-cols-3 gap-[6px]">
         <div className="flex flex-col gap-[2px]">
-          <p className="text-[8px] text-[#bbb]">매출 격차</p>
+          <p className="text-[8px] text-[#333]">매출 격차</p>
           <MetricBadge value={peer.salesDiff} />
         </div>
         <div className="flex flex-col gap-[2px]">
-          <p className="text-[8px] text-[#bbb]">판매수량</p>
+          <p className="text-[8px] text-[#333]">판매수량</p>
           <MetricBadge value={peer.quantityDiff} />
         </div>
         <div className="flex flex-col gap-[2px]">
-          <p className="text-[8px] text-[#bbb]">폐기</p>
+          <p className="text-[8px] text-[#333]">폐기</p>
           <MetricBadge value={peer.wasteDiff} />
         </div>
       </div>
@@ -126,11 +126,11 @@ function PeerCard({
         <p className="font-bold text-[10px] text-[#333]">{peer.mainProduct}</p>
       </div>
 
-      <div className="rounded-[8px] px-[8px] py-[6px] flex items-start gap-[6px]" style={{ backgroundColor: "#f5f9fd" }}>
+      <div className="rounded-[8px] px-[8px] py-[6px] gap-[6px]" style={{ backgroundColor: "#f5f9fd" }}>
         <span className="text-[9px] text-[#3aaedd] font-bold shrink-0 mt-[1px]">
           포인트
         </span>
-        <p className="text-[9px] text-[#555] leading-[14px]">
+        <p className="text-[9px] text-[#555] leading-[14px] tracking-[-0.3px]">
           {peer.recommendation}
         </p>
       </div>
@@ -194,21 +194,22 @@ function SimilarPeerCard({
 }) {
   return (
     <div className="rounded-[14px] border border-[#d8eef9] bg-[#f6fbfe] px-[12px] py-[10px] flex flex-col gap-[6px]">
-      <div className="flex items-center justify-between gap-[8px]">
+      <span className="block w-[35px] rounded-full bg-white px-[8px] py-[3px] text-[9px] font-bold text-[#3aaedd] border border-[#d8eef9]">
+          추천
+      </span>
+      <div className="justify-between gap-[8px]">
         <div>
           <p className="font-bold text-[11px] text-[#222]">{peer.storeName}</p>
           <p className="text-[9px] text-[#888] leading-[14px]">
             유사도 {peer.similarityScore}% · 매출 격차 {formatDiff(peer.salesDiff)}
           </p>
         </div>
-        <span className="rounded-full bg-white px-[8px] py-[3px] text-[9px] font-bold text-[#3aaedd] border border-[#d8eef9]">
-          추천
-        </span>
+        
       </div>
-      <p className="text-[9px] text-[#555] leading-[14px]">
+      <p className="text-[9px] text-[#555] leading-[14px] tracking-[-0.2px]">
         {peer.reasons.join(" · ")}
       </p>
-      <p className="text-[9px] text-[#222] leading-[14px]">
+      <p className="text-[9px] text-[#222] leading-[14px] tracking-[-0.3px]">
         {peer.whyBetter}
       </p>
     </div>
@@ -392,7 +393,7 @@ export default function Benchmarking({
         </SectionCard>
 
         {snapshot.similarPeers.length > 0 && (
-          <SectionCard title="나보다 매출이 높지만 운영이 비슷한 매장" subtitle="시간대·상품·채널·결제 패턴 기준">
+          <SectionCard title="우리매장 보다 매출이 높지만 운영이 비슷한 매장" subtitle="시간대·상품·채널·결제 패턴 기준">
             <div className="grid grid-cols-3 gap-[8px]">
               {snapshot.similarPeers.map((peer) => (
                 <SimilarPeerCard key={peer.storeId} peer={peer} />
@@ -489,7 +490,7 @@ export default function Benchmarking({
           </SectionCard>
         </div>
 
-        <SectionCard title="프로모션/캠페인 반응 비교" subtitle="점포별 상위 캠페인">
+        <SectionCard title="프로모션 반응 비교" subtitle="점포별 상위 프로모션">
           <div className="grid grid-cols-2 gap-[8px]">
             {promotionRows.map((row) => (
               <div key={row.storeId} className="rounded-[12px] bg-[#f8f9fb] px-[10px] py-[10px] flex flex-col gap-[4px]">

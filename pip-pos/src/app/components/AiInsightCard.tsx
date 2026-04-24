@@ -29,7 +29,23 @@ export default function AiInsightCard({
     getAiInsight().then(setInsight);
   }, []);
 
-  if (!insight) return null;
+  if (!insight)
+    return (
+      <div
+        className="absolute border border-[#ebebeb] border-solid content-stretch flex flex-col h-[119.673px] items-start pl-[15px] pr-[15px] py-[16px] rounded-[20px] top-[77.51px] transition-all duration-300"
+        style={{
+          left: `${cardLeft}px`,
+          width: `${cardWidth}px`,
+          background: "linear-gradient(89deg, #008EE0 1.2%, #38A6D3 105.18%)",
+        }}
+      >
+        <div className="flex flex-col gap-[13px] w-full animate-pulse">
+          <div className="h-[12px] bg-white/30 rounded w-[200px]" />
+          <div className="h-[13px] bg-white/30 rounded w-[280px]" />
+          <div className="h-[12px] bg-white/20 rounded w-[100px]" />
+        </div>
+      </div>
+    );
 
   return (
     <div
