@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ContentWrapper from "./ContentWrapper";
-import { getPromotions } from "../../../lib/api";
-import type { Promotion, SimulationData, PromotionChannel } from "../../../types";
+import { getPromotions, getPromoPerformanceData } from "../../../lib/api";
+import type { Promotion, SimulationData, PromotionChannel, PromoPerformanceData } from "../../../types";
 import {
   RadarChart,
   Radar,
@@ -102,7 +102,7 @@ function SimulationView({
             <span className="w-[24px] h-[24px] rounded-[8px] bg-[#e8f4fd] text-[#3aaedd] flex items-center justify-center shrink-0">
               <PipIcon size={13} />
             </span>
-            <p className="font-bold text-[12px] text-[#222]">AI 추천 최적화</p>
+            <p className="font-bold text-[12px] text-[#222]">실적 기반 시뮬레이션</p>
           </div>
           <div className="flex flex-col gap-[6px]">
             {sim.scenarioRows.map((row) => (
@@ -298,7 +298,9 @@ function PromotionItem({
               {promo.channel}
             </span>
           )}
-          {promo.daysLeft != null && (
+          {promo.periodLabel ? (
+            <span className="text-[9px] text-[#aaa] leading-[14px]">{promo.periodLabel}</span>
+          ) : promo.daysLeft != null ? (
             <span className="text-[9px] text-[#aaa] flex items-center gap-[3px]">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <circle cx="5" cy="5" r="4" stroke="#aaa" strokeWidth="1" />
@@ -306,9 +308,11 @@ function PromotionItem({
               </svg>
               {promo.status === "active" ? `${promo.daysLeft}일 남음` : `${promo.daysLeft}일 후 시작`}
             </span>
-          )}
+          ) : null}
         </div>
-        <p className="text-[9px] text-[#bbb] leading-[14px]">{promo.startDate} – {promo.endDate}</p>
+        {!promo.periodLabel && (
+          <p className="text-[9px] text-[#bbb] leading-[14px]">{promo.startDate} – {promo.endDate}</p>
+        )}
       </div>
       <span
         className="shrink-0 text-[9px] font-bold px-[10px] py-[4px] rounded-full border mt-[2px]"
@@ -320,7 +324,7 @@ function PromotionItem({
             : { color: "#888", borderColor: "#ccc", backgroundColor: "#f5f5f5" }
         }
       >
-        {promo.status === "active" ? "진행중" : promo.status === "ended" ? "종료" : "예정"}
+        {promo.statusLabel ?? (promo.status === "active" ? "진행중" : promo.status === "ended" ? "종료" : "예정")}
       </span>
     </div>
   );
@@ -342,7 +346,7 @@ function PromotionToneBadge({
         ? "보강 필요"
         : tone === "watch"
           ? "관찰"
-          : "AI 추천";
+          : "추천 시뮬";
   const style =
     tone === "high"
       ? { bg: "#edf7f0", color: "#2f8a51" }
@@ -353,7 +357,7 @@ function PromotionToneBadge({
           : { bg: "#e8f4fd", color: "#3aaedd" };
   return (
     <span
-      className="rounded-full px-[8px] py-[3px] text-[9px] font-bold"
+      className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full px-[8px] py-[3px] text-[9px] font-bold leading-[14px]"
       style={{ backgroundColor: style.bg, color: style.color }}
     >
       {label}
@@ -428,9 +432,11 @@ function PromotionCompareCard({
 export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [selected, setSelected] = useState<Promotion | null>(null);
+  const [perfData, setPerfData] = useState<PromoPerformanceData | null>(null);
 
   useEffect(() => {
     getPromotions().then(setPromotions);
+    getPromoPerformanceData().then(setPerfData).catch(() => {});
   }, []);
 
   const aiPromos = promotions.filter((p) => p.status === "ai");
@@ -449,23 +455,23 @@ export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProp
           <div className="bg-[#30343b] rounded-[20px] px-[20px] py-[16px] flex flex-col gap-[12px]">
             <div>
               <p className="font-bold text-[14px] text-white leading-[20px]">
-                캠페인 성과 및 적용 시뮬레이션
+                프로모션 성과 및 적용 시뮬레이션
               </p>
               <p className="text-[10px] text-[#aaa] leading-[16px] mt-[2px]">
-                최근 집계 기준 캠페인 실적과 적용 전후 차이를 함께 보여줍니다.
+                최근 집계된 프로모션 성과를 프로모션 관점으로 묶어 적용 전후 차이를 함께 보여줍니다.
               </p>
             </div>
             <div className="grid grid-cols-4 gap-[8px]">
               <div className="rounded-[12px] bg-[rgba(255,255,255,0.07)] px-[12px] py-[10px]">
-                <p className="text-[9px] text-[#888]">AI 추천</p>
+                <p className="text-[9px] text-[#888]">시뮬레이션</p>
                 <p className="font-bold text-[16px] text-white leading-none">{aiPromos.length}건</p>
               </div>
               <div className="rounded-[12px] bg-[rgba(255,255,255,0.07)] px-[12px] py-[10px]">
-                <p className="text-[9px] text-[#888]">최근 집계 캠페인</p>
+                <p className="text-[9px] text-[#888]">최근 집계 프로모션 실적</p>
                 <p className="font-bold text-[16px] text-[#3aaedd] leading-none">{activePromos.length}건</p>
               </div>
               <div className="rounded-[12px] bg-[rgba(255,255,255,0.07)] px-[12px] py-[10px]">
-                <p className="text-[9px] text-[#888]">성과 높은 캠페인</p>
+                <p className="text-[9px] text-[#888]">성과 높은 프로모션</p>
                 <p className="font-bold text-[16px] text-[#c0e183] leading-none">{highPerformers.length}건</p>
               </div>
               <div className="rounded-[12px] bg-[rgba(255,255,255,0.07)] px-[12px] py-[10px]">
@@ -505,7 +511,7 @@ export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProp
               <div className="flex items-center justify-between mb-[2px]">
                 <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
                   <span className="text-[#3aaedd]"><PipIcon size={13} /></span>
-                  AI 추천 프로모션
+                  시뮬레이션 프로모션
                 </p>
                 <span className="w-[22px] h-[22px] rounded-full bg-[#3aaedd] text-white text-[10px] font-bold flex items-center justify-center">
                   {aiPromos.length}
@@ -524,7 +530,7 @@ export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProp
               <div className="flex items-center justify-between mb-[2px]">
                 <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
                   <span className="w-[7px] h-[4px] bg-[#3faf60] rounded-[30px]" />
-                  성과 높은 캠페인
+                  성과 높은 프로모션
                 </p>
                 <span className="text-[10px] text-[#aaa]">{highPerformers.length}건</span>
               </div>
@@ -542,7 +548,7 @@ export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProp
               <div className="flex items-center justify-between mb-[2px]">
                 <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
                   <span className="w-[7px] h-[4px] bg-[#ff8a65] rounded-[30px]" />
-                  관찰 필요 캠페인
+                  관찰 필요 프로모션
                 </p>
                 <span className="text-[10px] text-[#aaa]">{watchPromos.length}건</span>
               </div>
@@ -568,6 +574,214 @@ export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProp
                 {scheduledPromos.map((p) => (
                   <PromotionItem key={p.id} promo={p} onClick={() => setSelected(p)} />
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── A. 프로모션 반응 ── */}
+          {perfData && (
+            <div className="bg-white border border-[#f0f1f3] rounded-[20px] px-[16px] pt-[14px] pb-[14px]">
+              <div className="flex items-center justify-between mb-[10px]">
+                <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
+                  <span className="w-[7px] h-[4px] bg-[#3aaedd] rounded-[30px]" />
+                  프로모션 반응
+                </p>
+                <span className="text-[9px] text-[#aaa]">최근 집계 기준</span>
+              </div>
+              <div className="flex gap-[10px] mb-[10px]">
+                <div className="flex-1 bg-[#f0f8fe] rounded-[12px] px-[10px] py-[8px]">
+                  <p className="text-[8px] text-[#888]">총 참여 건수</p>
+                  <p className="font-bold text-[14px] text-[#3aaedd]">{perfData.response.totalBills.toLocaleString("ko-KR")}건</p>
+                </div>
+                <div className="flex-1 bg-[#f0f8fe] rounded-[12px] px-[10px] py-[8px]">
+                  <p className="text-[8px] text-[#888]">총 매출</p>
+                  <p className="font-bold text-[14px] text-[#222]">{fmtKRW(perfData.response.totalSales)}</p>
+                </div>
+              </div>
+              {perfData.response.topByResponse.length > 0 && (
+                <div className="mb-[8px]">
+                  <p className="text-[10px] font-bold text-[#555] mb-[4px]">반응 상위 프로모션</p>
+                  {perfData.response.topByResponse.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-[4px] border-b border-[#f5f5f5] last:border-b-0">
+                      <div className="flex items-center gap-[6px] min-w-0">
+                        <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: item.tone === "high" ? "#3aaedd" : item.tone === "medium" ? "#f0ad4e" : "#ff522c" }} />
+                        <span className="text-[10px] text-[#222] truncate">{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-[8px] shrink-0">
+                        <span className="text-[10px] font-bold text-[#222]">{item.billCnt}건</span>
+                        <span className="text-[9px] text-[#888]">{fmtKRW(item.salesAmt)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {perfData.response.lowByResponse.length > 0 && (
+                <div className="mb-[8px]">
+                  <p className="text-[10px] font-bold text-[#555] mb-[4px]">반응 낮은 프로모션</p>
+                  {perfData.response.lowByResponse.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-[4px] border-b border-[#f5f5f5] last:border-b-0">
+                      <div className="flex items-center gap-[6px] min-w-0">
+                        <span className="w-[6px] h-[6px] rounded-full bg-[#ff522c] shrink-0" />
+                        <span className="text-[10px] text-[#222] truncate">{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-[8px] shrink-0">
+                        <span className="text-[10px] font-bold text-[#222]">{item.billCnt}건</span>
+                        <span className="text-[9px] text-[#888]">{fmtKRW(item.salesAmt)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="bg-[#f5f6f7] rounded-[12px] px-[10px] py-[8px]">
+                <p className="text-[9px] text-[#555] leading-[14px]">{perfData.response.topByResponse[0]?.interpretation ?? "프로모션 반응 데이터를 불러오는 중입니다."}</p>
+                <p className="text-[9px] font-bold text-[#3aaedd] mt-[4px]">지금 할 일: {perfData.response.action}</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── B. 프로모션 매출 ── */}
+          {perfData && (
+            <div className="bg-white border border-[#f0f1f3] rounded-[20px] px-[16px] pt-[14px] pb-[14px]">
+              <div className="flex items-center justify-between mb-[10px]">
+                <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
+                  <span className="w-[7px] h-[4px] bg-[#3faf60] rounded-[30px]" />
+                  프로모션 매출
+                </p>
+                <span className="text-[9px] text-[#aaa]">최근 집계 기준</span>
+              </div>
+              <div className="flex gap-[10px] mb-[10px]">
+                <div className="flex-1 bg-[#edf7f0] rounded-[12px] px-[10px] py-[8px]">
+                  <p className="text-[8px] text-[#888]">총 매출</p>
+                  <p className="font-bold text-[14px] text-[#2f8a51]">{fmtKRW(perfData.sales.totalSales)}</p>
+                </div>
+                <div className="flex-1 bg-[#edf7f0] rounded-[12px] px-[10px] py-[8px]">
+                  <p className="text-[8px] text-[#888]">평균 건단가</p>
+                  <p className="font-bold text-[14px] text-[#222]">{fmtKRW(perfData.sales.avgEfficiency)}</p>
+                </div>
+              </div>
+              {perfData.sales.topBySales.length > 0 && (
+                <div className="mb-[8px]">
+                  <p className="text-[10px] font-bold text-[#555] mb-[4px]">매출 상위 프로모션</p>
+                  {perfData.sales.topBySales.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-[4px] border-b border-[#f5f5f5] last:border-b-0">
+                      <div className="flex items-center gap-[6px] min-w-0">
+                        <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: item.tone === "high" ? "#3faf60" : item.tone === "medium" ? "#f0ad4e" : "#ff522c" }} />
+                        <span className="text-[10px] text-[#222] truncate">{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-[8px] shrink-0">
+                        <span className="text-[10px] font-bold text-[#222]">{fmtKRW(item.salesAmt)}</span>
+                        <span className="text-[9px] text-[#888]">반응 {item.billCnt}건</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {perfData.sales.highEfficiency.length > 0 && (
+                <div className="mb-[8px]">
+                  <p className="text-[10px] font-bold text-[#555] mb-[4px]">반응 대비 매출 효율 상위</p>
+                  {perfData.sales.highEfficiency.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-[4px] border-b border-[#f5f5f5] last:border-b-0">
+                      <div className="flex items-center gap-[6px] min-w-0">
+                        <span className="w-[6px] h-[6px] rounded-full bg-[#3faf60] shrink-0" />
+                        <span className="text-[10px] text-[#222] truncate">{item.name}</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-[#3faf60] shrink-0">{fmtKRW(item.efficiency)}/건</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="bg-[#f5f6f7] rounded-[12px] px-[10px] py-[8px]">
+                <p className="text-[9px] text-[#555] leading-[14px]">{perfData.sales.topBySales[0]?.interpretation ?? "프로모션 매출 데이터를 불러오는 중입니다."}</p>
+                <p className="text-[9px] font-bold text-[#3faf60] mt-[4px]">지금 할 일: {perfData.sales.action}</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── C. 시간대별 성과 ── */}
+          {perfData && (
+            <div className="bg-white border border-[#f0f1f3] rounded-[20px] px-[16px] pt-[14px] pb-[14px]">
+              <div className="flex items-center justify-between mb-[10px]">
+                <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
+                  <span className="w-[7px] h-[4px] bg-[#f0ad4e] rounded-[30px]" />
+                  시간대별 성과
+                </p>
+                <span className="text-[9px] text-[#aaa]">{perfData.hourly.promoName}</span>
+              </div>
+              {(() => {
+                const activeHours = perfData.hourly.hourlyData.filter((h) => h.qty > 0);
+                const maxQty = Math.max(...activeHours.map((h) => h.qty), 1);
+                return (
+                  <div className="mb-[10px]">
+                    <div className="flex items-end gap-[2px] h-[60px]">
+                      {perfData.hourly.hourlyData.map((h) => {
+                        const isActive = h.qty > 0;
+                        const isPeak = perfData.hourly.peakHours.includes(h.hour);
+                        const isWeak = perfData.hourly.weakHours.includes(h.hour);
+                        const heightPct = isActive ? Math.max((h.qty / maxQty) * 100, 4) : 2;
+                        return (
+                          <div key={h.hour} className="flex-1 flex flex-col items-center gap-[2px]">
+                            <div
+                              className="w-full rounded-t-[2px] transition-all"
+                              style={{
+                                height: `${heightPct}%`,
+                                background: isPeak ? "#3aaedd" : isWeak ? "#ff8a65" : isActive ? "#d0d0d0" : "#f0f1f3",
+                                minHeight: isActive ? "4px" : "2px",
+                              }}
+                            />
+                            {h.hour % 3 === 0 && (
+                              <span className="text-[7px] text-[#aaa] leading-none">{String(h.hour).padStart(2, "0")}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-[8px] mt-[6px]">
+                      <div className="flex items-center gap-[3px]"><span className="w-[8px] h-[3px] rounded bg-[#3aaedd]" /><span className="text-[8px] text-[#888]">강한 시간대</span></div>
+                      <div className="flex items-center gap-[3px]"><span className="w-[8px] h-[3px] rounded bg-[#ff8a65]" /><span className="text-[8px] text-[#888]">약한 시간대</span></div>
+                    </div>
+                  </div>
+                );
+              })()}
+              <div className="bg-[#f5f6f7] rounded-[12px] px-[10px] py-[8px]">
+                <p className="text-[9px] text-[#555] leading-[14px]">{perfData.hourly.interpretation}</p>
+                <p className="text-[9px] font-bold text-[#f0ad4e] mt-[4px]">지금 할 일: {perfData.hourly.action}</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── D. 점포 간 비교 ── */}
+          {perfData && perfData.storeCompare.stores.length > 0 && (
+            <div className="bg-white border border-[#f0f1f3] rounded-[20px] px-[16px] pt-[14px] pb-[14px]">
+              <div className="flex items-center justify-between mb-[10px]">
+                <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
+                  <span className="w-[7px] h-[4px] bg-[#7c5cbf] rounded-[30px]" />
+                  점포 간 비교
+                </p>
+                <span className="text-[9px] text-[#aaa]">{perfData.storeCompare.promoName}</span>
+              </div>
+              <div className="flex flex-col gap-[6px] mb-[8px]">
+                {perfData.storeCompare.stores.map((store) => (
+                  <div key={store.storeId} className="flex items-center justify-between bg-[#f8f9fa] rounded-[10px] px-[10px] py-[6px]">
+                    <div className="flex items-center gap-[6px] min-w-0">
+                      <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: store.isOurs ? "#3aaedd" : store.tone === "higher" ? "#3faf60" : "#ff8a65" }} />
+                      <span className="text-[10px] font-bold text-[#222] truncate">{store.storeName}</span>
+                      {store.isOurs && <span className="text-[8px] text-[#3aaedd] font-bold shrink-0">기준</span>}
+                    </div>
+                    <div className="flex items-center gap-[8px] shrink-0">
+                      <span className="text-[9px] text-[#555]">반응 {store.billCnt}건</span>
+                      <span className="text-[9px] text-[#555]">매출 {fmtKRW(store.salesAmt)}</span>
+                      {!store.isOurs && (
+                        <span className="text-[9px] font-bold" style={{ color: store.diffBillCnt > 0 ? "#3faf60" : store.diffBillCnt < 0 ? "#ff522c" : "#888" }}>
+                          {store.diffBillCnt > 0 ? "+" : ""}{store.diffBillCnt}건
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-[#f5f6f7] rounded-[12px] px-[10px] py-[8px]">
+                <p className="text-[9px] text-[#555] leading-[14px]">{perfData.storeCompare.interpretation}</p>
+                <p className="text-[9px] font-bold text-[#7c5cbf] mt-[4px]">지금 할 일: {perfData.storeCompare.action}</p>
               </div>
             </div>
           )}

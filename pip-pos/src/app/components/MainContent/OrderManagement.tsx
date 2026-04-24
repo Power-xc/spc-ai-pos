@@ -6,6 +6,8 @@ import DatePicker from "../ui/DatePicker";
 
 import FilterReset from "../../../assets/ico-filterReset.svg";
 import { getOrderMonthSummary, getAiOrderItems } from "../../../lib/api";
+import { DEMO_PRIMARY_STORE_ID } from "../../../lib/demoStoreConfig";
+import { getDemoDate } from "../../../lib/demoDateTime";
 import type {
   AiOrderItem,
   OrderMonthSummary,
@@ -39,6 +41,13 @@ const STATUS_FILTER_TABS: Array<"전체" | OrderStatus> = [
 ];
 
 const PAGE_SIZE = 6;
+const ORDER_STATE_STORAGE_KEY_PREFIX = "pip-pos:order-management";
+
+type PersistedOrderManagementState = {
+  allItems: AiOrderItem[];
+  statusMap: Record<string, OrderStatus>;
+  orderNumbers: Record<string, string>;
+};
 
 function parseNum(str: string): number {
   return parseInt(str.replace(/[^0-9]/g, ""), 10) || 0;
@@ -74,6 +83,36 @@ function getCategoryStyle(category: OrderDetailCategory): {
       return { bg: "#f0f1f3", color: "#595959" };
     default:
       return { bg: "#f0f1f3", color: "#595959" };
+  }
+}
+
+function getOrderStateStorageKey() {
+  return `${ORDER_STATE_STORAGE_KEY_PREFIX}:${DEMO_PRIMARY_STORE_ID}:${getDemoDate()}`;
+}
+
+function loadPersistedOrderState(): PersistedOrderManagementState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(getOrderStateStorageKey());
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedOrderManagementState>;
+    if (!Array.isArray(parsed.allItems)) return null;
+    return {
+      allItems: parsed.allItems,
+      statusMap: parsed.statusMap ?? {},
+      orderNumbers: parsed.orderNumbers ?? {},
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistOrderState(state: PersistedOrderManagementState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(getOrderStateStorageKey(), JSON.stringify(state));
+  } catch {
+    // ignore persistence errors in demo mode
   }
 }
 
@@ -120,8 +159,8 @@ export default function OrderManagement({
 
   useEffect(() => {
     getOrderMonthSummary().then(setSummary);
+    const persisted = loadPersistedOrderState();
     getAiOrderItems().then((items) => {
-      setAllItems(items);
       const initSt: Record<string, OrderStatus> = {};
       const initNums: Record<string, string> = {};
       items.forEach((item, idx) => {
@@ -129,10 +168,26 @@ export default function OrderManagement({
         initNums[item.id] =
           `PO-2026-${String(items.length + 29 - idx).padStart(3, "0")}`;
       });
-      setStatusMap(initSt);
-      setOrderNumbers(initNums);
+      const mergedItems = persisted
+        ? [
+            ...persisted.allItems.filter(
+              (storedItem) => !items.some((baseItem) => baseItem.id === storedItem.id),
+            ),
+            ...items,
+          ]
+        : items;
+      const mergedStatusMap = { ...initSt, ...(persisted?.statusMap ?? {}) };
+      const mergedOrderNumbers = { ...initNums, ...(persisted?.orderNumbers ?? {}) };
+      setAllItems(mergedItems);
+      setStatusMap(mergedStatusMap);
+      setOrderNumbers(mergedOrderNumbers);
     });
   }, []);
+
+  useEffect(() => {
+    if (!allItems.length) return;
+    persistOrderState({ allItems, statusMap, orderNumbers });
+  }, [allItems, orderNumbers, statusMap]);
 
   function handleManualOrderSubmit() {
     setShowManualOrder(false);
@@ -319,7 +374,7 @@ export default function OrderManagement({
             <div className="flex items-center gap-[8px]">
               <div className="w-[9px] h-[5px] bg-white rounded-[30px]" />
               <p className="font-bold text-[12px] text-white leading-[21px]">
-                AI추천 발주
+                실적 기반 발주
               </p>
               <button
                 onClick={() => setShowAi(true)}
@@ -1014,7 +1069,7 @@ export default function OrderManagement({
                     <>
                       <div className="h-[1px] bg-[#f0f1f3]" />
                       <div className="flex flex-col gap-[4px]">
-                        <p className="text-[9px] text-[#888]">AI 추천 사유</p>
+                        <p className="text-[9px] text-[#888]">추천 사유</p>
                         <p className="text-[10px] text-[#555] leading-[16px]">
                           {detailItem.aiReason}
                         </p>

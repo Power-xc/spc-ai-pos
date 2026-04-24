@@ -76,17 +76,19 @@ export default function RealtimeStatus({
               생산관리 에이전트
             </p>
           </div>
-          {data && (
+          {data ? (
             <div className="flex items-center gap-[6px] bg-[#f1f1f1] rounded-[10px] px-[10px] py-[4px]">
               {/* 새로고침 아이콘 */}
               <img src={icoReset} alt="" />
               <p className="text-[9px] text-[#525252]">{data.lastUpdated}</p>
             </div>
+          ) : (
+            <div className="h-[20px] w-[80px] bg-[#f0f1f3] rounded-[10px] animate-pulse" />
           )}
         </div>
 
         {/* 상품 칩 목록 */}
-        {data && (
+        {data ? (
           <div className="flex flex-wrap gap-[8px] px-[15px] pb-[10px] overflow-y-auto max-h-[85px] scrolled mr-4 mb-3">
             {data.items.map((item) =>
               item.isLow ? (
@@ -147,16 +149,26 @@ export default function RealtimeStatus({
               ),
             )}
           </div>
+        ) : (
+          <div className="flex flex-wrap gap-[8px] px-[15px] pb-[10px] mr-4 mb-3">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="h-[28px] w-[100px] bg-[#f0f1f3] rounded-[20px] animate-pulse" />
+            ))}
+          </div>
         )}
 
         {/* AI 추천 pill */}
-        {data && (
+        {data ? (
           <div className="mx-[15px] mb-[14px] bg-[#f0f1f3] rounded-[20px] px-[10px] py-[10px]">
             <p className="text-[9px] text-black leading-[14px] block">
-              <span className="font-bold">AI 추천 </span>
+              <span className="font-bold">실적 기반 추천 </span>
               <span>: </span>
               <span>{data.aiRecommendation}</span>
             </p>
+          </div>
+        ) : (
+          <div className="mx-[15px] mb-[14px] bg-[#f0f1f3] rounded-[20px] px-[10px] py-[10px]">
+            <div className="h-[10px] w-[200px] bg-[#e0e0e0] rounded animate-pulse" />
           </div>
         )}
       </div>
@@ -170,7 +182,7 @@ export default function RealtimeStatus({
             <p className="font-bold text-[12px] text-[#555] flex items-center">
               주문관리 에이전트
               <span className="font-normal text-[10px] text-[#555555] ml-[10px]">
-                실시간 주문 표
+                {orderData?.sectionLabel ?? "실시간 판매 흐름"}
               </span>
             </p>
           </div>
@@ -179,65 +191,79 @@ export default function RealtimeStatus({
               <p className="font-bold text-[12px] text-[#39acdb]">
                 {orderData.todaySales}
               </p>
-              <p className="text-[9px] text-[#787878] ml-1">금일</p>
+              <p className="text-[9px] text-[#787878] ml-1">
+                {orderData.todaySalesLabel ?? "금일"}
+              </p>
             </div>
           )}
         </div>
 
         {/* 주문 카드 목록 */}
         {orderData && (
-          <div
-            ref={sliderRef}
-            className="flex gap-[8px] pb-[10px] px-[10px] overflow-x-auto select-none ml-3"
-            style={{
-              scrollSnapType: "x mandatory",
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-              cursor: "grab",
-            }}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
-          >
-            {orderData.items.map((item) => {
-              const statusColor =
-                item.status === "완료"
-                  ? "#3aaedd"
-                  : item.status === "수령"
-                    ? "#3faf60"
-                    : "#ff522c";
-              return (
-                <div
-                  key={item.id}
-                  className="flex-shrink-0 border border-[#ebedef] rounded-[20px] px-[12px] py-[10px] w-[103px]"
-                  style={{ scrollSnapAlign: "start" }}
-                >
-                  <div className="flex flex-col gap-[4px]">
-                    <div className="flex items-center justify-between text-[8px] leading-[15px]">
-                      <span className="text-[#555]">{item.orderId}</span>
-                      <span
-                        className="font-bold"
-                        style={{ color: statusColor }}
-                      >
-                        {item.status}
-                      </span>
+          orderData.items.length > 0 ? (
+            <div
+              ref={sliderRef}
+              className="flex gap-[8px] pb-[10px] px-[10px] overflow-x-auto select-none ml-3"
+              style={{
+                scrollSnapType: "x mandatory",
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                cursor: "grab",
+              }}
+              onMouseDown={onMouseDown}
+              onMouseMove={onMouseMove}
+              onMouseUp={onMouseUp}
+              onMouseLeave={onMouseUp}
+            >
+              {orderData.items.map((item) => {
+                const statusColor =
+                  item.status === "완료"
+                    ? "#3aaedd"
+                    : item.status === "수령"
+                      ? "#3faf60"
+                      : item.status === "안정"
+                        ? "#3aaedd"
+                        : "#ff522c";
+                return (
+                  <div
+                    key={item.id}
+                    className="flex-shrink-0 border border-[#ebedef] rounded-[20px] px-[12px] py-[10px] w-[103px]"
+                    style={{ scrollSnapAlign: "start" }}
+                  >
+                    <div className="flex flex-col gap-[4px]">
+                      <div className="flex items-center justify-between text-[8px] leading-[15px]">
+                        <span className="text-[#555]">{item.orderId}</span>
+                        <span
+                          className="font-bold"
+                          style={{ color: statusColor }}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
+                      <p className="font-bold text-[11px] text-[#222] leading-[16px]">
+                        {item.productName}
+                      </p>
+                      <p className="font-medium text-[8px] text-[#555] leading-[9px]">
+                        {item.type}
+                      </p>
                     </div>
-                    <p className="font-bold text-[11px] text-[#222] leading-[16px]">
-                      {item.productName}
-                    </p>
-                    <p className="font-medium text-[8px] text-[#555] leading-[9px]">
-                      {item.type}
-                    </p>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="px-[15px] pb-[10px]">
+              <div className="rounded-[14px] bg-[#f7f8f9] px-[12px] py-[10px]">
+                <p className="text-[10px] text-[#666] leading-[14px]">
+                  {orderData.emptyMessage ?? "표시할 주문 데이터가 없습니다."}
+                </p>
+              </div>
+            </div>
+          )
         )}
 
         {/* 시간대별 매출 차트 */}
-        {orderData && (
+        {orderData && orderData.chartData.length > 0 && (
           <div className="px-[15px] pb-[14px] time-chart mt-2">
             <ResponsiveContainer width="100%" height={60}>
               <AreaChart

@@ -33,11 +33,55 @@ const CATEGORY_TABS: OrderDetailCategory[] = [
 ];
 const PAGE_SIZE = 5;
 type FilterTab = (typeof FILTER_TABS)[number];
+type ReviewGroup = {
+  key: string;
+  label?: string | null;
+  time?: string | null;
+  items: AiOrderItem[];
+};
 
-const STEPS = ["AI추천 발주", "수동발주", "점주 최종 컨펌"];
+const STEPS = ["실적 기반 발주", "수동발주", "점주 최종 컨펌"];
 
 function parsePrice(price: string): number {
   return parseInt(price.replace(/[^0-9]/g, ""), 10) || 0;
+}
+
+function buildReviewGroups(items: AiOrderItem[], reportDate?: string | null): ReviewGroup[] {
+  const anyItemHasWindow = items.some(
+    (item) => Boolean((item as AiOrderItem & { deliveryLabel?: string; deliveryTime?: string }).deliveryLabel),
+  );
+
+  if (!anyItemHasWindow) {
+    return [
+      {
+        key: "default",
+        label: null,
+        time: null,
+        items,
+      },
+    ];
+  }
+
+  const grouped = new Map<string, ReviewGroup>();
+  items.forEach((item, idx) => {
+    const deliveryLabel =
+      (item as AiOrderItem & { deliveryLabel?: string }).deliveryLabel ??
+      `납품 ${idx + 1}`;
+    const deliveryTime =
+      (item as AiOrderItem & { deliveryTime?: string }).deliveryTime ??
+      (reportDate ? `${reportDate} 예정` : null);
+    if (!grouped.has(deliveryLabel)) {
+      grouped.set(deliveryLabel, {
+        key: deliveryLabel,
+        label: deliveryLabel,
+        time: deliveryTime,
+        items: [],
+      });
+    }
+    grouped.get(deliveryLabel)?.items.push(item);
+  });
+
+  return Array.from(grouped.values());
 }
 
 export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
@@ -156,14 +200,13 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
             <div className="w-[7px] h-[4px] bg-[#3aaedd] rounded-[30px]" />
             <p className="font-bold text-[12px] text-[#555] leading-[20px]">
               {activeStep >= 1
-                ? (summary?.weekLabel ?? "").replace("AI 추천", "직접 발주") ||
-                  "직접 발주"
-                : (summary?.weekLabel ?? "AI 추천 발주")}
+                ? (summary?.weekLabel ?? "").replace("AI 추천", "직접 발주").replace("실적 기반 추천", "직접 발주") || "직접 발주"
+                : (summary?.weekLabel ?? "실적 기반 발주")}
             </p>
             {activeStep === 0 && summary?.aiScore && (
               <div className="flex items-center gap-[3px] bg-[#eaf6ff] rounded-[10px] px-[6px] py-[2px]">
                 <span className="text-[8px] font-bold text-[#3aaedd]">
-                  AI 정확도 {summary.aiScore}
+                  과거 실적 기반 {summary.aiScore}
                 </span>
               </div>
             )}
@@ -599,7 +642,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                   <circle cx="7" cy="4.5" r="0.6" fill="red" />
                 </svg>
                 <p className="text-[9px] text-[red] leading-[14px]">
-                  AI가 추천한 수량을 직접 수정할 수 있습니다. 수정 후 발주를
+                  과거 실적 기반 추천 수량을 직접 수정할 수 있습니다. 수정 후 발주를
                   확정해 주세요.
                 </p>
               </div>
@@ -672,7 +715,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                           </span>
                         </p>
                         <p className="text-[8px] text-[#aaa] leading-[13px]">
-                          AI 추천: {item.aiRecommendedQty}
+                          추천: {item.aiRecommendedQty}
                         </p>
                       </div>
                     </div>
@@ -875,19 +918,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
         {/* ── Step 2: 점주 최종 컨펌 ── */}
         {activeStep === 2 &&
           (() => {
-            const mid = Math.ceil(allItems.length / 2);
-            const groups = [
-              {
-                label: "새벽 납품",
-                time: `${summary?.reportDate ?? ""} 오전 5:00 예정`,
-                items: allItems.slice(0, mid),
-              },
-              {
-                label: "점심 납품",
-                time: `${summary?.reportDate ?? ""} 오후 13:00 예정`,
-                items: allItems.slice(mid),
-              },
-            ];
+            const groups = buildReviewGroups(allItems, summary?.reportDate);
             const DELIVERY_FEE = 3000;
             const calcTotal = (items: AiOrderItem[], useAi: boolean) =>
               items
@@ -905,8 +936,8 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                     ) || 0;
                   return sum + price * qty;
                 }, 0);
-            const dawnTotal = calcTotal(groups[0].items, false);
-            const lunchTotal = calcTotal(groups[1].items, false);
+            const dawnTotal = calcTotal(groups[0]?.items ?? [], false);
+            const lunchTotal = calcTotal(groups[1]?.items ?? [], false);
             const grandTotal = dawnTotal + lunchTotal + DELIVERY_FEE;
             const fmt = (n: number) => n.toLocaleString("ko-KR") + "원";
             return (
@@ -933,18 +964,23 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                     });
                   return (
                     <div
-                      key={group.label}
+                      key={group.key}
                       className="flex flex-col gap-[10px] px-[15px]"
                     >
-                      {/* 납품 그룹 헤더 */}
-                      <div className="flex items-center justify-between">
-                        <p className="font-bold text-[0px] text-[#555] leading-[1.5]">
-                          <span className="text-[11px]">{group.label} </span>
-                          <span className="font-normal text-[9px]">
-                            {group.time}
-                          </span>
-                        </p>
-                      </div>
+                      {(group.label || group.time) && (
+                        <div className="flex items-center justify-between">
+                          <p className="font-bold text-[0px] text-[#555] leading-[1.5]">
+                            {group.label && (
+                              <span className="text-[11px]">{group.label} </span>
+                            )}
+                            {group.time && (
+                              <span className="font-normal text-[9px]">
+                                {group.time}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      )}
 
                       {/* 아이템 목록 */}
                       <div className="flex flex-col gap-[15px] min-h-[150px]">
@@ -1053,32 +1089,52 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                   {/* 금액 요약 행 */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-[10px]">
-                      <div className="flex flex-col items-center text-[#333]">
-                        <p className="text-[11px] leading-[20px]">
-                          새벽 납품 금액
-                        </p>
-                        <p className="font-semibold text-[12px] leading-[21px]">
-                          {fmt(dawnTotal)}
-                        </p>
-                      </div>
-                      <div className="w-[18px] h-[18px] rounded-full bg-[#b3b4b5] flex items-center justify-center shrink-0">
-                        <span className="font-bold text-[9px] text-white leading-none">
-                          +
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-center text-[#333]">
-                        <p className="text-[11px] leading-[20px]">
-                          점심 납품 금액
-                        </p>
-                        <p className="font-semibold text-[12px] leading-[21px]">
-                          {fmt(lunchTotal)}
-                        </p>
-                      </div>
-                      <div className="w-[18px] h-[18px] rounded-full bg-[#b3b4b5] flex items-center justify-center shrink-0">
-                        <span className="font-bold text-[9px] text-white leading-none">
-                          +
-                        </span>
-                      </div>
+                      {groups.length > 1 ? (
+                        <>
+                          <div className="flex flex-col items-center text-[#333]">
+                            <p className="text-[11px] leading-[20px]">
+                              새벽 납품 금액
+                            </p>
+                            <p className="font-semibold text-[12px] leading-[21px]">
+                              {fmt(dawnTotal)}
+                            </p>
+                          </div>
+                          <div className="w-[18px] h-[18px] rounded-full bg-[#b3b4b5] flex items-center justify-center shrink-0">
+                            <span className="font-bold text-[9px] text-white leading-none">
+                              +
+                            </span>
+                          </div>
+                          <div className="flex flex-col items-center text-[#333]">
+                            <p className="text-[11px] leading-[20px]">
+                              점심 납품 금액
+                            </p>
+                            <p className="font-semibold text-[12px] leading-[21px]">
+                              {fmt(lunchTotal)}
+                            </p>
+                          </div>
+                          <div className="w-[18px] h-[18px] rounded-full bg-[#b3b4b5] flex items-center justify-center shrink-0">
+                            <span className="font-bold text-[9px] text-white leading-none">
+                              +
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex flex-col items-center text-[#333]">
+                            <p className="text-[11px] leading-[20px]">
+                              발주 금액
+                            </p>
+                            <p className="font-semibold text-[12px] leading-[21px]">
+                              {fmt(grandTotal - DELIVERY_FEE)}
+                            </p>
+                          </div>
+                          <div className="w-[18px] h-[18px] rounded-full bg-[#b3b4b5] flex items-center justify-center shrink-0">
+                            <span className="font-bold text-[9px] text-white leading-none">
+                              +
+                            </span>
+                          </div>
+                        </>
+                      )}
                       <div className="flex flex-col items-center text-[#333]">
                         <p className="text-[11px] leading-[20px]">배송비</p>
                         <p className="font-semibold text-[12px] leading-[21px]">
@@ -1189,7 +1245,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                 </p>
               </div>
               <p className="text-[10px] text-[#555] leading-[15px]">
-                아래 품목이 AI 추천 수량의{" "}
+                아래 품목이 추천 수량의{" "}
                 <span className="font-bold text-[red]">2배</span>를
                 초과했습니다.
                 <br />

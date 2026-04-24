@@ -120,10 +120,12 @@ export interface SimulationData {
 export interface Promotion {
   id: string;
   status: PromotionStatus;
+  statusLabel?: string | null;
   title: string;
   description: string;
   channel?: PromotionChannel;
-  daysLeft?: number;
+  daysLeft?: number | null;
+  periodLabel?: string | null;
   lunaLabel?: string;
   lunaMetric?: string;
   startDate: string;
@@ -162,8 +164,7 @@ export type HypothesisTag =
   | "운영관리"
   | "제품분석"
   | "재고분석"
-  | "프로모션"
-  | "캠페인";
+  | "프로모션";
 
 export interface HypothesisSubItem {
   label: string;
@@ -256,6 +257,8 @@ export interface ProductionItem {
   isLow: boolean;
   shortage?: number;
   badgeLabel?: string;
+  statusLabel?: "즉시 생산 필요" | "보충 필요" | "주의" | "재고 적정";
+  statusDescription?: string;
   currentLabel?: string;
   detailLabel?: string;
   predictedStock1h?: number;
@@ -287,7 +290,12 @@ export interface ProductionSummary {
 }
 
 // ── 생산관리 배치 현황 ──────────────────────────────────────────
-export type ProductionBatchStatus = "생산 완료" | "재고적정" | null;
+export type ProductionBatchStatus =
+  | "즉시 생산 필요"
+  | "보충 필요"
+  | "주의"
+  | "재고 적정"
+  | null;
 
 export interface ProductionBatchItem {
   id: string;
@@ -326,9 +334,9 @@ export interface ProductAnalysisData {
 export interface RealtimeOrderItem {
   id: string;
   orderId: string;
-  status: "완료" | "준비" | "수령";
+  status: string;
   productName: string;
-  type: "배달" | "POS";
+  type: string;
 }
 
 export interface OrderHourlyPoint {
@@ -339,6 +347,9 @@ export interface OrderHourlyPoint {
 export interface OrderAgentData {
   items: RealtimeOrderItem[];
   todaySales: string;
+  todaySalesLabel?: string;
+  sectionLabel?: string;
+  emptyMessage?: string;
   chartData: OrderHourlyPoint[];
 }
 
@@ -380,7 +391,7 @@ export interface TodaySalesSnapshot {
   topItems: SalesTopItem[];
 }
 
-// ── AI 추천 발주 ───────────────────────────────────────────────
+// ── 실적 기반 발주 추천 ───────────────────────────────────────────────
 export type AiOrderStatus = "발주 완료" | "납품 완료" | null;
 
 export interface AiOrderSummary {
@@ -388,7 +399,7 @@ export interface AiOrderSummary {
   reportDate: string;
   reportTime: string;
   totalCount: number;
-  aiScore: string; // AI 추천 신뢰도 (예: "98.2%")
+  aiScore: string; // 과거 실적 기반 편차 지표 (예: "4주 평균 편차 ±12%")
 }
 
 export interface AiOrderItem {
@@ -453,6 +464,91 @@ export interface AiPerformanceData {
   promotionWeekly: PromotionWeeklyPoint[];
   paymentTypes: PaymentTypeItem[];
   kpis: PerformanceKpiItem[];
+}
+
+// ── 프로모션 실적 분석 ──────────────────────────────────────────
+export interface PromoResponseItem {
+  id: string;
+  name: string;
+  billCnt: number;
+  salesAmt: number;
+  tone: "high" | "medium" | "low";
+  interpretation: string;
+  action: string;
+}
+
+export interface PromoPerformanceSummary {
+  topByResponse: PromoResponseItem[];
+  lowByResponse: PromoResponseItem[];
+  totalBills: number;
+  totalSales: number;
+  grounding: string;
+  action: string;
+}
+
+export interface PromoSalesItem {
+  id: string;
+  name: string;
+  salesAmt: number;
+  billCnt: number;
+  efficiency: number;
+  tone: "high" | "medium" | "low";
+  interpretation: string;
+  action: string;
+}
+
+export interface PromoSalesSummary {
+  topBySales: PromoSalesItem[];
+  highEfficiency: PromoSalesItem[];
+  totalSales: number;
+  avgEfficiency: number;
+  grounding: string;
+  action: string;
+}
+
+export interface PromoHourlyItem {
+  hour: number;
+  qty: number;
+  salesAmt: number;
+}
+
+export interface PromoHourlySummary {
+  promoId: string;
+  promoName: string;
+  hourlyData: PromoHourlyItem[];
+  peakHours: number[];
+  weakHours: number[];
+  interpretation: string;
+  action: string;
+}
+
+export interface PromoStoreCompareItem {
+  storeId: string;
+  storeName: string;
+  billCnt: number;
+  salesAmt: number;
+  diffBillCnt: number;
+  diffSalesAmt: number;
+  isOurs: boolean;
+  tone: "higher" | "lower" | "same";
+}
+
+export interface PromoStoreCompareSummary {
+  promoId: string;
+  promoName: string;
+  ourBillCnt: number;
+  ourSalesAmt: number;
+  stores: PromoStoreCompareItem[];
+  interpretation: string;
+  grounding: string;
+  action: string;
+}
+
+export interface PromoPerformanceData {
+  response: PromoPerformanceSummary;
+  sales: PromoSalesSummary;
+  hourly: PromoHourlySummary;
+  storeCompare: PromoStoreCompareSummary;
 }
 
 // ── 오늘의 AI 브리핑 ───────────────────────────────────────────

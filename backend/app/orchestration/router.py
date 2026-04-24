@@ -1431,11 +1431,11 @@ class AgentRouter:
                     float(r.get("stockout_probability", 0) or 0) for r in prod_items[:8]
                 ) / max(len(prod_items[:8]), 1)
                 validation_note = (
-                    f"\n\n📐 **예측 검증 리포트**\n"
-                    f"- 예측 모델: 4주 동일 요일 판매 패턴 + 시간대별 소진 속도 기반\n"
-                    f"- 고위험 품목: {high_risk_count}개 (품절 확률 평균 {avg_stockout_pct:.0f}%)\n"
-                    f"- 예측 정확도: 과거 4주 데이터 기반 산출 (실데이터 파생)\n"
-                    f"- 오차 요인: 특수 행사, 날씨 변동, 비정기 대량 주문 등은 예측에서 제외됨\n"
+                    f"\n\n📐 **재고 추정 검증 리포트**\n"
+                    f"- 추정 방식: 4주 동일 요일 판매 패턴 + 시간대별 소진 속도 기반 가중이동평균\n"
+                    f"- 고위험 품목: {high_risk_count}개 (동일 요일 품절 빈도 평균 {avg_stockout_pct:.0f}%)\n"
+                    f"- 검증 방식: 과거 4주 데이터 기반 산출 (확정 예측이 아닌 과거 패턴 기반 추정)\n"
+                    f"- 오차 요인: 특수 행사, 날씨 변동, 비정기 대량 주문 등은 추정에서 제외됨\n"
                     f"- 한계: 실시간 판매 변동 시 오차가 커질 수 있으며, 1시간 내 재평가 권장"
                 )
                 return (
