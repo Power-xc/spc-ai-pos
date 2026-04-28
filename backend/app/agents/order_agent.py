@@ -55,7 +55,27 @@ class OrderAgent:
         self._last_generated_options: dict[str, OrderOptionsResponse] = {}
         self._category_generated_options: dict[str, OrderOptionsResponse] = {}
         self._draft_orders: dict[str, dict] = {}
+        self._last_order_plan: dict[str, dict] = {}
         self._events_cache: list[dict[str, Any]] | None = None
+
+    def set_last_order_plan(
+        self,
+        *,
+        store_id: str,
+        items: list[dict],
+        source: str = "",
+        label: str = "",
+    ) -> None:
+        """Store the latest order plan so the checklist can reference it."""
+        self._last_order_plan[store_id] = {
+            "items": items,
+            "source": source,
+            "label": label,
+        }
+
+    def get_last_order_plan(self, store_id: str) -> dict[str, Any] | None:
+        """Return the last stored order plan for a store, or None."""
+        return self._last_order_plan.get(store_id)
 
     @staticmethod
     def _llm_enabled(llm_gateway) -> bool:
@@ -166,9 +186,48 @@ class OrderAgent:
                 "option_2weeks_ago": latest_biz_date - timedelta(days=14),
                 "option_last_month": latest_biz_date - timedelta(days=28),
             }
+            option_label_map = {
+                "option_last_week": "전주 동요일",
+                "option_2weeks_ago": "전전주 동요일",
+                "option_last_month": "전월 동요일",
+            }
+
+            def _resolve_option_reference(
+                option_id: str, expected_date: date
+            ) -> dict[str, Any]:
+                rows = reference.get(option_id, [])
+                expected_iso = expected_date.isoformat()
+                actual_dates: set[date] = set()
+                for r in rows:
+                    bd = r.get("biz_date")
+                    if bd:
+                        try:
+                            actual_dates.add(date.fromisoformat(str(bd)))
+                        except (ValueError, TypeError):
+                            pass
+                actual_date: date | None = expected_date if expected_date in actual_dates else None
+                is_exact = actual_date == expected_date
+                if is_exact:
+                    ref_label = option_label_map.get(option_id, expected_date.strftime("%m월 %d일"))
+                    ref_reason = f"{option_label_map.get(option_id, '동일 요일')} 데이터 사용"
+                elif actual_date is not None:
+                    ref_label = f"대체 참고일 {actual_date.strftime('%m월 %d일')}"
+                    ref_reason = f"{option_label_map.get(option_id, '동일 요일')} 데이터가 없어 가장 가까운 주문일 사용"
+                else:
+                    ref_label = f"데이터 없음"
+                    ref_reason = "해당 기간 주문 데이터가 없습니다"
+                return {
+                    "label": ref_label,
+                    "reference_reason": ref_reason,
+                    "expected_reference_date": expected_iso,
+                    "actual_reference_date": actual_date.isoformat() if actual_date else None,
+                    "is_exact_same_weekday": is_exact,
+                    "fallback": not is_exact,
+                    "reference_date": (actual_date or expected_date).isoformat(),
+                }
 
             def build_option(
-                option_id: str, label: str, rows: list[dict]
+                option_id: str, rows: list[dict], ref_info: dict[str, Any]
             ) -> OrderOption:
                 total_qty = sum(
                     int(
@@ -217,8 +276,7 @@ class OrderAgent:
                     deviation_label = f"평균 대비 {abs(deviation_pct)}% 적음"
 
                 flags: list[str] = []
-                reference_date = option_reference_dates.get(option_id, latest_biz_date)
-                if reference_date.isoformat() in promo_dates or promo_names:
+                if ref_info["reference_date"] in promo_dates or promo_names:
                     flags.append("CAMPAIGN_PERIOD")
                 flags.append("ESTIMATED_FROM_SALES")
                 if total_qty <= 0:
@@ -226,8 +284,14 @@ class OrderAgent:
 
                 return OrderOption(
                     option_id=option_id,
-                    label=label,
-                    reference_date=str(reference_date),
+                    label=ref_info["label"],
+                    reference_date=ref_info["reference_date"],
+                    expected_reference_date=ref_info["expected_reference_date"],
+                    actual_reference_date=ref_info["actual_reference_date"],
+                    reference_label=ref_info["label"],
+                    reference_reason=ref_info["reference_reason"],
+                    is_exact_same_weekday=ref_info["is_exact_same_weekday"],
+                    fallback=ref_info["fallback"],
                     total_qty=total_qty,
                     total_amount=total_amount,
                     deviation_from_avg_pct=deviation_pct,
@@ -259,18 +323,18 @@ class OrderAgent:
             options = [
                 build_option(
                     "option_last_week",
-                    "전주 동요일",
                     reference.get("option_last_week", []),
+                    _resolve_option_reference("option_last_week", option_reference_dates["option_last_week"]),
                 ),
                 build_option(
                     "option_2weeks_ago",
-                    "전전주 동요일",
                     reference.get("option_2weeks_ago", []),
+                    _resolve_option_reference("option_2weeks_ago", option_reference_dates["option_2weeks_ago"]),
                 ),
                 build_option(
                     "option_last_month",
-                    "전월 동요일",
                     reference.get("option_last_month", []),
+                    _resolve_option_reference("option_last_month", option_reference_dates["option_last_month"]),
                 ),
             ]
 
@@ -433,9 +497,14 @@ class OrderAgent:
         store_id: str,
         category: str | None = None,
         limit: int = 3,
+        cutoff_date: date | None = None,
         trace: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Build adjustment guidance from recent order snapshots."""
+        """Build adjustment guidance from recent order snapshots.
+
+        cutoff_date: if set, only biz_date <= cutoff_date is used.
+        Future dates are never included in recent order results.
+        """
         db_started_at = perf_counter()
         async with self.db_session_factory() as db:
             snapshots = await sql_queries.get_recent_order_snapshots(
@@ -443,15 +512,33 @@ class OrderAgent:
                 store_id,
                 category=category,
                 limit=limit,
+                cutoff_date=cutoff_date,
             )
         db_elapsed = add_elapsed(trace, "order_recent_history_ms", db_started_at)
         add_ms(trace, "db_ms", db_elapsed)
+
+        date_list = [
+            str(snapshot.get("biz_date") or "")
+            for snapshot in snapshots
+            if snapshot.get("biz_date")
+        ]
+        actual_count = len(snapshots)
+        future_excluded = cutoff_date is not None
+        has_future = any(
+            d > cutoff_date.isoformat() for d in date_list
+        ) if cutoff_date else False
 
         if not snapshots:
             return {
                 "message": "최근 영업 실적 데이터가 부족해 조정안을 계산하지 못했습니다.",
                 "recent_orders": [],
                 "adjusted_items": [],
+                "requested_recent_count": limit,
+                "actual_recent_count": 0,
+                "data_cutoff_date": cutoff_date.isoformat() if cutoff_date else None,
+                "future_data_excluded": future_excluded,
+                "has_future_date": False,
+                "recent_order_dates": [],
             }
 
         aggregate: dict[str, dict[str, Any]] = {}
@@ -488,21 +575,25 @@ class OrderAgent:
         adjusted_items = adjusted_items[:8]
 
         total_qty = sum(item["quantity"] for item in adjusted_items)
-        date_list = [
-            str(snapshot.get("biz_date") or "")
-            for snapshot in snapshots
-            if snapshot.get("biz_date")
-        ]
         message = (
-            f"최근 영업 실적 {len(snapshots)}일({', '.join(date_list)})을 기준으로 "
+            f"최근 영업 실적 {actual_count}일({', '.join(date_list)})을 기준으로 "
             f"총 {total_qty}개 추정 주문 조정안을 계산했습니다."
             if date_list
-            else f"최근 영업 실적 {len(snapshots)}일을 기준으로 총 {total_qty}개 추정 주문 조정안을 계산했습니다."
+            else f"최근 영업 실적 {actual_count}일을 기준으로 총 {total_qty}개 추정 주문 조정안을 계산했습니다."
         )
+        if future_excluded and actual_count < limit:
+            message += f" 확인 가능한 주문은 {actual_count}건입니다. 미래 날짜 데이터는 제외했습니다."
+
         return {
             "message": message,
             "recent_orders": snapshots,
             "adjusted_items": adjusted_items,
+            "requested_recent_count": limit,
+            "actual_recent_count": actual_count,
+            "data_cutoff_date": cutoff_date.isoformat() if cutoff_date else None,
+            "future_data_excluded": future_excluded,
+            "has_future_date": has_future,
+            "recent_order_dates": date_list,
         }
 
     async def analyze_option(
@@ -704,7 +795,7 @@ class OrderAgent:
 
             if is_group_exclude:
                 message = (
-                    f"📋 **단체/예약 주문 분리 결과** ({option.label})\n\n"
+                    f" **단체/예약 주문 분리 결과** ({option.label})\n\n"
                     f"**일반 수요 기준 추천** (단체/예약 제외)\n"
                     f"- 총 수량: {total_qty}개 (원안 {original_qty}개에서 {qty_diff}개 감소)\n"
                     f"- 예상 금액: {int(total_amount):,}원 (원안 {int(original_amount):,}원에서 {int(amount_diff):,}원 감소)\n\n"

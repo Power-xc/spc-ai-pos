@@ -123,12 +123,12 @@ export default function AiBriefingModal({ isOpen, onClose, frameRef, onNavigate,
   };
 
   const overlayStyle: React.CSSProperties = frameRect
-    ? { position: "fixed", top: frameRect.top, left: frameRect.left, width: frameRect.width, height: frameRect.height }
+    ? { position: "fixed", top: "50%", left: "50%", width: "100%", height: "100%", transform: "translate(-50%, -50%)" }
     : { position: "fixed", inset: 0 };
 
   return createPortal(
     <div
-      className="z-[60] flex items-center justify-center"
+      className="z-[60] flex items-center justify-center relative"
       style={{ ...overlayStyle, backgroundColor: "rgba(0,0,0,0.45)" }}
       onClick={onClose}
     >
@@ -139,6 +139,9 @@ export default function AiBriefingModal({ isOpen, onClose, frameRef, onNavigate,
           maxHeight: "680px",
           boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
           backgroundColor: "#f1f1f1",
+          position: "absolute",
+          top:"50%",
+          transform:"translateY(-50%)",
         }}
         onClick={(e) => e.stopPropagation()}
       >

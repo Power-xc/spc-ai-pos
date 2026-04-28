@@ -6,6 +6,7 @@ import DatePicker from "../ui/DatePicker";
 
 import FilterReset from "../../../assets/ico-filterReset.svg";
 import { getOrderMonthSummary, getAiOrderItems } from "../../../lib/api";
+import { resolveProductDisplayName } from "../../../lib/productNameResolver";
 import { DEMO_PRIMARY_STORE_ID } from "../../../lib/demoStoreConfig";
 import { getDemoDate } from "../../../lib/demoDateTime";
 import type {
@@ -374,7 +375,7 @@ export default function OrderManagement({
             <div className="flex items-center gap-[8px]">
               <div className="w-[9px] h-[5px] bg-white rounded-[30px]" />
               <p className="font-bold text-[12px] text-white leading-[21px]">
-                실적 기반 발주
+                AI 추천 발주
               </p>
               <button
                 onClick={() => setShowAi(true)}
@@ -574,7 +575,7 @@ export default function OrderManagement({
                         {orderNumbers[item.id] ?? ""}
                       </span>
 
-                      {item.name}
+                       {resolveProductDisplayName(item.name)}
                     </p>
                     {item.stockWarning && (
                       <p className="text-[8px] text-[#ff522c] leading-[13px]">
@@ -988,7 +989,7 @@ export default function OrderManagement({
                 >
                   <div className="flex flex-col gap-[2px]">
                     <p className="font-bold text-[13px] text-[#333] leading-[18px]">
-                      {detailItem.name}
+                      {resolveProductDisplayName(detailItem.name)}
                     </p>
                     <p className="text-[9px] text-[#333] opacity-80 leading-[14px]">
                       {orderNum}

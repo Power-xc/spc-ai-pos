@@ -57,7 +57,9 @@ class OrderRepository(RepositoryBase):
         for sort_order, item in enumerate(items):
             product_id = str(item["product_id"])
             product = product_map[product_id]
-            unit_price = self._coerce_price(item.get("unit_price"), product.base_price)
+            unit_price = self._coerce_price(
+                item.get("unit_price"), item.get("base_price"), product.base_price
+            )
             quantity = int(item["quantity"])
             amount = round(unit_price * quantity, 2) if unit_price is not None else None
             self.session.add(
@@ -150,7 +152,9 @@ class OrderRepository(RepositoryBase):
             product_id = str(item["product_id"])
             product = resolved_product_map[product_id]
             quantity = int(item["quantity"])
-            unit_price = self._coerce_price(item.get("unit_price"), product.base_price)
+            unit_price = self._coerce_price(
+                item.get("unit_price"), item.get("base_price") or item.get("unit_amount"), product.base_price
+            )
             amount = round(unit_price * quantity, 2) if unit_price is not None else None
             order_item = OrderItem(
                 order_id=order.id,

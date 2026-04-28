@@ -18,6 +18,11 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "../../../lib/recharts";
+import { resolveProductDisplayName } from "../../../lib/productNameResolver";
+import {
+  subscribeDemoDateTime,
+  getDemoDateTimeState,
+} from "../../../lib/demoDateTime";
 
 interface MenuProps {
   isAiPanelOpen: boolean;
@@ -58,15 +63,23 @@ export default function RealtimeStatus({
     if (sliderRef.current) sliderRef.current.style.cursor = "grab";
   };
 
-  useEffect(() => {
+  const refreshAll = () => {
     getProductionAgent().then(setData);
     getOrderAgent().then(setOrderData);
+  };
+
+  useEffect(() => {
+    refreshAll();
     getProductAnalysis().then(setAnalysisData);
+    const unsub = subscribeDemoDateTime(refreshAll);
+    return () => { unsub(); };
   }, []);
 
   return (
-    <ContentWrapper isAiPanelOpen={isAiPanelOpen} isSidebarOpen={isSidebarOpen}>
-      {/* ── 생산관리 에이전트 카드 ── */}
+    <>
+      <style>{styles}</style>
+      <ContentWrapper isAiPanelOpen={isAiPanelOpen} isSidebarOpen={isSidebarOpen}>
+        {/* ── 생산관리 에이전트 카드 ── */}
       <div className="bg-white border border-[#ebebeb] rounded-[20px] overflow-hidden">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-[15px] pt-[14px] pb-[10px]">
@@ -95,19 +108,19 @@ export default function RealtimeStatus({
                 /* 부족 칩 */
                 <div
                   key={item.id}
-                  className="flex items-center gap-[14px] bg-[#ebedef] border border-[#ebedef] rounded-[20px] px-[7px]"
+                  className="flex items-center gap-[14px] bg-[#ebedef] border border-[#ebedef] rounded-[20px] px-[7px] pr-[0]"
                 >
-                  <div className="flex items-center gap-[16px]">
+                  <div className="flex items-center gap-[10px]">
                     <div className="relative flex items-center">
                       <div
                         className="absolute w-[4px] h-[4px] bg-[#ff522c] rounded-full"
                         style={{ left: 0 }}
                       />
                       <p className="font-bold text-[11px] text-[#222] pl-[8px] leading-[14px]">
-                        {item.name}
+                        {resolveProductDisplayName(item.name)}
                       </p>
                     </div>
-                    <p className="font-bold text-[11px] text-black leading-[14px]">
+                    <p className="font-bold text-[11px] text-black leading-[14px] !text-[#ff522c]">
                       {item.badgeLabel ?? `${item.quantity}개`}
                     </p>
                   </div>
@@ -138,7 +151,7 @@ export default function RealtimeStatus({
                         style={{ left: 0 }}
                       />
                       <p className="font-bold text-[11px] text-[#222] pl-[8px] leading-[14px]">
-                        {item.name}
+                        {resolveProductDisplayName(item.name)}
                       </p>
                     </div>
                     <p className="font-bold text-[11px] text-black leading-[14px]">
@@ -146,7 +159,7 @@ export default function RealtimeStatus({
                     </p>
                   </div>
                 </div>
-              ),
+              )
             )}
           </div>
         ) : (
@@ -157,18 +170,10 @@ export default function RealtimeStatus({
           </div>
         )}
 
-        {/* AI 추천 pill */}
-        {data ? (
-          <div className="mx-[15px] mb-[14px] bg-[#f0f1f3] rounded-[20px] px-[10px] py-[10px]">
-            <p className="text-[9px] text-black leading-[14px] block">
-              <span className="font-bold">실적 기반 추천 </span>
-              <span>: </span>
-              <span>{data.aiRecommendation}</span>
-            </p>
-          </div>
-        ) : (
-          <div className="mx-[15px] mb-[14px] bg-[#f0f1f3] rounded-[20px] px-[10px] py-[10px]">
-            <div className="h-[10px] w-[200px] bg-[#e0e0e0] rounded animate-pulse" />
+        {/* AI 추천 요약 */}
+        {data && (
+          <div className="production-summary-note mx-[15px] mb-[14px]">
+            최근 판매 패턴과 예상 재고를 기준으로 긴급 생산 대상을 선별했습니다.
           </div>
         )}
       </div>
@@ -179,14 +184,11 @@ export default function RealtimeStatus({
         <div className="flex items-center justify-between px-[15px] pt-[14px] pb-[10px]">
           <div className="flex items-center gap-[6px]">
             <div className="w-[7px] h-[4px] bg-[#3FAF60] rounded-[30px]" />
-            <p className="font-bold text-[12px] text-[#555] flex items-center">
+            <p className="font-bold text-[12px] text-[#555]">
               주문관리 에이전트
-              <span className="font-normal text-[10px] text-[#555555] ml-[10px]">
-                {orderData?.sectionLabel ?? "실시간 판매 흐름"}
-              </span>
             </p>
           </div>
-          {orderData && (
+          {orderData ? (
             <div className="flex items-center gap-[4px]">
               <p className="font-bold text-[12px] text-[#39acdb]">
                 {orderData.todaySales}
@@ -195,11 +197,13 @@ export default function RealtimeStatus({
                 {orderData.todaySalesLabel ?? "금일"}
               </p>
             </div>
+          ) : (
+            <div className="h-[18px] w-[90px] bg-[#f0f1f3] rounded animate-pulse" />
           )}
         </div>
 
         {/* 주문 카드 목록 */}
-        {orderData && (
+        {orderData ? (
           orderData.items.length > 0 ? (
             <div
               ref={sliderRef}
@@ -241,11 +245,22 @@ export default function RealtimeStatus({
                         </span>
                       </div>
                       <p className="font-bold text-[11px] text-[#222] leading-[16px]">
-                        {item.productName}
+                        {resolveProductDisplayName(item.productName)}
                       </p>
-                      <p className="font-medium text-[8px] text-[#555] leading-[9px]">
-                        {item.type}
-                      </p>
+                      {item.currentQty != null && item.endOfDayQty != null ? (
+                        <div className="flex flex-col gap-[1px]">
+                          <p className="font-medium text-[8px] text-[#555] leading-[9px]">
+                            현재 추정 {item.currentQty}개
+                          </p>
+                          <p className="font-medium text-[8px] text-[#aaa] leading-[9px]">
+                            마감 예상 {item.endOfDayQty}개
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="font-medium text-[8px] text-[#555] leading-[9px]">
+                          {item.type}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
@@ -260,10 +275,29 @@ export default function RealtimeStatus({
               </div>
             </div>
           )
+        ) : (
+          /* 주문관리 에이전트 로딩 skeleton */
+          <div className="flex gap-[8px] pb-[10px] px-[10px] ml-3">
+            {[1, 2, 3, 4].map(i => (
+              <div
+                key={i}
+                className="flex-shrink-0 border border-[#ebedef] rounded-[20px] px-[12px] py-[10px] w-[103px] animate-pulse"
+              >
+                <div className="flex flex-col gap-[4px]">
+                  <div className="flex items-center justify-between">
+                    <div className="h-[8px] w-[24px] rounded bg-[#f0f1f3]" />
+                    <div className="h-[8px] w-[16px] rounded bg-[#f0f1f3]" />
+                  </div>
+                  <div className="h-[11px] w-[60px] rounded bg-[#eef0f2]" />
+                  <div className="h-[8px] w-[50px] rounded bg-[#f0f1f3]" />
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* 시간대별 매출 차트 */}
-        {orderData && orderData.chartData.length > 0 && (
+        {orderData && orderData.chartData.length > 0 ? (
           <div className="px-[15px] pb-[14px] time-chart mt-2">
             <ResponsiveContainer width="100%" height={60}>
               <AreaChart
@@ -312,6 +346,13 @@ export default function RealtimeStatus({
                 />
               </AreaChart>
             </ResponsiveContainer>
+            <p className="text-[8px] text-[#888] leading-[12px] mt-[6px] text-center">
+              시간대별 판매액 추이
+            </p>
+          </div>
+        ) : (
+          <div className="px-[15px] pb-[14px] mt-2 animate-pulse">
+            <div className="h-[60px] w-full rounded bg-[#f5f6f8]" />
           </div>
         )}
       </div>
@@ -324,8 +365,9 @@ export default function RealtimeStatus({
             <div className="w-[7px] h-[4px] bg-[#F2CA00] rounded-[30px]" />
             <p className="font-bold text-[12px] text-[#555] flex items-center">
               제품분석 에이전트
+              <span className="demo-badge ml-[8px]">데모 데이터</span>
               <span className="font-normal text-[10px] text-[#555555] ml-[10px]">
-                매출 분석 + 프로모션 효과
+                데모 데이터 기반 상품 분석
               </span>
             </p>
           </div>
@@ -353,10 +395,10 @@ export default function RealtimeStatus({
                 >
                   {tab}
                 </button>
-              ))}
-            </div>
-          )}
-        </div>
+               ))}
+          </div>
+        )}
+      </div>
 
         {/* 테이블 */}
         {analysisData &&
@@ -376,8 +418,8 @@ export default function RealtimeStatus({
                   <p className="text-[8px] font-bold text-[#555]">상품명</p>
                   <p className="text-[8px] font-bold text-[#555]">수량</p>
                   <p className="text-[8px] font-bold text-[#555]">매출액</p>
-                  <p className="text-[8px] font-bold text-[#555]">매출기여</p>
-                  <p className="text-[8px] font-bold text-[#555]">프로모션</p>
+                  <p className="text-[8px] font-bold text-[#555]">매출 비중</p>
+                  <p className="text-[8px] font-bold text-[#555]">프로모션 효과</p>
                 </div>
                 {/* 구분선 */}
                 <div className="mx-[15px] h-[2px] bg-[#f0f1f3] rounded-full mb-[6px]" />
@@ -419,7 +461,7 @@ export default function RealtimeStatus({
                             />
                           </svg>
                         )}
-                        <p className="text-[9px] text-[#555]">{item.name}</p>
+                        <p className="text-[9px] text-[#555]">{resolveProductDisplayName(item.name)}</p>
                       </div>
                       {/* 수량 */}
                       <p className="text-[9px] text-[#555]">{item.quantity}</p>
@@ -474,12 +516,11 @@ export default function RealtimeStatus({
                     </div>
                   ))}
                 </div>
-                {/* AI 상태 pill */}
+                {/* 데모 안내 */}
                 <div className="mx-[15px] mb-[14px] bg-[#f0f1f3] rounded-[20px] px-[10px] py-[8px]">
                   <p className="text-[9px] text-black leading-[14px]">
-                    <span className="font-bold">AI 상태 </span>
-                    <span>: </span>
-                    <span>{analysisData.aiStatus}</span>
+                    <span className="font-bold">데모 안내 </span>
+                    <span>: 현재 제품분석은 샘플 데이터 기준이며, 실제 API 연동 전까지 참고용으로 표시됩니다.</span>
                   </p>
                 </div>
               </>
@@ -487,5 +528,29 @@ export default function RealtimeStatus({
           })()}
       </div>
     </ContentWrapper>
+    </>
   );
 }
+
+const styles = `
+  .production-summary-note {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: #f5f6f8;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #4b5563;
+  }
+  
+  .demo-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 8px;
+    font-weight: 600;
+    border-radius: 8px;
+    line-height: 1.2;
+  }
+`;

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     database_schema: str = Field(default="dunkin_mart", alias="DATABASE_SCHEMA")
     data_mode: str = Field(default="file", alias="DATA_MODE")
     data_dir: str = Field(default=default_data_dir, alias="DATA_DIR")
+    demo_mode: bool = Field(default=False, alias="DEMO_MODE")
+    demo_seed_dir: str | None = Field(default=None, alias="DEMO_SEED_DIR")
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_base_url: str = Field(

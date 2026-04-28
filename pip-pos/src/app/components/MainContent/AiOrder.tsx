@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import DatePicker from "../ui/DatePicker";
-import { getAiOrderSummary, getAiOrderItems } from "../../../lib/api";
+import { getAiOrderSummary, getAiOrderItems, confirmOrder, getOrderOptions, getAllOrderItems } from "../../../lib/api";
 import { getProductImageByName } from "../../../lib/productImages";
+import { resolveProductDisplayName } from "../../../lib/productNameResolver";
 import FilterReset from "../../../assets/ico-filterReset.svg";
 import activeStep1 from "../../../assets/active-step.png";
 import type {
   AiOrderItem,
   AiOrderSummary,
   OrderDetailCategory,
+  OrderConfirmResponse,
+  OrderOptionSummary,
 } from "../../../types";
 
 interface Props {
@@ -40,7 +43,7 @@ type ReviewGroup = {
   items: AiOrderItem[];
 };
 
-const STEPS = ["실적 기반 발주", "수동발주", "점주 최종 컨펌"];
+const STEPS = ["AI 추천 발주", "수동발주", "점주 최종 컨펌"];
 
 function parsePrice(price: string): number {
   return parseInt(price.replace(/[^0-9]/g, ""), 10) || 0;
@@ -96,11 +99,19 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [activeStep, setActiveStep] = useState(0);
+  const [orderOptions, setOrderOptions] = useState<OrderOptionSummary[]>([]);
+  const [selectedOptionIdx, setSelectedOptionIdx] = useState(0);
+  const [confirmState, setConfirmState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [confirmResult, setConfirmResult] = useState<OrderConfirmResponse | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [overLimitItems, setOverLimitItems] = useState<
     { name: string; aiQty: string; inputQty: string }[] | null
   >(null);
   const [step2Pages, setStep2Pages] = useState<[number, number]>([1, 1]);
+  const [allOptionsItems, setAllOptionsItems] = useState<AiOrderItem[][]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const activeItems = allOptionsItems[selectedOptionIdx] ?? allItems;
 
   useEffect(() => {
     if (!open) return;
@@ -113,9 +124,15 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
       });
       setQuantities(initQty);
     });
+    getOrderOptions().then((opts) => {
+      setOrderOptions(opts);
+    });
+    getAllOrderItems().then((itemsByOption) => {
+      setAllOptionsItems(itemsByOption);
+    });
   }, [open]);
 
-  const filtered = allItems
+  const filtered = activeItems
     .filter((item) => {
       if (search && !item.name.includes(search)) return false;
       if (dateFrom && item.orderDate < dateFrom.replaceAll("-", "."))
@@ -201,7 +218,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
             <p className="font-bold text-[12px] text-[#555] leading-[20px]">
               {activeStep >= 1
                 ? (summary?.weekLabel ?? "").replace("AI 추천", "직접 발주").replace("실적 기반 추천", "직접 발주") || "직접 발주"
-                : (summary?.weekLabel ?? "실적 기반 발주")}
+                : (summary?.weekLabel ?? "AI 추천 발주")}
             </p>
             {activeStep === 0 && summary?.aiScore && (
               <div className="flex items-center gap-[3px] bg-[#eaf6ff] rounded-[10px] px-[6px] py-[2px]">
@@ -301,6 +318,96 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
             );
           })}
         </div>
+
+        {/* ── 3개 옵션 카드 (Step 0/1에서만 표시) ── */}
+        {activeStep < 2 && orderOptions.length > 0 && (
+          <div className="flex items-stretch gap-[8px] px-[15px] pt-[10px]">
+            {orderOptions.slice(0, 3).map((opt, idx) => {
+              const isSelected = idx === selectedOptionIdx;
+              const isUnavailable = (opt.flags ?? []).includes("DATA_UNAVAILABLE") && opt.itemCount === 0;
+              return (
+                <button
+                  key={opt.option_id}
+                  disabled={isUnavailable}
+                  onClick={() => {
+                    setSelectedOptionIdx(idx);
+                    setPage(1);
+                  }}
+                  className="flex-1 rounded-[12px] px-[12px] py-[8px] flex flex-col gap-[4px] text-left border-2 transition-colors"
+                  style={isUnavailable
+                    ? { borderColor: "#e0e0e0", backgroundColor: "#f5f5f5", cursor: "not-allowed", opacity: 0.6 }
+                    : isSelected
+                      ? { borderColor: "#3aaedd", backgroundColor: "#eaf6ff", cursor: "pointer" }
+                      : { borderColor: "#f0f1f3", backgroundColor: "#fafafa", cursor: "pointer" }}
+                >
+                  <p className="font-bold text-[10px] text-[#222] leading-[14px]">
+                    {opt.label}
+                  </p>
+                  {isUnavailable ? (
+                    <p className="text-[8px] text-[#aa8800] leading-[11px]">
+                      데이터 부족 · 선택 불가
+                    </p>
+                  ) : opt.reference_date ? (
+                    <p className="text-[7px] text-[#888] leading-[11px]">
+                      기준 {opt.reference_date}
+                    </p>
+                  ) : null}
+                  {!isUnavailable && (
+                    <>
+                      <p className="text-[9px] text-[#555] leading-[13px]">
+                        {opt.itemCount}개 · 총 {opt.total_qty.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}개
+                      </p>
+                      <p className="text-[9px] font-bold leading-[13px]"
+                        style={{ color: isSelected ? "#3aaedd" : "#888" }}>
+                        ₩{Math.round(opt.total_amount).toLocaleString("ko-KR")}
+                      </p>
+                    </>
+                  )}
+                  {opt.deviation_label && !isUnavailable && (
+                    <p className="text-[8px] text-[#ff522c] leading-[11px]">
+                      {opt.deviation_label}
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 마감/캠페인 참고 문구 (Step 0/1) */}
+        {activeStep < 2 && orderOptions.length > 0 && (
+          <div className="px-[15px] flex flex-col gap-[2px]">
+            {(() => {
+              const selOpt = orderOptions[selectedOptionIdx];
+              const hasCampaign = (selOpt?.flags ?? []).some(
+                (f) => f === "CAMPAIGN_PERIOD" || f === "SPECIAL_PERIOD",
+              );
+              const hasDataUnavailable = (selOpt?.flags ?? []).some(
+                (f) => f === "DATA_UNAVAILABLE",
+              );
+              return (
+                <>
+                  {hasCampaign && (
+                    <p className="text-[8px] text-[#ff522c] leading-[12px]">
+                      🏷 행사/이벤트 기간: 발주량이 평소와 다를 수 있습니다. (참고 가이드)
+                    </p>
+                  )}
+                  {hasDataUnavailable && (
+                    <p className="text-[8px] text-[#aa8800] leading-[11px]"
+>
+                      이 옵션의 실제 판매 데이터가 없습니다. 참고용으로만 확인하세요.
+                    </p>
+                  )}
+                  {!hasCampaign && !hasDataUnavailable && (
+                    <p className="text-[8px] text-[#888] leading-[11px]">
+                      마감 전: 발주 확정 후 재고 자동 반영됩니다. (참고 가이드)
+                    </p>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
 
         {/* ── 콘텐츠 (스텝별 분기) ── */}
         {activeStep === 0 && (
@@ -422,7 +529,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                     <div className="flex items-center gap-[6px] w-[165px] shrink-0">
                       <img
                         src={getProductImageByName(item.name)}
-                        alt={item.name}
+                        alt={resolveProductDisplayName(item.name)}
                         className="w-[37px] h-[37px] rounded-[10px] shrink-0 object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = "/images/products/coming-soon.png";
@@ -430,7 +537,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                       />
                       <div className="flex flex-col">
                         <p className="font-bold text-[11px] text-[#222] leading-[20px]">
-                          {item.name}
+                          {resolveProductDisplayName(item.name)}
                         </p>
                         <p className="text-[10px] text-[#888] leading-[20px]">
                           {item.unitPrice} /{" "}
@@ -694,7 +801,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                     <div className="flex items-center gap-[6px] w-[165px] shrink-0">
                       <img
                         src={getProductImageByName(item.name)}
-                        alt={item.name}
+                        alt={resolveProductDisplayName(item.name)}
                         className="w-[37px] h-[37px] rounded-[10px] shrink-0 object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = "/images/products/coming-soon.png";
@@ -702,7 +809,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                       />
                       <div className="flex flex-col">
                         <p className="font-bold text-[11px] text-[#222] leading-[20px]">
-                          {item.name}
+                          {resolveProductDisplayName(item.name)}
                         </p>
                         <p className="text-[10px] text-[#888] leading-[20px]">
                           {item.unitPrice} /{" "}
@@ -992,30 +1099,30 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                    <div className="flex items-center gap-[6px] w-[165px] shrink-0">
                       <img
                         src={getProductImageByName(item.name)}
-                        alt={item.name}
+                        alt={resolveProductDisplayName(item.name)}
                         className="w-[37px] h-[37px] rounded-[10px] shrink-0 object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = "/images/products/coming-soon.png";
                         }}
                       />
-                       <div className="flex flex-col">
-                         <p className="font-bold text-[11px] text-[#222] leading-[20px]">
-                           {item.name}
-                                </p>
-                                <p className="text-[10px] text-[#888] leading-[20px]">
-                                  {item.unitPrice} /{" "}
-                                  <span
-                                    style={{
-                                      color: item.stockWarning
-                                        ? "#ff522c"
-                                        : "#888",
-                                    }}
-                                  >
-                                    {item.stockInfo}
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
+                        <div className="flex flex-col">
+                          <p className="font-bold text-[11px] text-[#222] leading-[20px]">
+                            {resolveProductDisplayName(item.name)}
+                                 </p>
+                                 <p className="text-[10px] text-[#888] leading-[20px]">
+                                   {item.unitPrice} /{" "}
+                                   <span
+                                     style={{
+                                       color: item.stockWarning
+                                         ? "#ff522c"
+                                         : "#888",
+                                     }}
+                                   >
+                                     {item.stockInfo}
+                                   </span>
+                                 </p>
+                               </div>
+                             </div>
                             <div className="flex items-center gap-[25px] justify-end px-[10px] flex-1">
                               {getStatusBadge(item.status)}
                               <p className="text-[10px] text-[#787878] leading-[20px] whitespace-nowrap">
@@ -1152,7 +1259,27 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                     </div>
                   </div>
 
-                  {/* 버튼 행 */}
+                    {/* 마감/캠페인 정보 */}
+                    {(() => {
+                      const selOpt = orderOptions[selectedOptionIdx];
+                      const hasCampaign = (selOpt?.flags ?? []).some(
+                        (f) => f === "CAMPAIGN_PERIOD" || f === "SPECIAL_PERIOD",
+                      );
+                      return (
+                        <div className="flex flex-col gap-[3px] px-[2px]">
+                          {hasCampaign && (
+                            <p className="text-[8px] text-[#ff522c] leading-[12px]">
+                              🏷 행사/이벤트 기간: 발주량이 평소와 다를 수 있습니다.
+                            </p>
+                          )}
+                          <p className="text-[8px] text-[#888] leading-[12px]">
+                            마감 전: 발주 확정 후 재고 자동 반영됩니다.
+                          </p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 버튼 행 */}
                   <div className="flex items-center gap-[16px]">
                     {/* 뒤로 가기 */}
                     <button
@@ -1259,7 +1386,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                     className="flex items-center justify-between bg-[#fff] rounded-[8px] px-[10px] py-[6px] border border-[#B3B4B5]"
                   >
                     <p className="font-500 text-[10px] text-[#222]">
-                      {it.name}
+                      {resolveProductDisplayName(it.name)}
                     </p>
                     <div className="flex items-center gap-[4px] text-[9px]">
                       <span className="text-[#333]">AI {it.aiQty}</span>
@@ -1330,25 +1457,64 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                 </span>
                 개 품목을 발주하시겠습니까?
                 <br />
-                발주 후 발주 관리 목록에 추가됩니다.
+                {orderOptions[selectedOptionIdx]?.label && (
+                  <>
+                    기준:{" "}
+                    <span className="font-bold text-[#3aaedd]">
+                      {orderOptions[selectedOptionIdx].label}
+                    </span>
+                    <br />
+                  </>
+                )}
+                발주 확정 후 발주 관리 목록에 추가됩니다.
               </p>
             </div>
             <div className="h-[1px] bg-[#f0f1f3]" />
             {/* 버튼 */}
             <div className="flex">
               <button
-                onClick={() => setShowConfirm(false)}
-                className="flex-1 h-[44px] flex items-center justify-center text-[12px] text-[#888] font-bold cursor-pointer hover:bg-[#f7f7f7] transition-colors"
+                onClick={() => {
+                  if (confirmState !== "loading") setShowConfirm(false);
+                }}
+                disabled={confirmState === "loading"}
+                className="flex-1 h-[44px] flex items-center justify-center text-[12px] text-[#888] font-bold cursor-pointer hover:bg-[#f7f7f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 아니오
               </button>
               <div className="w-[1px] bg-[#f0f1f3]" />
               <button
-                onClick={() => {
-                  onOrderComplete?.(allItems);
-                  setShowConfirm(false);
+                onClick={async () => {
+                  const selectedOption = orderOptions[selectedOptionIdx];
+                  const optionId = selectedOption?.option_id ?? "option-0";
+                  const items = activeItems
+                    .filter((item) => !item.status)
+                    .map((item) => ({
+                      product_id: item.id.replace(/^ai-/, ""),
+                      quantity:
+                        parseInt(
+                          (quantities[item.id] ?? item.aiRecommendedQty).replace(/[^0-9]/g, ""),
+                          10,
+                        ) || 0,
+                      base_price: parsePrice(item.unitPrice),
+                    }))
+                    .filter((it) => it.quantity > 0);
+                  setConfirmState("loading");
+                  setConfirmError(null);
+                  try {
+                    const result = await confirmOrder(optionId, items);
+                    setConfirmResult(result);
+                    setConfirmState("success");
+                    setShowConfirm(false);
+                    onOrderComplete?.(allItems);
+                  } catch (err) {
+                    setConfirmError(
+                      err instanceof Error ? err.message : "발주 확정 중 오류가 발생했습니다.",
+                    );
+                    setConfirmState("error");
+                  }
                 }}
-                className="flex-1 h-[44px] flex items-center justify-center text-[12px] font-bold cursor-pointer transition-colors"
+                disabled={confirmState === "loading"}
+                className="flex-1 h-[44px] flex items-center justify-center text-[12px] font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   backgroundImage:
                     "linear-gradient(121deg, #3faf60 50.65%, #3aaedd 121.87%)",
@@ -1357,9 +1523,72 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                   backgroundClip: "text",
                 }}
               >
-                예
+                {confirmState === "loading" ? "처리 중..." : "예, 확정"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── API 결과 표시 모달 ── */}
+      {(confirmState === "success" || confirmState === "error") && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          onClick={() => setConfirmState("idle")}
+        >
+          <div
+            className="bg-white rounded-[10px] w-[280px] overflow-hidden shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="px-[18px] py-[10px] flex flex-col gap-[6px]"
+              style={{
+                backgroundImage:
+                  confirmState === "success"
+                    ? "linear-gradient(119deg, #3faf60 50.65%, #3aaedd 121.87%)"
+                    : "linear-gradient(119deg, #ff522c 50.65%, #ff8a65 121.87%)",
+              }}
+            >
+              <p className="font-bold text-[14px] text-white leading-[20px]">
+                {confirmState === "success" ? "발주 확정 완료" : "발주 확정 실패"}
+              </p>
+            </div>
+            <div className="px-[18px] py-[14px] flex flex-col gap-[8px]">
+              {confirmState === "success" && confirmResult ? (
+                <>
+                  <p className="text-[11px] text-[#555] leading-[18px]">
+                    주문번호{" "}
+                    <span className="font-bold text-[#3aaedd]">
+                      {confirmResult.order_id}
+                    </span>
+                  </p>
+                  <p className="text-[10px] text-[#787878] leading-[16px]">
+                    총 {confirmResult.total_qty}개 · ₩{Math.round(confirmResult.total_amount).toLocaleString("ko-KR")}
+                    <br />
+                    확정 시각: {new Date(confirmResult.confirmed_at).toLocaleString("ko-KR")}
+                  </p>
+                </>
+              ) : confirmError ? (
+                <p className="text-[11px] text-[#ff522c] leading-[18px]">
+                  {confirmError}
+                </p>
+              ) : null}
+            </div>
+            <div className="h-[1px] bg-[#f0f1f3]" />
+            <button
+              onClick={() => setConfirmState("idle")}
+              className="w-full h-[44px] flex items-center justify-center text-[12px] font-bold cursor-pointer transition-colors"
+              style={{
+                backgroundImage:
+                  "linear-gradient(121deg, #3faf60 50.65%, #3aaedd 121.87%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              확인
+            </button>
           </div>
         </div>
       )}

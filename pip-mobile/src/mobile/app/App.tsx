@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { QRCodeSVG } from "qrcode.react";
 import MobileHeader from "./components/MobileHeader";
 import NoticeBar from "./components/NoticeBar";
 import BottomNav from "./components/BottomNav";
@@ -182,29 +181,13 @@ export default function App() {
     );
   }
 
-  const mobileUrl = `http://${window.location.hostname}:5174/index.mobile.html`;
-
   return (
     <div
-      className="min-h-screen w-screen flex items-center justify-center gap-[48px]"
+      className="min-h-screen w-screen flex items-center justify-center"
       style={{
         background: "radial-gradient(ellipse at 50% 30%, #cdd1d8 0%, #b8bdc6 60%, #a8adb8 100%)",
       }}
     >
-      <div className="flex flex-col items-center gap-[14px]">
-        <div className="bg-white rounded-[20px] p-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
-          <QRCodeSVG value={mobileUrl} size={140} />
-        </div>
-        <div className="flex flex-col items-center gap-[4px]">
-          <span style={{ color: "#555860", fontSize: "11px", fontWeight: 600, letterSpacing: "0.02em" }}>
-            휴대폰으로 스캔
-          </span>
-          <span style={{ color: "#777b85", fontSize: "9px", letterSpacing: "0.02em" }}>
-            {mobileUrl}
-          </span>
-        </div>
-      </div>
-
       <div
         className="relative flex flex-col"
         style={{

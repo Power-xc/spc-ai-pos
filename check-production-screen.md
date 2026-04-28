@@ -1,0 +1,292 @@
+- generic [ref=e1]:
+  - generic [ref=e5]:
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e13]:
+          - img [ref=e15]
+          - generic [ref=e19]:
+            - img [ref=e21]
+            - img [ref=e26]
+            - img [ref=e31]
+        - generic [ref=e35]:
+          - paragraph [ref=e36]: 환영합니다.
+          - paragraph [ref=e37]: 강서구01 운영 화면
+          - paragraph [ref=e38]: 현재 기준 매장 분석 중
+        - img [ref=e40]
+        - generic [ref=e41]:
+          - paragraph [ref=e42]: MAIN
+          - generic [ref=e43]:
+            - button "종합 현황" [ref=e44] [cursor=pointer]:
+              - paragraph [ref=e47]: 종합 현황
+            - button "AI 실시간 현황" [ref=e49] [cursor=pointer]:
+              - paragraph [ref=e51]: AI 실시간 현황
+        - img [ref=e53]
+        - generic [ref=e54]:
+          - paragraph [ref=e55]: ACTION
+          - generic [ref=e56]:
+            - button "생산관리 1" [ref=e57] [cursor=pointer]:
+              - paragraph [ref=e60]: 생산관리
+              - generic [ref=e61]: "1"
+            - button "발주 관리 3" [ref=e62] [cursor=pointer]:
+              - paragraph [ref=e65]: 발주 관리
+              - generic [ref=e66]: "3"
+            - button "프로모션" [ref=e67] [cursor=pointer]:
+              - paragraph [ref=e70]: 프로모션
+        - img [ref=e72]
+        - generic [ref=e73]:
+          - paragraph [ref=e74]: SUB
+          - generic [ref=e75]:
+            - button "AI 기반 성과 분석" [ref=e76] [cursor=pointer]:
+              - paragraph [ref=e79]: AI 기반 성과 분석
+            - button "AI 검증" [ref=e80] [cursor=pointer]:
+              - paragraph [ref=e83]: AI 검증
+            - button "벤치마킹" [ref=e84] [cursor=pointer]:
+              - paragraph [ref=e87]: 벤치마킹
+            - button "알람 설정 2" [ref=e88] [cursor=pointer]:
+              - paragraph [ref=e91]: 알람 설정
+              - generic [ref=e92]: "2"
+        - button "기준 일자 및 시간 설정" [ref=e93] [cursor=pointer]:
+          - generic [ref=e94]:
+            - img [ref=e96]
+            - generic [ref=e98]:
+              - paragraph [ref=e99]: 2026-03-05
+              - paragraph [ref=e100]: 클릭 시연 기준값 변경
+      - button "사이드바 토글" [ref=e101] [cursor=pointer]
+      - generic [ref=e103]:
+        - paragraph [ref=e104]:
+          - generic [ref=e105]: pos
+          - generic [ref=e106]: system
+        - generic:
+          - generic:
+            - generic:
+              - img
+      - img [ref=e108]
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - button "HQ POS >" [ref=e111] [cursor=pointer]
+          - button "새로고침" [ref=e112] [cursor=pointer]:
+            - paragraph [ref=e115]: 새로고침
+          - button "AI 리포트 생성" [ref=e116] [cursor=pointer]:
+            - paragraph [ref=e117]: AI 리포트 생성
+        - img [ref=e119]
+        - button "PIP AI BOT" [ref=e120] [cursor=pointer]:
+          - img [ref=e121]
+          - paragraph [ref=e123]: PIP AI BOT
+      - generic [ref=e202]:
+        - generic [ref=e203]:
+          - generic [ref=e204]:
+            - img [ref=e205]
+            - generic [ref=e207]: PIP AI
+          - generic [ref=e208]:
+            - button [ref=e209] [cursor=pointer]
+            - button [ref=e210] [cursor=pointer]:
+              - img [ref=e211]
+        - generic [ref=e214]:
+          - generic [ref=e216]:
+            - button "Today's AI Insights" [active] [ref=e217] [cursor=pointer]:
+              - generic [ref=e218]:
+                - img [ref=e219]
+                - generic [ref=e221]: Today's AI Insights
+              - img [ref=e222]
+            - generic [ref=e224]:
+              - paragraph [ref=e225]: 던킨의 생산·주문·매출을 한 번에!!
+              - paragraph [ref=e226]: 운영을 돕는 올인원 AI, PIP
+              - paragraph [ref=e227]: 생산관리 분석 중
+          - generic [ref=e229]:
+            - generic [ref=e230]:
+              - generic [ref=e232]:
+                - paragraph [ref=e233]: 2026-03-05 13:00 기준 생산관리 데이터입니다.
+                - paragraph [ref=e234]: 추천 질문을 눌러 확인해 주세요.
+              - generic [ref=e235]:
+                - button "현재 재고 현황과 부족 예상 품목 알려줘" [ref=e236] [cursor=pointer]
+                - button "1시간 뒤 예상 재고량 보여줘" [ref=e237] [cursor=pointer]
+                - button "1차/2차 생산 권장량 알려줘" [ref=e238] [cursor=pointer]
+              - paragraph [ref=e239]: 13:00
+            - generic [ref=e364]:
+              - paragraph [ref=e366]: 1차/2차 생산 권장량 알려줘
+              - paragraph [ref=e367]: 13:00
+            - generic [ref=e368]:
+              - generic [ref=e369]:
+                - generic [ref=e370]:
+                  - paragraph [ref=e371]: 최근 4주 기준 1차/2차 생산 패턴입니다.
+                  - paragraph [ref=e372]: "근거: 최근 4주 동일 요일 1차/2차 생산 등록 패턴 평균 · 즉시 생산 필요는 1시간 리드타임 기준 · 일일 권장 생산량은 하루 전체 참고값"
+                  - paragraph [ref=e373]: "지금 할 일: 초코파우더(길라델리) 99개 생산 등록을 우선 검토하세요."
+                - generic [ref=e374]:
+                  - generic [ref=e375]:
+                    - paragraph [ref=e376]: 1차/2차 생산 패턴
+                    - paragraph [ref=e377]: 최근 4주 평균 기준 품목 5개
+                  - generic [ref=e378]:
+                    - generic [ref=e379]:
+                      - paragraph [ref=e380]: 품목
+                      - paragraph [ref=e381]: 현재
+                      - paragraph [ref=e382]: 표준
+                    - generic [ref=e383]:
+                      - paragraph [ref=e384]: 초코파우더(길라델리)
+                      - paragraph [ref=e385]: "9"
+                      - paragraph [ref=e386]: "99"
+                    - generic [ref=e387]:
+                      - paragraph [ref=e388]: 두바이ST쫀득먼치킨
+                      - paragraph [ref=e389]: "3"
+                      - paragraph [ref=e390]: "37"
+                    - generic [ref=e391]:
+                      - paragraph [ref=e392]: 바바리안먼치킨
+                      - paragraph [ref=e393]: "3"
+                      - paragraph [ref=e394]: "31"
+                    - generic [ref=e395]:
+                      - paragraph [ref=e396]: 레드벨벳먼치킨
+                      - paragraph [ref=e397]: "3"
+                      - paragraph [ref=e398]: "31"
+                    - generic [ref=e399]:
+                      - paragraph [ref=e400]: 오리지널 케익 먼치킨
+                      - paragraph [ref=e401]: "3"
+                      - paragraph [ref=e402]: "31"
+                  - generic [ref=e404]:
+                    - paragraph [ref=e405]: 총 즉시 생산 필요
+                    - paragraph [ref=e406]: 21개
+                - generic [ref=e407]:
+                  - button "생산 등록" [ref=e408] [cursor=pointer]
+                  - button "나중에" [ref=e409] [cursor=pointer]
+              - generic [ref=e410]:
+                - button "재고 현황과 부족 품목" [ref=e411] [cursor=pointer]
+                - button "1시간 뒤 예상 재고량" [ref=e412] [cursor=pointer]
+              - paragraph [ref=e413]: 13:00
+        - generic [ref=e241]:
+          - textbox "what's in your mind..?" [ref=e242]
+          - button [ref=e243] [cursor=pointer]
+      - generic [ref=e245]:
+        - generic [ref=e265]:
+          - paragraph [ref=e266]: 긴급 생산 대상 8개 선별 · 리드타임 1시간 기준
+          - generic [ref=e267]:
+            - paragraph [ref=e269]: 8개
+            - paragraph [ref=e270]: 외 4개 보충 후보
+        - generic [ref=e246]:
+          - generic [ref=e247]:
+            - generic [ref=e248]:
+              - paragraph [ref=e251]: 생산관리 에이전트
+              - paragraph [ref=e252]: 긴급 생산 대상 8개 품목
+            - generic [ref=e253]:
+              - paragraph [ref=e255]: 예측 검증 제한적
+              - button "긴급 품목 일괄 생산" [ref=e271] [cursor=pointer]:
+                - paragraph [ref=e272]: 긴급 품목 일괄 생산
+              - paragraph [ref=e257]: 5분전 갱신
+          - paragraph [ref=e258]: 현재 재고 데이터가 0값 중심으로 수집되어 생산 필요 품목이 과다 감지될 수 있습니다. 판매 속도와 리드타임 기준으로 우선순위 상위 품목만 표시됩니다.
+          - generic [ref=e273]:
+            - generic [ref=e275]:
+              - img "초코파우더(길라델리)" [ref=e276]
+              - generic [ref=e277]:
+                - generic [ref=e278]:
+                  - paragraph [ref=e279]: 초코파우더(길라델리)
+                  - generic [ref=e280]:
+                    - paragraph [ref=e282]: 즉시 생산 필요
+                    - button "생산 등록" [ref=e283] [cursor=pointer]:
+                      - paragraph [ref=e284]: 생산 등록
+                - generic [ref=e285]:
+                  - paragraph [ref=e286]: 현재 재고 0개 · 1시간 뒤 부족 9개
+                  - paragraph [ref=e287]: 최근 판매 속도 8.1개/시간 · 즉시 생산 필요 9개
+                  - paragraph [ref=e288]: · 일일 권장 생산 99개
+            - generic [ref=e293]:
+              - img "두바이ST쫀득먼치킨" [ref=e294]
+              - generic [ref=e295]:
+                - generic [ref=e296]:
+                  - paragraph [ref=e297]: 두바이ST쫀득먼치킨
+                  - generic [ref=e298]:
+                    - paragraph [ref=e300]: 즉시 생산 필요
+                    - button "생산 등록" [ref=e301] [cursor=pointer]:
+                      - paragraph [ref=e302]: 생산 등록
+                - generic [ref=e303]:
+                  - paragraph [ref=e304]: 현재 재고 0개 · 1시간 뒤 부족 3개
+                  - paragraph [ref=e305]: 최근 판매 속도 3.0개/시간 · 즉시 생산 필요 3개
+                  - paragraph [ref=e306]: · 일일 권장 생산 37개
+            - generic [ref=e311]:
+              - img "바바리안먼치킨" [ref=e312]
+              - generic [ref=e313]:
+                - generic [ref=e314]:
+                  - paragraph [ref=e315]: 바바리안먼치킨
+                  - generic [ref=e316]:
+                    - paragraph [ref=e318]: 즉시 생산 필요
+                    - button "생산 등록" [ref=e319] [cursor=pointer]:
+                      - paragraph [ref=e320]: 생산 등록
+                - generic [ref=e321]:
+                  - paragraph [ref=e322]: 현재 재고 0개 · 1시간 뒤 부족 3개
+                  - paragraph [ref=e323]: 최근 판매 속도 2.5개/시간 · 즉시 생산 필요 3개
+                  - paragraph [ref=e324]: · 일일 권장 생산 31개
+            - generic [ref=e329]:
+              - img "레드벨벳먼치킨" [ref=e330]
+              - generic [ref=e331]:
+                - generic [ref=e332]:
+                  - paragraph [ref=e333]: 레드벨벳먼치킨
+                  - generic [ref=e334]:
+                    - paragraph [ref=e336]: 즉시 생산 필요
+                    - button "생산 등록" [ref=e337] [cursor=pointer]:
+                      - paragraph [ref=e338]: 생산 등록
+                - generic [ref=e339]:
+                  - paragraph [ref=e340]: 현재 재고 0개 · 1시간 뒤 부족 3개
+                  - paragraph [ref=e341]: 최근 판매 속도 2.5개/시간 · 즉시 생산 필요 3개
+                  - paragraph [ref=e342]: · 일일 권장 생산 31개
+            - generic [ref=e347]:
+              - img "오리지널 케익 먼치킨" [ref=e348]
+              - generic [ref=e349]:
+                - generic [ref=e350]:
+                  - paragraph [ref=e351]: 오리지널 케익 먼치킨
+                  - generic [ref=e352]:
+                    - paragraph [ref=e354]: 즉시 생산 필요
+                    - button "생산 등록" [ref=e355] [cursor=pointer]:
+                      - paragraph [ref=e356]: 생산 등록
+                - generic [ref=e357]:
+                  - paragraph [ref=e358]: 현재 재고 0개 · 1시간 뒤 부족 3개
+                  - paragraph [ref=e359]: 최근 판매 속도 2.5개/시간 · 즉시 생산 필요 3개
+                  - paragraph [ref=e360]: · 일일 권장 생산 31개
+          - generic [ref=e259]:
+            - paragraph [ref=e260]: 1 / 2
+            - button "다음 페이지" [ref=e261] [cursor=pointer]:
+              - img [ref=e262]
+    - generic [ref=e185]:
+      - generic [ref=e188]: ONLINE
+      - generic [ref=e191]: BR KOREA POS SYSTEM
+      - generic [ref=e194]: PWR
+  - generic [ref=e415]:
+    - generic [ref=e416]:
+      - generic [ref=e417]:
+        - img [ref=e418]
+        - paragraph [ref=e420]: 오늘의 AI 브리핑
+      - button [ref=e421] [cursor=pointer]:
+        - img [ref=e422]
+    - generic [ref=e424]:
+      - paragraph [ref=e425]: AI 종합 요약
+      - generic [ref=e427]:
+        - generic [ref=e429]: "1"
+        - paragraph [ref=e430]: 초코파우더(길라델리)은 0개 · 1시간 뒤 예상 0개 상태입니다.
+      - generic [ref=e431]:
+        - generic [ref=e433]: "2"
+        - paragraph [ref=e434]: 재고 부족 우선 품목은 블루베리크림치즈 도넛이며 0개 · 부족 6개, 품절 위험 시간은 60분입니다.
+      - generic [ref=e435]:
+        - generic [ref=e437]: "3"
+        - paragraph [ref=e438]: 생산 추천 품목 12개와 재고 모니터링 품목 47개를 기준으로 현재 화면을 요약했습니다.
+    - generic [ref=e439]:
+      - generic [ref=e440]:
+        - paragraph [ref=e441]: 이슈 상세
+        - generic [ref=e443]: (4건)
+      - generic [ref=e444]:
+        - generic [ref=e445]:
+          - generic [ref=e446] [cursor=pointer]:
+            - generic [ref=e448]: 주의
+            - paragraph [ref=e449]: 초코파우더(길라델리) 재고 대응 우선
+            - img [ref=e450]
+          - generic [ref=e452]:
+            - paragraph [ref=e453]: 0개 · 1시간 뒤 예상 0개 기준으로 추가 생산/보충 검토가 필요합니다.
+            - generic [ref=e454]:
+              - paragraph [ref=e455]: "감지 시각: 오후 01:00"
+              - button "생산 바로가기 →" [ref=e456] [cursor=pointer]
+        - generic [ref=e458] [cursor=pointer]:
+          - generic [ref=e460]: 주의
+          - paragraph [ref=e461]: 두바이ST쫀득먼치킨 재고 대응 우선
+          - img [ref=e462]
+        - generic [ref=e465] [cursor=pointer]:
+          - generic [ref=e467]: 주의
+          - paragraph [ref=e468]: 바바리안먼치킨 재고 대응 우선
+          - img [ref=e469]
+        - generic [ref=e472] [cursor=pointer]:
+          - generic [ref=e474]: 긴급
+          - paragraph [ref=e475]: 블루베리크림치즈 도넛 재고 부족 감지
+          - img [ref=e476]
+    - paragraph [ref=e479]: "처리 완료: 0 / 4건"

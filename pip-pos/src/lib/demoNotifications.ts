@@ -163,7 +163,7 @@ async function fetchSalesAlert(): Promise<NotificationItem[]> {
         id: "sales-alert",
         severity: "caution",
         title: "매출 감소 주의",
-        detail: `전주 동요일 대비 ${weekPct}%. 근거: 일자별 매출 비교입니다. 지금 할 일: 성과 분석에서 하락 상품과 시간대를 먼저 확인하세요.`,
+        detail: `최근 기준일 대비 ${weekPct}%. 근거: 일자별 매출 비교입니다. 지금 할 일: 성과 분석에서 하락 상품과 시간대를 먼저 확인하세요.`,
         actionLabel: "성과 분석 보기",
         actionMenu: "AI 기반 성과 분석",
       });

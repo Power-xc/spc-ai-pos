@@ -19,7 +19,7 @@ services:
 
   backend:
     build:
-      context: ./apps/backend
+      context: ./backend
       dockerfile: Dockerfile
     container_name: foxpos-backend
     working_dir: /app
@@ -30,8 +30,10 @@ services:
     env_file:
       - ./infra/env/backend.env
     volumes:
-      - ./apps/backend:/app
-      - ./data/seed_data:/app/data
+      - /data/sapie/tax/foxpos-workspace/foxpos-poc-clean/backend:/app
+      - /data/sapie/tax/foxpos-workspace/foxpos-poc-clean/data:/app/data
+      - /data/sapie/tax/foxpos-workspace/foxpos-poc-clean/dd_img:/app/dd_img
+      - /data/sapie/tax/BR-POS-App-UX-PoC/data:/app/data/seed_data
     depends_on:
       postgres:
         condition: service_healthy

@@ -38,7 +38,7 @@ function cleanProductName(name: string): string {
 }
 
 function formatDiff(value: number | null | undefined) {
-  if (typeof value !== "number" || Number.isNaN(value)) return "비교 없음";
+  if (typeof value !== "number" || !Number.isFinite(value)) return "비교 없음";
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
@@ -216,16 +216,33 @@ function SimilarPeerCard({
   );
 }
 
+const ACTIVE_BTN_CLASS = "h-[30px] rounded-full px-[12px] text-[10px] font-bold text-white cursor-pointer";
+const INACTIVE_BTN_CLASS = "h-[30px] rounded-full px-[12px] text-[10px] font-bold text-[#666] border border-[#d9d9d9] cursor-pointer";
+const ACTIVE_BTN_STYLE: React.CSSProperties = { backgroundImage: "linear-gradient(96deg, #3FAF60 50.65%, #3AAEDD 121.87%)" };
+
 export default function Benchmarking({
   isAiPanelOpen,
   isSidebarOpen,
 }: MenuProps) {
   const selectedCompareStores = useBenchmarkCompareStores();
   const [snapshot, setSnapshot] = useState<BenchmarkSnapshot | null>(null);
+  const [peerMode, setPeerMode] = useState<'default' | 'similar'>('default');
 
   useEffect(() => {
     getBenchmarkSnapshot({ compareStoreIds: selectedCompareStores }).then(setSnapshot);
   }, [selectedCompareStores]);
+
+  useEffect(() => {
+    if (!snapshot?.similarPeers?.length) {
+      setPeerMode('default');
+      return;
+    }
+    const similarIds = snapshot.similarPeers.map((p) => p.storeId);
+    const isSimilar =
+      selectedCompareStores.length === similarIds.length &&
+      similarIds.every((id) => selectedCompareStores.includes(id));
+    setPeerMode(isSimilar ? 'similar' : 'default');
+  }, [snapshot, selectedCompareStores]);
 
   const derived = useMemo(() => {
     if (!snapshot) {
@@ -256,11 +273,13 @@ export default function Benchmarking({
 
   const handleApplySuggestedPeers = () => {
     if (!snapshot?.similarPeers?.length) return;
+    setPeerMode('similar');
     setBenchmarkCompareStoreIds(snapshot.similarPeers.map((peer) => peer.storeId));
     invalidateDemoRuntimeData();
   };
 
   const handleResetCompareStores = () => {
+    setPeerMode('default');
     resetBenchmarkCompareStoreIds();
     invalidateDemoRuntimeData();
   };
@@ -374,17 +393,15 @@ export default function Benchmarking({
             <div className="flex items-center gap-[8px] shrink-0">
               <button
                 onClick={handleResetCompareStores}
-                className="h-[30px] rounded-full px-[12px] text-[10px] font-bold text-[#666] border border-[#d9d9d9] cursor-pointer"
+                className={peerMode === 'default' ? ACTIVE_BTN_CLASS : INACTIVE_BTN_CLASS}
+                style={peerMode === 'default' ? ACTIVE_BTN_STYLE : undefined}
               >
                 기본 비교군 복원
               </button>
               <button
                 onClick={handleApplySuggestedPeers}
-                className="h-[30px] rounded-full px-[12px] text-[10px] font-bold text-white cursor-pointer"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(96deg, #3FAF60 50.65%, #3AAEDD 121.87%)",
-                }}
+                className={peerMode === 'similar' ? ACTIVE_BTN_CLASS : INACTIVE_BTN_CLASS}
+                style={peerMode === 'similar' ? ACTIVE_BTN_STYLE : undefined}
               >
                 유사 매장 추천 적용
               </button>

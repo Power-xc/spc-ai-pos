@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections import deque
 from datetime import date, datetime
 import logging
@@ -397,6 +398,8 @@ class AgentRouter:
         normalized = f"{current_page} {page_key} {page_context}"
         if "/orders" in normalized or "orders" in normalized or "발주" in normalized:
             return "orders"
+        if "production" in normalized or "생산" in normalized:
+            return "production"
         if (
             "/actions" in normalized
             or "actions" in normalized
@@ -411,6 +414,395 @@ class AgentRouter:
         ):
             return "dashboard"
         return "general"
+
+    # ─── Facts-based LLM answer generation ───
+
+    def _build_production_facts(
+        self,
+        *,
+        store_id: str,
+        context: dict | None,
+        alerts: list | None = None,
+        inventory_items: list | None = None,
+        risk_products: list | None = None,
+    ) -> dict:
+        """Convert production API data into compact structured facts for LLM.
+        Filters out raw inventory rows and p7 (raw materials).
+        Only includes production-relevant items with actual shortage."""
+        raw = risk_products or inventory_items
+        items = []
+        for row in raw or []:
+            if hasattr(row, "model_dump"):
+                row = row.model_dump(mode="json")
+            pid = str(row.get("product_id") or "")
+            if pid.startswith("7"):
+                continue
+            pn = row.get("product_name") or row.get("product_id", "")
+            current = int(row.get("current_stock") or row.get("current_on_hand") or 0)
+            predicted = row.get("predicted_stock_1h")
+            rec = int(row.get("recommended_production_qty") or row.get("recommended_qty") or 0)
+            risk = str(row.get("stockout_risk") or row.get("risk_level", ""))
+            eta = row.get("eta_minutes")
+            bp = row.get("unit_price") or row.get("base_price")
+            burn = row.get("hourly_burn_rate")
+            items.append({
+                "product_name": pn,
+                "current_stock": current,
+                "predicted_stock_1h": predicted,
+                "recommended_production_qty": rec,
+                "risk_level": risk,
+                "eta_minutes": eta,
+                "base_price": bp,
+                "hourly_burn_rate": burn,
+            })
+        # Sort: urgent first (low current stock, HIGH risk)
+        items.sort(key=lambda x: (x.get("current_stock") or 999, x.get("risk_level") not in ("HIGH", "CRITICAL")))
+        # Separate urgent vs supplement
+        urgent = [i for i in items if i.get("risk_level") in ("HIGH", "CRITICAL")][:8]
+        supplement = [i for i in items if i["product_name"] not in {u["product_name"] for u in urgent}][:4]
+        # Estimate loss
+        total_loss = 0
+        for it in items:
+            eta_min = it.get("eta_minutes")
+            bp = it.get("base_price")
+            if eta_min is not None and bp is not None and eta_min > 0:
+                # Rough: if current < predicted shortfall, loss = shortfall * bp
+                predicted = it.get("predicted_stock_1h", 0) or 0
+                shortfall = max(0, predicted - current)
+                if shortfall > 0:
+                    total_loss += shortfall * bp
+        alerts_data = []
+        for a in (alerts or []):
+            if hasattr(a, "model_dump"):
+                a = a.model_dump(mode="json")
+            apid = str(a.get("product_id", ""))
+            if apid.startswith("7"):
+                continue
+            alerts_data.append({
+                "product_name": a.get("product_name", ""),
+                "message": str(a.get("message", ""))[:100],
+                "severity": str(a.get("severity", "")),
+            })
+        return {
+            "domain": "production",
+            "store_id": store_id,
+            "demo_datetime": (context or {}).get("demo_datetime") or (context or {}).get("demo_date") or "",
+            "demo_time": (context or {}).get("demo_time", ""),
+            "summary": {
+                "total_items": len(items),
+                "urgent_count": len(urgent),
+                "supplement_count": len(supplement),
+                "estimated_loss": round(total_loss) if total_loss > 0 else 0,
+                "basis": "리드타임 1시간 기준",
+            },
+            "urgent_items": urgent,
+            "supplement_items": supplement,
+            "alerts": alerts_data[:5],
+            "notes": [
+                "원부자재(product_id 7-prefix) 제외",
+                "생산 이력 부족 품목은 판매 패턴 기반 추천",
+            ],
+        }
+
+    def _build_order_facts(
+        self,
+        *,
+        store_id: str,
+        context: dict | None,
+        options: list | None = None,
+        deadlines: list | None = None,
+        campaign_impact: dict | None = None,
+    ) -> dict:
+        """Convert order API data into structured facts JSON."""
+        opts = []
+        for opt in (options or []):
+            if hasattr(opt, "model_dump"):
+                opt = opt.model_dump(mode="json")
+            opt_items = []
+            for it in (opt.get("items") or [])[:10]:
+                if hasattr(it, "model_dump"):
+                    it = it.model_dump(mode="json")
+                opt_items.append({
+                    "product_name": it.get("product_name", it.get("product_id", "")),
+                    "quantity": int(it.get("quantity") or 0),
+                    "base_price": it.get("base_price"),
+                })
+            opts.append({
+                "label": opt.get("label", ""),
+                "reference_date": opt.get("reference_date"),
+                "total_qty": int(opt.get("total_qty") or 0),
+                "total_amount": int(opt.get("total_amount") or 0),
+                "deviation_label": opt.get("deviation_label", ""),
+                "flags": opt.get("flags") or [],
+                "top_items": opt_items[:5],
+            })
+        dl_data = []
+        for d in (deadlines or []):
+            if hasattr(d, "model_dump"):
+                d = d.model_dump(mode="json")
+            dl_data.append({
+                "product_group": d.get("product_group", ""),
+                "deadline": d.get("deadline"),
+                "minutes_remaining": d.get("minutes_remaining"),
+            })
+        camp_section = self._format_campaign_impact_facts(campaign_impact)
+        return {
+            "domain": "order",
+            "store_id": store_id,
+            "demo_datetime": (context or {}).get("demo_datetime") or "",
+            "options": opts,
+            "deadlines": dl_data,
+            "campaign_impact": camp_section,
+        }
+
+    @staticmethod
+    def _format_campaign_impact_facts(campaign_impact: dict | None) -> dict:
+        """Extract compact campaign facts from _compute_campaign_impact output."""
+        if not campaign_impact:
+            return {
+                "has_active_campaigns": False,
+                "active_campaign_count": 0,
+                "affected_product_count": 0,
+                "campaigns": [],
+                "summary": {},
+            }
+        acts = campaign_impact.get("active_campaign_count", 0) or 0
+        aff_count = campaign_impact.get("affected_product_count", 0) or 0
+        camp_list = campaign_impact.get("campaigns") or []
+        compact_camps = []
+        for c in camp_list:
+            affected = c.get("affected_products") or []
+            compact_items = []
+            for p in affected[:8]:
+                compact_items.append({
+                    "product_name": p.get("product_name", ""),
+                    "base_recommended_qty": p.get("base_recommended_qty", 0),
+                    "campaign_adjustment_qty": p.get("campaign_adjustment_qty", 0),
+                    "final_recommended_qty": p.get("final_recommended_qty", 0),
+                    "impact_direction": p.get("impact_direction", ""),
+                    "impact_rate": p.get("impact_rate", 0),
+                })
+            compact_camps.append({
+                "campaign_id": c.get("campaign_id", ""),
+                "campaign_name": c.get("campaign_name", ""),
+                "period": c.get("period", {}),
+                "affected_product_count": len(affected),
+                "affected_products": compact_items,
+            })
+        return {
+            "has_active_campaigns": acts > 0,
+            "active_campaign_count": acts,
+            "affected_product_count": aff_count,
+            "campaigns": compact_camps[:5],
+            "summary": campaign_impact.get("summary", {}),
+        }
+
+    @staticmethod
+    def _validate_llm_production_answer(answer: str, facts: dict) -> bool:
+        """Return True if answer is acceptable. Reject generic/wrong answers."""
+        summary = (facts or {}).get("summary") or {}
+        total = summary.get("urgent_count", 0)
+        if total > 0:
+            for phrase in [
+                "현재 데이터로는 확인할 수 없습니다",
+                "현재 경보 없음",
+                "추천 생산 수량이 0",
+                "전체 45개 품목",
+            ]:
+                if phrase in answer:
+                    return False
+        # Reject if contains markdown table pipes (should not use tables)
+        if answer.count("|") > 10:
+            return False
+        # Reject if contains p7 product names (raw materials)
+        pid_items = [i.get("product_id", "") for i in (facts or {}).get("urgent_items", [])]
+        for pid in pid_items:
+            if pid.startswith("7") and pid in answer:
+                return False
+        return True
+
+    async def _try_llm_answer(
+        self,
+        *,
+        message: str,
+        facts: dict,
+        message_type: str,
+        trace: dict | None = None,
+    ) -> tuple[str, int]:
+        """Generate answer via LLM using facts. Returns (answer_md, llm_tokens_used).
+
+        If LLM is unavailable or fails, returns empty string and 0.
+        """
+        llm_gateway = getattr(self.intent_classifier, "llm", None)
+        if not llm_gateway or not getattr(llm_gateway, "api_key", None):
+            return "", 0
+
+        system_prompt = """너는 던킨도너츠 매장 운영을 돕는 PIP AI입니다.
+ 아래 FACTS JSON에 있는 숫자와 날짜만 사용하세요.
+ 숫자, 금액, 수량, 기준일, 품목명은 절대 임의로 생성하지 마세요.
+ FACTS에 없는 정보는 "현재 데이터로는 확인할 수 없습니다"라고 답하세요.
+ 답변은 한국어로, 매장 점주가 이해하기 쉽게 작성하세요.
+
+ 중요 규칙:
+ - markdown 표(table)를 절대 만들지 마세요. 품목 목록과 숫자는 텍스트로만 작성하세요.
+ - 답변은 2~4문장으로 짧게 작성하세요. 한 문장에 여러 품목을 나열하더라도 한 줄에 넣으세요.
+ - 제목은 ### 하나만 사용하세요.
+ - 금액은 ₩13,900 형식 사용 (₩13,900원 같은 이중 표기 금지).
+ - "최적", "현재 경보 없음", "현재 데이터로는 확인할 수 없습니다" 같은 generic 문구는 FACTS.summary.item_count > 0이면 사용하지 마세요.
+ - FACTS.summary.urgent_count가 실제 urgent_count보다 큰 숫자면 절대 사용하지 마세요.
+ - FACTS.summary.summary와 FACTS.top_items에 있는 숫자/품목만 사용하세요.
+ - 전체 raw inventory 개수(예: 45개)가 FACTS에 있으면 무시하세요. summary.urgent_count와 supplement_count만 사용하세요.
+ */ "최적" 같은 표현 금지. 데이터 부족 시 "판매 패턴 기반 추천"이라고 표시하세요.
+ - action button이나 버튼을 포함하지 마세요 (UI가 별도로 렌더함).
+ - FACTS.campaign_impact.has_active_campaigns가 true이면 반드시 캠페인 영향을 설명에 포함하세요.
+ - campaign_impact의 숫자(수량, 조정량, 영향률)는 FACTS에서 그대로 가져와서 사용하세요.
+ - LLM이 숫자를 생성하지 않습니다. 모든 수량은 FACTS.campaign_impact.campaigns[i].affected_products[j]에서 읽습니다.
+ - 캠페인 설명은 "왜" 해당 수량이 조정되었는지(why)만 텍스트로 작성합니다. 수량 값은 FACTS에서 읽은 값을 사용합니다."""
+
+        user_prompt = f"FACTS:\n{json.dumps(facts, ensure_ascii=False, default=str)}\n\n"
+        question_map = {
+            "simplify": "더 쉽게 설명해줘, 한글 문장으로 간결하게 요약해줘",
+            "summarize": "한 줄 요약, 핵심만 알려줘",
+            "detail": "자세히 알려줘, 근거 보여줘, 왜 그렇게 추천해?",
+            "compare": "각 옵션이나 품목의 차이점을 비교해줘",
+            "action": "지금 바로 뭘 하면 돼, 우선순위로 정리해줘",
+            "free": message,
+        }
+        user_prompt += f"사용자 질문: {question_map.get(message_type, 'free')}\n"
+        if message_type == "free":
+            user_prompt += f"원문: {message}\n"
+        user_prompt += "FACTS 외 데이터를 사용해서 답변하지 마세요.\n이모지를 절대 사용하지 마세요."
+
+        try:
+            result = await llm_gateway.call(
+                purpose="chat_answer",
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                max_tokens=500,
+                temperature=0.3,
+                trace=trace,
+            )
+            content = str(result.get("content") or "").strip()
+            tokens = result.get("input_tokens", 0) + result.get("output_tokens", 0)
+            if content:
+                return content, tokens
+        except Exception as exc:
+            logger.warning("LLM answer generation failed: %s", exc, exc_info=True)
+        return "", 0
+
+    @staticmethod
+    def _fallback_production_answer(facts: dict) -> str:
+        """Deterministic fallback for production domain."""
+        risk = facts.get("risk_items") or []
+        low = facts.get("low_stock_items") or []
+        items = risk or low
+        if not items:
+            return "현재 즉시 생산이 필요한 품목이 없습니다.\n\n**지금 할 일**\n생산 관리 화면에서 전체 재고를 한 번 더 확인하세요."
+        lines = ["### 즉시 생산 필요 품목", ""]
+        table_header = "| 품목 | 현재 재고 | 1시간 뒤 예상 | 권장 생산 |"
+        table_sep = "|---|---:|---:|---:|"
+        lines.append(table_header)
+        lines.append(table_sep)
+        for it in items[:5]:
+            current = it.get("current_stock") or 0
+            predicted = it.get("predicted_stock_1h") or "-"
+            rec = it.get("recommended_production_qty") or 0
+            lines.append(f"| {it.get('product_name', '?')} | {current}개 | {predicted}개 | {rec}개 |")
+        if len(items) > 5:
+            lines.append(f"\n(외 {len(items) - 5}개)")
+        lines.append("")
+        lines.append("**근거**")
+        lines.append("- 생산 리드타임: 1시간")
+        lines.append("- 판매 패턴 기반 추천")
+        lines.append("")
+        top = items[0]
+        lines.append(f"**지금 할 일**\n{top.get('product_name', '?')}부터 생산 등록을 검토하세요.")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _fallback_order_answer(facts: dict) -> str:
+        """Deterministic fallback for order domain."""
+        opts = facts.get("options") or []
+        if not opts:
+            return "주문 추천 옵션 데이터를 불러오지 못했습니다.\n\n**지금 할 일**\n발주 관리 화면에서 추천 옵션을 직접 확인하세요."
+        lines = ["### 발주 옵션 비교", ""]
+        table_header = "| 옵션 | 기준일 | 총량 | 총 금액 |"
+        table_sep = "|---|---|---:|---:|"
+        lines.append(table_header)
+        lines.append(table_sep)
+        for o in opts[:3]:
+            ref = (o.get("reference_date") or "").replace("-", ".") or "-"
+            qty = o.get("total_qty", 0)
+            amt = o.get("total_amount", 0)
+            amt_str = f"₩{amt:,}" if amt else "-"
+            lines.append(f"| {o.get('label', '?')} | {ref} | {qty}개 | {amt_str} |")
+        lines.append("")
+        lines.append("**근거**")
+        lines.append("- 전주·전전주·전월 동요일 실적 비교")
+        lines.append("- 최근 4주 평균 편차 기반")
+        lines.append("")
+        safest = min(opts, key=lambda o: abs(float(o.get("deviation_label").replace("%", "").replace("+", "").replace("-", "") or 0)))
+        lines.append(f"**지금 할 일**\n{safest.get('label', '?')}부터 검토하고, 행사·예약 수요가 있으면 수동 보정하세요.")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _fallback_sales_answer(context: dict | None, message: str) -> str:
+        """Deterministic fallback for sales/overview domain."""
+        page = (context or {}).get("page_context") or (context or {}).get("menu") or "현재 화면"
+        return (
+            f"### {page} 요약\n\n"
+            f"현재 선택한 시간 기준의 예상 매출 데이터입니다.\n"
+            f"실제 시간별 POS 데이터가 아니라, 일 매출을 시간대 판매 패턴으로 나눈 추정치입니다.\n\n"
+            f"**지금 할 일**\n"
+            f"상세 지표는 {page} 화면 카드에서 직접 확인하세요."
+        )
+
+    @classmethod
+    def _contextual_faq_answer(cls, message: str, context: dict | None) -> str:
+        page_name = str(
+            (context or {}).get("page_context")
+            or (context or {}).get("menu")
+            or (context or {}).get("page")
+            or "현재 화면"
+        ).strip()
+        if not page_name or page_name.lower() == "none":
+            page_name = "현재 화면"
+        bucket = cls._page_bucket(context)
+        examples_by_bucket = {
+            "orders": [
+                "추천 주문 보여줘",
+                "전주/전월 기준으로 비교해줘",
+                "각 옵션의 근거를 보여줘",
+            ],
+            "actions": [
+                "지금 할 일 우선순위 정리해줘",
+                "왜 지금 알림이 떴는지 설명해줘",
+                "완료 안 된 항목 보여줘",
+            ],
+            "dashboard": [
+                "오늘 핵심 이슈 요약해줘",
+                "이번 달 일평균 매출을 타 점포 평균과 비교해줘",
+                "현재 재고 현황과 부족 예상 품목 알려줘",
+            ],
+            "general": [
+                "오늘 핵심 이슈 요약해줘",
+                "추천 주문 보여줘",
+                "벤치마킹이 뭔데",
+            ],
+        }
+        examples = examples_by_bucket.get(bucket, examples_by_bucket["general"])
+        example_lines = "\n".join(f"• {item}" for item in examples)
+        raw = str(message or "").strip()
+        prefix = (
+            f"'{raw}'가 어떤 지표나 업무를 뜻하는지 명확하지 않습니다.\n"
+            if raw
+            else "질문 의도를 명확히 파악하지 못했습니다.\n"
+        )
+        return (
+            f"{prefix}"
+            f"{page_name} 기준으로 생산, 주문, 매출, 벤치마킹 맥락에서 다시 물어봐 주세요.\n\n"
+            f"예시:\n{example_lines}"
+        )
 
     @staticmethod
     def _dedupe_questions(items: list[dict], *, limit: int = 5) -> list[dict]:
@@ -860,6 +1252,26 @@ class AgentRouter:
                     },
                 ]
             )
+        elif page_bucket == "production":
+            suggestions.extend(
+                [
+                    {
+                        "text": "긴급 생산 대상 확인",
+                        "source": "page",
+                        "reason": "production_context",
+                    },
+                    {
+                        "text": "보충 후보 확인",
+                        "source": "page",
+                        "reason": "production_context",
+                    },
+                    {
+                        "text": "미대응 예상 손실 확인",
+                        "source": "page",
+                        "reason": "production_context",
+                    },
+                ]
+            )
         elif page_bucket == "orders":
             suggestions.extend(
                 [
@@ -884,17 +1296,17 @@ class AgentRouter:
             suggestions.extend(
                 [
                     {
-                        "text": "오늘 가장 위험한 이슈가 뭐야?",
+                        "text": "오늘 핵심 이슈 요약해줘",
                         "source": "page",
                         "reason": "dashboard_context",
                     },
                     {
-                        "text": "왜 오후 매출이 떨어졌는지 요약해줘",
+                        "text": "지금 뭐부터 처리하면 돼?",
                         "source": "page",
                         "reason": "dashboard_context",
                     },
                     {
-                        "text": "재고 소진 위험 품목 알려줘",
+                        "text": "AI 추정 순매출이 뭐야?",
                         "source": "page",
                         "reason": "dashboard_context",
                     },
@@ -953,14 +1365,20 @@ class AgentRouter:
                     "reason": "inventory_risk",
                 }
             )
-        if int(status.get("recent_order_count") or 0) > 0:
-            suggestions.append(
-                {
-                    "text": f"최근 주문 {int(status['recent_order_count'])}건 기준으로 오늘 발주 조정해줘",
-                    "source": "store_status",
-                    "reason": "recent_orders",
-                }
-            )
+        ## ── Overview (dashboard) domain lock ──
+        ## Block non-overview suggestions when on dashboard/overview
+        if page_bucket == "dashboard":
+            # Only allow recent-order suggestion if page_bucket is NOT dashboard
+            pass
+        else:
+            if int(status.get("recent_order_count") or 0) > 0:
+                suggestions.append(
+                    {
+                        "text": f"최근 주문 {int(status['recent_order_count'])}건 기준으로 오늘 발주 조정해줘",
+                        "source": "store_status",
+                        "reason": "recent_orders",
+                    }
+                )
 
         latest_user = self._last_user_message(recent_messages)
         if re.search(r"(왜|무슨\s*뜻|다시\s*설명)", message, re.IGNORECASE):
@@ -971,7 +1389,7 @@ class AgentRouter:
                     "reason": "followup_clarification",
                 }
             )
-        if re.search(r"(주문|발주)", latest_user, re.IGNORECASE):
+        if page_bucket != "dashboard" and re.search(r"(주문|발주)", latest_user, re.IGNORECASE):
             suggestions.append(
                 {
                     "text": "방금 논의한 주문안을 기준으로 확정 전 체크리스트 보여줘",
@@ -996,12 +1414,42 @@ class AgentRouter:
                 }
             )
 
+        ## ── Overview validator: strip non-overview followups ──
+        if page_bucket == "dashboard":
+            blocked_patterns = [
+                "최근 주문", "추천 주문 최종 확인", "최종 확인 후 발주 실행",
+                "벤치마킹", "유사 매장", "타 점포", "프로모션", "배달 건수",
+                "시간대가 비슷한 매장", "확정 전 체크리스트",
+            ]
+            suggestions = [
+                s for s in suggestions
+                if not any(pat in s.get("text", "") for pat in blocked_patterns)
+            ]
+
         deduped = self._dedupe_questions(suggestions, limit=5)
         if len(deduped) >= 3:
             return deduped
-        fallback = self._dedupe_questions(
-            deduped
-            + [
+        # Dashboard gets its own fallback
+        if page_bucket == "dashboard":
+            fallback_data = [
+                {
+                    "text": "오늘 핵심 이슈 요약해줘",
+                    "source": "fallback",
+                    "reason": "default",
+                },
+                {
+                    "text": "지금 뭐부터 처리하면 돼?",
+                    "source": "fallback",
+                    "reason": "default",
+                },
+                {
+                    "text": "AI 추정 순매출이 뭐야?",
+                    "source": "fallback",
+                    "reason": "default",
+                },
+            ]
+        else:
+            fallback_data = [
                 {
                     "text": "오늘 핵심 이슈 요약해줘",
                     "source": "fallback",
@@ -1013,7 +1461,9 @@ class AgentRouter:
                     "source": "fallback",
                     "reason": "default",
                 },
-            ],
+            ]
+        fallback = self._dedupe_questions(
+            deduped + fallback_data,
             limit=5,
         )
         return fallback
@@ -1065,11 +1515,11 @@ class AgentRouter:
         # Structured: one-line summary + top items
         total_count = len(candidates)
         total_qty = sum(r["quantity"] for r in candidates)
-        header = f"📋 발주 필요 품목 {total_count}종, 총 {total_qty}개"
+        header = f" 발주 필요 품목 {total_count}종, 총 {total_qty}개"
         lines = [f"  • {row['product_name']}: {row['quantity']}개" for row in trimmed]
         if total_count > limit:
             lines.append(f"  … 외 {total_count - limit}종")
-        evidence = "📊 근거: 전주 동요일 주문 패턴 + 소진 위험 분석"
+        evidence = " 근거: 최근 동요일 주문 패턴 + 소진 위험 분석"
         return f"{header}\n" + "\n".join(lines) + f"\n{evidence}", trimmed
 
     @staticmethod
@@ -1094,7 +1544,7 @@ class AgentRouter:
                     "total_qty": order.get("total_qty", 0),
                     "total_amount": order.get("total_amount", 0),
                     "representative_items": items_summary,
-                    "label": "📦 실제 주문 근거",
+                    "label": " 실제 주문 근거",
                 }
             )
         return evidence
@@ -1103,8 +1553,8 @@ class AgentRouter:
     def _format_recent_orders_summary(recent_orders: list[dict]) -> str:
         """Create a concise text summary of recent orders for evidence block."""
         if not recent_orders:
-            return "📦 최근 주문 근거: 데이터 없음"
-        lines = ["📦 최근 주문 근거 (실제 주문 내역)"]
+            return " 최근 주문 근거: 데이터 없음"
+        lines = [" 최근 주문 근거 (실제 주문 내역)"]
         for order in recent_orders[:3]:
             order_id = order.get("order_id") or order.get("id", "-")
             order_date = order.get("order_date") or order.get("biz_date", "-")
@@ -1296,7 +1746,7 @@ class AgentRouter:
                     if row.get("weeks_with_stockout"):
                         parts.append(f"품절 {int(row['weeks_with_stockout'])}회")
                     if row.get("stockout_probability"):
-                        parts.append(f"품절 확률 {row['stockout_probability']:.0f}%")
+                        parts.append(f"동일 요일 품절 빈도 {row['stockout_probability']:.0f}%")
                     if parts:
                         why_text = " (" + ", ".join(parts) + ")"
                 rec_lines.append(
@@ -1304,13 +1754,13 @@ class AgentRouter:
                 )
             if rec_lines:
                 header = (
-                    "📋 **1차/2차 생산 권장량**\n\n"
+                    " **1차/2차 생산 권장량**\n\n"
                     f"소진 위험 품목 {len(prod_items)}개 중 상위 {len(rec_lines)}개 권장 생산량 (총 {total_rec}개)\n\n"
                 )
                 if first_prod_summary and first_prod_summary != "-":
-                    header += f"📊 **1차 생산 기준시간**: {first_prod_summary}\n"
+                    header += f" **1차 생산 기준시간**: {first_prod_summary}\n"
                 if second_prod_summary and second_prod_summary != "-":
-                    header += f"📊 **2차 생산 기준시간**: {second_prod_summary}\n\n"
+                    header += f" **2차 생산 기준시간**: {second_prod_summary}\n\n"
                 header += "| # | 품목 | 권장 | 현재 | 부족 | 1시간 후 | 근거 |\n"
                 header += "|---|------|------|------|------|----------|------|\n"
                 for idx2, row2 in enumerate(prod_items[:8], start=1):
@@ -1359,7 +1809,7 @@ class AgentRouter:
                     )
                     alert_lines.append(f"{idx}. {pn}: 권장 {rec_qty}개 — {msg[:60]}")
                 return (
-                    f"📋 **생산 권장량**\n\n"
+                    f" **생산 권장량**\n\n"
                     "경보 기준 권장 생산량입니다.\n\n"
                     + "\n".join(alert_lines)
                     + f"\n\n근거: 최근 4주 판매 속도와 품절 빈도 기반\n"
@@ -1414,7 +1864,7 @@ class AgentRouter:
                         pass
                 stockout_pct = row.get("stockout_probability")
                 stockout_text = (
-                    f", 품절 확률 {stockout_pct:.0f}%"
+                    f", 동일 요일 품절 빈도 {stockout_pct:.0f}%"
                     if stockout_pct is not None
                     else ""
                 )
@@ -1431,7 +1881,7 @@ class AgentRouter:
                     float(r.get("stockout_probability", 0) or 0) for r in prod_items[:8]
                 ) / max(len(prod_items[:8]), 1)
                 validation_note = (
-                    f"\n\n📐 **재고 추정 검증 리포트**\n"
+                    f"\n\n**재고 추정 검증 리포트**\n"
                     f"- 추정 방식: 4주 동일 요일 판매 패턴 + 시간대별 소진 속도 기반 가중이동평균\n"
                     f"- 고위험 품목: {high_risk_count}개 (동일 요일 품절 빈도 평균 {avg_stockout_pct:.0f}%)\n"
                     f"- 검증 방식: 과거 4주 데이터 기반 산출 (확정 예측이 아닌 과거 패턴 기반 추정)\n"
@@ -1439,7 +1889,7 @@ class AgentRouter:
                     f"- 한계: 실시간 판매 변동 시 오차가 커질 수 있으며, 1시간 내 재평가 권장"
                 )
                 return (
-                    f"⏱️ **1시간 뒤 예상 재고량**\n\n"
+                    f"⏱ **1시간 뒤 예상 재고량**\n\n"
                     "소진 위험 품목의 1시간 후 예상입니다.\n\n"
                     + "\n".join(forecast_lines)
                     + validation_note
@@ -1453,7 +1903,7 @@ class AgentRouter:
                     msg = row.get("message", "")
                     alert_forecast_lines.append(f"{idx}. {pn} — {msg[:80]}")
                 return (
-                    f"⏱️ **예상 재고량**\n\n"
+                    f"⏱ **예상 재고량**\n\n"
                     "현재 경보 기준 예상입니다.\n\n"
                     + "\n".join(alert_forecast_lines)
                     + f"\n\n근거: 실시간 판매 속도와 재고 추이\n"
@@ -1472,13 +1922,20 @@ class AgentRouter:
     def _build_production_action_cards(
         *, alert_count: int, inventory_risk_count: int
     ) -> list[dict]:
-        if alert_count <= 0 and inventory_risk_count <= 0:
-            return []
+        body = ""
+        if alert_count > 0 and inventory_risk_count > 0:
+            body = f"경보 {alert_count}건 / 소진 위험 {inventory_risk_count}개"
+        elif alert_count > 0:
+            body = f"경보 {alert_count}건"
+        elif inventory_risk_count > 0:
+            body = f"소진 위험 {inventory_risk_count}개"
+        else:
+            body = "현재 경보 없음"
         return [
             {
                 "card_type": "production_status",
                 "title": "실시간 운영 대응",
-                "body": f"경보 {alert_count}건 / 소진 위험 {inventory_risk_count}개",
+                "body": body,
                 "actions": [
                     {
                         "label": "실시간 화면 열기",
@@ -1507,6 +1964,9 @@ class AgentRouter:
         user_id: str,
         role: str,
         trace: dict | None = None,
+        context: dict | None = None,
+        message: str = "",
+        resolved_message: str = "",
     ) -> ChatResponse:
         normalized_sub_intent = sub_intent or "ORDER_RECOMMEND"
 
@@ -1526,7 +1986,7 @@ class AgentRouter:
             if primary_option is not None:
                 # Structured: one-line conclusion + key numbers + evidence
                 rationale = (
-                    f"📊 {primary_option.label} 기준 추천\n"
+                    f" {primary_option.label} 기준 추천\n"
                     f"  • 총 수량: {primary_option.total_qty}개\n"
                     f"  • {primary_option.deviation_label}"
                 )
@@ -1544,14 +2004,14 @@ class AgentRouter:
                     extra = len(primary_option.items) - 3
                     if extra > 0:
                         item_lines.append(f"  … 외 {extra}종")
-                    rationale += "\n📦 대표 품목 (실제 주문 근거):\n" + "\n".join(
+                    rationale += "\n 대표 품목 (실제 주문 근거):\n" + "\n".join(
                         item_lines
                     )
                 top_items_evidence = [
                     {
                         "product_name": item.product_name,
                         "quantity": item.quantity,
-                        "label": "📦 실제 주문 근거",
+                        "label": " 실제 주문 근거",
                     }
                     for item in top_items
                 ]
@@ -1563,6 +2023,13 @@ class AgentRouter:
                     item.model_dump(mode="json") for item in primary_option.items
                 ]
                 cards = self._build_order_confirm_prepare_cards(option_items)
+                # Save order plan for checklist reference
+                self.order_agent.set_last_order_plan(
+                    store_id=store_id,
+                    items=option_items,
+                    source="order_rationale",
+                    label=primary_option.label,
+                )
             return ChatResponse(
                 agent="order",
                 response_type="text",
@@ -1580,9 +2047,19 @@ class AgentRouter:
 
         if normalized_sub_intent == "ORDER_RECENT_ADJUST":
             started_at = perf_counter()
+            cutoff_date_val: date | None = None
+            demo_date_val = (context or {}).get("demo_date")
+            if demo_date_val:
+                try:
+                    if not isinstance(demo_date_val, date):
+                        demo_date_val = date.fromisoformat(str(demo_date_val))
+                    cutoff_date_val = demo_date_val
+                except (ValueError, TypeError):
+                    pass
             summary = await self.order_agent.build_recent_order_adjustment_summary(
                 store_id=store_id,
                 trace=trace,
+                cutoff_date=cutoff_date_val,
             )
             add_elapsed(trace, "domain_service_ms", started_at)
             adjusted_items = summary.get("adjusted_items") or []
@@ -1596,16 +2073,24 @@ class AgentRouter:
             total_qty = sum(
                 int(item.get("quantity", 0) or 0) for item in adjusted_items
             )
-            answer = f"📋 오늘 조정안: {total_items}종, 총 {total_qty}개\n"
+            answer = f" 오늘 조정안: {total_items}종, 총 {total_qty}개\n"
             for item in adjusted_items[:5]:
                 answer += f"  • {item.get('product_name', '?')}: {item.get('quantity', 0)}개\n"
             if total_items > 5:
                 answer += f"  … 외 {total_items - 5}종\n"
             answer += f"\n{evidence_text}"
-            answer += "\n📊 근거: 최근 주문 3건 평균 (실제 주문 데이터)"
+            answer += "\n 근거: 최근 주문 3건 평균 (실제 주문 데이터)"
 
             # Evidence data for frontend rendering
             evidence_data = self._format_order_evidence(recent_orders)
+
+            # Save order plan for checklist reference
+            self.order_agent.set_last_order_plan(
+                store_id=store_id,
+                items=adjusted_items,
+                source="recent_order_adjust",
+                label=f"{actual_count if (actual_count := summary.get('actual_recent_count')) else summary.get('actual_recent_count', 0)}일 기준 조정안",
+            )
 
             cards = self._build_order_confirm_prepare_cards(adjusted_items)
             return ChatResponse(
@@ -1644,7 +2129,7 @@ class AgentRouter:
             # Add deviation label as trust indicator
             trust_label = ""
             if primary_option is not None:
-                trust_label = f"\n📊 추정 기준: {primary_option.label} ({primary_option.deviation_label})"
+                trust_label = f"\n 추정 기준: {primary_option.label} ({primary_option.deviation_label})"
             answer += trust_label
             cards = self._build_order_confirm_prepare_cards(needed_items)
             return ChatResponse(
@@ -1684,14 +2169,14 @@ class AgentRouter:
             item_count = len(option_items)
             total_qty = sum(int(item.get("quantity", 0) or 0) for item in option_items)
             answer = (
-                f"⚠️ 발주 전 최종 확인\n"
+                f" 발주 전 최종 확인\n"
                 f"  • 품목: {item_count}종\n"
                 f"  • 총 수량: {total_qty}개\n"
                 f"  • 반드시 아래 카드에서 명시적으로 확정해 주세요.\n"
                 f"  • 자동으로 실행되지 않습니다."
             )
             if primary_option is not None and primary_option.label:
-                answer += f"\n📊 근거: {primary_option.label} ({primary_option.deviation_label})"
+                answer += f"\n 근거: {primary_option.label} ({primary_option.deviation_label})"
             return ChatResponse(
                 agent="order",
                 response_type="text",
@@ -1708,26 +2193,52 @@ class AgentRouter:
 
         if normalized_sub_intent == "ORDER_PRECONFIRM_CHECKLIST":
             prepare_started_at = perf_counter()
-            started_at = perf_counter()
-            options = await self.order_agent.get_cached_or_generate_options(
-                store_id=store_id,
-                include_explanation=False,
-                user_id=user_id,
-                role=role,
-                trace=trace,
-            )
-            add_elapsed(trace, "domain_service_ms", started_at)
-            primary_option = options.options[0] if options.options else None
-            checklist_text, option_items = self._format_preconfirm_checklist(
-                primary_option
-            )
-            # Add trust label to checklist
-            if primary_option is not None and primary_option.label:
-                checklist_text += f"\n📊 데이터 근거: {primary_option.label}"
-                if primary_option.deviation_label:
-                    checklist_text += f" ({primary_option.deviation_label})"
-                checklist_text += " — 실제 주문 이력 기반"
-            cards = self._build_order_confirm_prepare_cards(option_items)
+            # First try to use the last order plan (from recommend/rationale/recent_adjust)
+            last_plan = self.order_agent.get_last_order_plan(store_id)
+            if last_plan and last_plan.get("items"):
+                option_items = last_plan["items"]
+                source_label = last_plan.get("label") or last_plan.get("source", "직전 주문안")
+                checklist_lines = [
+                    f" {source_label} 기준 확정 전 체크리스트입니다.",
+                    f"  • 품목: {len(option_items)}종",
+                    f"  • 총 수량: {sum(int(i.get('quantity', 0) or 0) for i in option_items)}개",
+                ]
+                top_items = option_items[:5]
+                if top_items:
+                    checklist_lines.append(" 핵심 품목:")
+                    checklist_lines.extend(
+                        f"  • {i.get('product_name', '?')}: {i.get('quantity', 0)}개"
+                        for i in top_items
+                    )
+                if len(option_items) > 5:
+                    checklist_lines.append(f"  … 외 {len(option_items) - 5}종")
+                checklist_lines.append(" 반드시 실제 화면에서 수량과 품목을 확인하고 확정해 주세요.")
+                checklist_lines.append(" 자동으로 실행되지 않습니다.")
+                checklist_text = "\n".join(checklist_lines)
+                checklist_text += f"\n 데이터 근거: {source_label} — 직전 논의한 주문안"
+                cards = self._build_order_confirm_prepare_cards(option_items)
+            else:
+                # Fallback: generate fresh options
+                started_at = perf_counter()
+                options = await self.order_agent.get_cached_or_generate_options(
+                    store_id=store_id,
+                    include_explanation=False,
+                    user_id=user_id,
+                    role=role,
+                    trace=trace,
+                )
+                add_elapsed(trace, "domain_service_ms", started_at)
+                primary_option = options.options[0] if options.options else None
+                checklist_text, option_items = self._format_preconfirm_checklist(
+                    primary_option
+                )
+                if primary_option is not None and primary_option.label:
+                    checklist_text += f"\n 데이터 근거: {primary_option.label}"
+                    if primary_option.deviation_label:
+                        checklist_text += f" ({primary_option.deviation_label})"
+                    checklist_text += " — 실제 주문 이력 기반"
+                cards = self._build_order_confirm_prepare_cards(option_items)
+                checklist_text = checklist_text
             add_elapsed(trace, "order_confirm_prepare_ms", prepare_started_at)
             return ChatResponse(
                 agent="order",
@@ -1754,11 +2265,11 @@ class AgentRouter:
         add_elapsed(trace, "domain_service_ms", started_at)
         primary_option = options.options[0] if options.options else None
 
-        # Build structured summary for order_card
+        # Build structured summary for order_card (fallback)
         summary_lines = []
         if primary_option is not None:
             item_count = len(primary_option.items) if primary_option.items else 0
-            summary_lines.append(f"📋 {primary_option.label}")
+            summary_lines.append(f" {primary_option.label}")
             summary_lines.append(
                 f"  • 품목 {item_count}종, 총 {primary_option.total_qty}개"
             )
@@ -1768,14 +2279,101 @@ class AgentRouter:
             # Top 3 representative items
             top_items = primary_option.items[:3] if primary_option.items else []
             if top_items:
-                summary_lines.append("📦 대표 품목:")
+                summary_lines.append(" 대표 품목:")
                 for item in top_items:
                     summary_lines.append(f"  • {item.product_name}: {item.quantity}개")
                 extra = len(primary_option.items) - 3
                 if extra > 0:
                     summary_lines.append(f"  … 외 {extra}종")
-            summary_lines.append("📊 근거: 전주 동요일 주문 패턴 (실제 주문 데이터)")
+            summary_lines.append(" 근거: 최근 동요일 주문 패턴 (실제 주문 데이터)")
 
+        # Fetch campaign impact for enriching order facts
+        campaign_impact = None
+        if is_postgres_mode():
+            try:
+                from app.db.session import get_session_factory
+                from app.routers.promotions import _compute_campaign_impact
+
+                session_factory = get_session_factory()
+                async with session_factory() as db_session:
+                    base_items = None
+                    if primary_option and primary_option.items:
+                        base_items = [
+                            {
+                                "product_id": item.product_id,
+                                "quantity": item.quantity,
+                            }
+                            for item in primary_option.items
+                        ]
+                    from sqlalchemy import text
+
+                    schema = "dunkin_mart_copy"
+                    result = await db_session.execute(
+                        text(f"SELECT MAX(biz_date) FROM {schema}.new_product_sales_day_gold WHERE store_id = :sid"),
+                        {"sid": store_id},
+                    )
+                    max_date = result.scalar()
+                    demo_date_val = (
+                        (context or {}).get("demo_date")
+                        or max_date
+                        or date.today()
+                    )
+                    if not isinstance(demo_date_val, date):
+                        demo_date_val = date.fromisoformat(str(demo_date_val))
+                    campaign_impact = await _compute_campaign_impact(
+                        db_session, store_id, demo_date_val, base_items
+                    )
+            except Exception:
+                logger.debug(
+                    "Failed to fetch campaign impact for store_id=%s",
+                    store_id,
+                    exc_info=True,
+                )
+
+        # Try LLM with order facts first, fall back to order_card
+        order_facts = self._build_order_facts(
+            store_id=store_id,
+            context=context,
+            options=options.options if options else [],
+            deadlines=[],
+            campaign_impact=campaign_impact,
+        )
+        resolved_msg = str(intent_result.get("resolved_query") or "")
+        order_llm_answer, order_llm_tokens = await self._try_llm_answer(
+            message=resolved_msg,
+            facts=order_facts,
+            message_type=normalized_sub_intent,
+            trace=trace,
+        )
+        if order_llm_answer:
+            return ChatResponse(
+                agent="order",
+                response_type="text",
+                content=order_llm_answer,
+                session_id=session_id,
+                metadata={
+                    "intent": intent,
+                    "sub_intent": normalized_sub_intent,
+                    "llm_tokens_used": order_llm_tokens,
+                    "used_llm": True,
+                    "action_cards": self._build_order_confirm_prepare_cards(
+                        [item.model_dump(mode="json") for item in (primary_option.items if primary_option else [])]
+                    ),
+                    "answer": order_llm_answer,
+                },
+            )
+
+        order_action_cards = self._build_order_confirm_prepare_cards(
+            [item.model_dump(mode="json") for item in (primary_option.items if primary_option else [])]
+        )
+        # Save order plan for checklist reference
+        if primary_option is not None:
+            self.order_agent.set_last_order_plan(
+                store_id=store_id,
+                items=[item.model_dump(mode="json") for item in primary_option.items],
+                source="order_recommend",
+                label=primary_option.label,
+            )
         return ChatResponse(
             agent="order",
             response_type="order_card",
@@ -1787,6 +2385,8 @@ class AgentRouter:
                 "llm_tokens_used": intent_result.get("llm_tokens_used", 0),
                 "order_summary": "\n".join(summary_lines) if summary_lines else "",
                 "evidence_source": "실제 주문 데이터",
+                "action_cards": order_action_cards,
+                "answer": "\n".join(summary_lines) if summary_lines else "추천 주문 옵션입니다.",
             },
         )
 
@@ -1897,12 +2497,34 @@ class AgentRouter:
                 alerts = await alerts_task
                 inventory_items = await inventory_task
                 add_elapsed(trace, "domain_service_ms", domain_started_at)
-                answer, production_meta = self._format_production_text(
+                fallback_answer, production_meta = self._format_production_text(
                     sub_intent=normalized_production_sub,
                     alerts=alerts,
                     inventory_items=inventory_items,
                     risk_products=risk_products,
                 )
+                # Try LLM with production facts first, fall back to template
+                prod_facts = self._build_production_facts(
+                    store_id=store_id,
+                    context=context,
+                    alerts=alerts,
+                    inventory_items=inventory_items,
+                    risk_products=risk_products,
+                )
+                llm_answer, llm_tokens = await self._try_llm_answer(
+                    message=resolved_message,
+                    facts=prod_facts,
+                    message_type=normalized_production_sub,
+                    trace=trace,
+                )
+                # Validate LLM answer — reject if generic/wrong, fall back to template
+                if llm_answer and not self._validate_llm_production_answer(llm_answer, prod_facts):
+                    llm_answer = ""
+                    logger.warning(
+                        "Production LLM answer rejected, using fallback",
+                    )
+                answer = llm_answer or fallback_answer
+                metadata_llm_tokens = llm_tokens or intent_result.get("llm_tokens_used", 0)
                 action_cards = self._build_production_action_cards(
                     alert_count=int(production_meta.get("alert_count") or 0),
                     inventory_risk_count=int(
@@ -1917,7 +2539,8 @@ class AgentRouter:
                     metadata={
                         "intent": intent,
                         "sub_intent": normalized_production_sub,
-                        "llm_tokens_used": intent_result["llm_tokens_used"],
+                        "llm_tokens_used": metadata_llm_tokens,
+                        "used_llm": bool(llm_answer),
                         "action_cards": action_cards,
                         **production_meta,
                     },
@@ -1927,7 +2550,30 @@ class AgentRouter:
             alerts = await self.production_agent.get_current_alerts(
                 store_id, user_id=user_id, role=role
             )
+            inv_items = await self.production_agent.get_inventory_status(
+                store_id, user_id=user_id, role=role
+            )
             add_elapsed(trace, "domain_service_ms", domain_started_at)
+            prod_alert_facts = self._build_production_facts(
+                store_id=store_id,
+                context=context,
+                alerts=alerts,
+                inventory_items=inv_items,
+            )
+            alert_llm_answer, alert_llm_tokens = await self._try_llm_answer(
+                message=resolved_message,
+                facts=prod_alert_facts,
+                message_type=normalized_production_sub,
+                trace=trace,
+            )
+            alert_summary = (
+                alert_llm_answer
+                or f"현재 경보 {len(alerts)}건입니다."
+            )
+            prod_action_cards = self._build_production_action_cards(
+                alert_count=len(alerts),
+                inventory_risk_count=self._count_critical_alerts(alerts),
+            )
             response = ChatResponse(
                 agent="production",
                 response_type="alert_card",
@@ -1936,9 +2582,12 @@ class AgentRouter:
                 metadata={
                     "intent": intent,
                     "sub_intent": normalized_production_sub,
-                    "llm_tokens_used": intent_result["llm_tokens_used"],
+                    "llm_tokens_used": alert_llm_tokens or intent_result.get("llm_tokens_used", 0),
+                    "used_llm": bool(alert_llm_answer),
                     "alert_count": len(alerts),
                     "critical_alert_count": self._count_critical_alerts(alerts),
+                    "action_cards": prod_action_cards,
+                    "answer": alert_summary,
                 },
             )
             return await finalize(response)
@@ -1953,6 +2602,9 @@ class AgentRouter:
                 user_id=user_id,
                 role=role,
                 trace=trace,
+                context=context,
+                message=message,
+                resolved_message=resolved_message,
             )
             return await finalize(response)
 
@@ -2047,12 +2699,12 @@ class AgentRouter:
             else:  # GENERAL_HELP
                 answer = (
                     "제가 도와드릴 수 있는 영역입니다:\n"
-                    "📦 주문/발주 — 추천 주문, 발주 필요 품목, 주문 확정\n"
-                    "📊 매출 분석 — 매출 비교, 추세, 카테고리별 실적\n"
-                    "🔍 재고/이상 감지 — 소진 위험, 이상 징후\n"
-                    "✅ 할 일 관리 — 미완료 항목, 우선순위, 완료 처리\n"
-                    "⚙️ 알림 설정 — 알림 끄기/켜기\n"
-                    "🌤️ 날씨/시간 — 오늘 날씨, 현재 시간\n"
+                    " 주문/발주 — 추천 주문, 발주 필요 품목, 주문 확정\n"
+                    " 매출 분석 — 매출 비교, 추세, 카테고리별 실적\n"
+                    " 재고/이상 감지 — 소진 위험, 이상 징후\n"
+                    " 할 일 관리 — 미완료 항목, 우선순위, 완료 처리\n"
+                    " 알림 설정 — 알림 끄기/켜기\n"
+                    " 날씨/시간 — 오늘 날씨, 현재 시간\n"
                     "무엇이든 편하게 물어보세요!"
                 )
             response = ChatResponse(
@@ -2073,25 +2725,25 @@ class AgentRouter:
             current_page = str((context or {}).get("current_page") or "").lower()
             if "ai_insights" in page_key or "/ai-insights" in current_page:
                 answer = (
-                    "📊 **AI 검증 화면 가이드**\n\n"
+                    " **AI 검증 화면 가이드**\n\n"
                     "이 화면에서 확인해야 할 핵심 항목:\n\n"
                     "1. **Fox 신뢰도 점수** — AI 분석 결과의 정확도를 나타냅니다. 90% 이상이면 신뢰할 수 있습니다.\n"
                     "2. **근거 데이터** — 각 추천의 판단 근거를 확인하세요. 매출 패턴, 과거 주문 이력 등이 표시됩니다.\n"
                     "3. **예측 vs 실적 비교** — AI 예측이 실제 실적과 얼마나 일치하는지 비교합니다.\n"
                     "4. **개선 포인트** — 신뢰도가 낮은 영역은 추가 확인이 필요합니다.\n\n"
-                    "💡 신뢰도가 낮은 항목은 수동 검토를 권장합니다."
+                    " 신뢰도가 낮은 항목은 수동 검토를 권장합니다."
                 )
             else:
                 page_name = str((context or {}).get("page_context") or "이 화면")
                 if not page_name or page_name == "none":
                     page_name = "현재 화면"
                 answer = (
-                    f"👀 **{page_name} 화면 가이드**\n\n"
+                    f" **{page_name} 화면 가이드**\n\n"
                     "이 화면에서 확인할 수 있는 주요 정보:\n\n"
                     "1. **핵심 지표** — 상단의 요약 카드에서 가장 중요한 수치를 먼저 확인하세요.\n"
                     "2. **변동 사항** — 전일/전주 대비 변동이 큰 항목을 우선 점검하세요.\n"
                     "3. **알림/경고** — 하단의 알림 영역에서 즉시 대응이 필요한 항목을 확인하세요.\n\n"
-                    "💡 구체적인 항목이 궁금하시면 질문해주세요!"
+                    " 구체적인 항목이 궁금하시면 질문해주세요!"
                 )
             response = ChatResponse(
                 agent="faq",
@@ -2212,7 +2864,7 @@ class AgentRouter:
 
                 # Add business connection
                 if "rain" in weather_response or "비" in weather_response:
-                    weather_response += "\n\n💡 배달 수요 증가와 음료/MD 재고 변동이 예상됩니다. 매출 분석과 재고 확인을 같이 볼까요?"
+                    weather_response += "\n\n 배달 수요 증가와 음료/MD 재고 변동이 예상됩니다. 매출 분석과 재고 확인을 같이 볼까요?"
 
                 response = ChatResponse(
                     agent="utility",
@@ -2245,9 +2897,9 @@ class AgentRouter:
                 # Add business context based on time
                 hour = now.hour
                 if 11 <= hour <= 14:
-                    answer += "\n\n💡 점심 시간대! 배달 주문 피크 예상입니다."
+                    answer += "\n\n 점심 시간대! 배달 주문 피크 예상입니다."
                 elif 17 <= hour <= 19:
-                    answer += "\n\n💡 저녁 시간대! 매출 집중 시간입니다."
+                    answer += "\n\n 저녁 시간대! 매출 집중 시간입니다."
 
                 response = ChatResponse(
                     agent="utility",
@@ -2346,7 +2998,7 @@ class AgentRouter:
                 r"(벤치마크|벤치마킹).*(뭐|뭔|무엇|설명|개념|뜻|의미)", faq_lower
             ) or re.search(r"(벤치마킹이|벤치마크가).*(뭔|뭐|무엇)", faq_lower):
                 faq_answer = (
-                    "📊 **벤치마킹이란?**\n\n"
+                    " **벤치마킹이란?**\n\n"
                     "벤치마킹은 내 매장의 실적을 비슷한 규모의 다른 매장들과 비교하는 분석 방법입니다.\n\n"
                     "• **일평균 매출** 비교로 내 매장의 위치를 확인\n"
                     "• **시간대별 매출** 패턴으로 피크 시간대 파악\n"
@@ -2358,7 +3010,7 @@ class AgentRouter:
                 r"(프로모션|캠페인|행사).*(뭐|뭔|무엇|설명|개념|뜻|의미)", faq_lower
             ) or re.search(r"(프로모션이|캠페인이).*(뭐|뭔|무엇)", faq_lower):
                 faq_answer = (
-                    "🎯 **프로모션이란?**\n\n"
+                    " **프로모션이란?**\n\n"
                     "프로모션은 특정 기간 동안 진행하는 마케팅 행사로, 매출 증대와 고객 반응을 추적합니다.\n\n"
                     "• **도넛프라이데이** — 정기 티데이 프로모션\n"
                     "• **반응률** — 프로모션 기간 판매 건수\n"
@@ -2367,7 +3019,33 @@ class AgentRouter:
                     '지금 할 일: "이번 티데이 프로모션은 전체적으로 어땠어?"라고 질문해 보세요.'
                 )
             else:
-                faq_answer = "지원되는 질문은 재고, 주문, 매출, 폐기, 비교 분석, 알림 설정, 날씨/시간/계산 입니다."
+                # Try LLM with page context first for free chat
+                free_facts = {
+                    "domain": "free",
+                    "store_id": store_id,
+                    "page_context": str((context or {}).get("page_context") or (context or {}).get("menu") or ""),
+                    "demo_datetime": str((context or {}).get("demo_datetime") or ""),
+                }
+                llm_free, llm_free_tokens = await self._try_llm_answer(
+                    message=message,
+                    facts=free_facts,
+                    message_type="free",
+                    trace=trace,
+                )
+                if llm_free:
+                    response = ChatResponse(
+                        agent="faq",
+                        response_type="text",
+                        content=llm_free,
+                        session_id=session_id,
+                        metadata={
+                            "intent": intent,
+                            "llm_tokens_used": llm_free_tokens,
+                            "used_llm": True,
+                        },
+                    )
+                    return await finalize(response)
+                faq_answer = self._contextual_faq_answer(message, context)
             response = ChatResponse(
                 agent="faq",
                 response_type="text",
@@ -2499,7 +3177,7 @@ class AgentRouter:
         if not notice_snapshot:
             return (
                 "공지 데이터를 불러올 수 없습니다. 공지 게시판에서 직접 확인해주세요.\n\n"
-                "💡 시스템 관리자에게 공지 데이터 연동을 요청해주세요."
+                " 시스템 관리자에게 공지 데이터 연동을 요청해주세요."
             )
 
         total = notice_snapshot.get("total_count", 0)
@@ -2511,20 +3189,20 @@ class AgentRouter:
         if intent == "NOTICE_SUMMARY":
             lines = []
             lines.append(
-                f"📋 **공지 게시판 요약** (전체 {total}건 · 미읽음 {unread}건 · 긴급 {urgent}건)"
+                f" **공지 게시판 요약** (전체 {total}건 · 미읽음 {unread}건 · 긴급 {urgent}건)"
             )
             lines.append("")
 
             urgent_notices = notice_snapshot.get("urgent_notices") or []
             if urgent_notices:
-                lines.append(f"🚨 **긴급 공지 ({len(urgent_notices)}건)**")
+                lines.append(f" **긴급 공지 ({len(urgent_notices)}건)**")
                 for n in urgent_notices[:5]:
                     lines.append(_format_notice_item(n))
                 lines.append("")
 
             action_notices = notice_snapshot.get("action_required_notices") or []
             if action_notices:
-                lines.append(f"⚡ **조치 필요 ({len(action_notices)}건)**")
+                lines.append(f" **조치 필요 ({len(action_notices)}건)**")
                 for n in action_notices[:5]:
                     lines.append(_format_notice_item(n))
                 lines.append("")
@@ -2534,7 +3212,7 @@ class AgentRouter:
                 recent = notice_snapshot.get("recent_notices") or []
                 if recent:
                     lines.append("")
-                    lines.append(f"📌 **최근 공지 ({len(recent)}건)**")
+                    lines.append(f" **최근 공지 ({len(recent)}건)**")
                     for n in recent[:5]:
                         lines.append(_format_notice_item(n))
 
@@ -2569,7 +3247,7 @@ class AgentRouter:
                 today_str = _dt.date.today().isoformat()
                 today_notices = [n for n in all_notices if n.get("date") == today_str]
                 if today_notices:
-                    lines.append(f"📰 **오늘 등록된 공지** ({len(today_notices)}건)")
+                    lines.append(f" **오늘 등록된 공지** ({len(today_notices)}건)")
                     lines.append("")
                     for n in today_notices[:8]:
                         lines.append(_format_notice_item(n))
@@ -2584,14 +3262,14 @@ class AgentRouter:
                         lines.append(f"가장 최근 공지 날짜: **{latest_date}**")
                         lines.append("")
                         recent = all_notices[:5]
-                        lines.append(f"📌 **최신 공지** ({len(recent)}건)")
+                        lines.append(f" **최신 공지** ({len(recent)}건)")
                         for n in recent:
                             lines.append(_format_notice_item(n))
                     else:
                         lines.append("등록된 공지가 없습니다.")
             else:
                 recent = all_notices[:8]
-                lines.append(f"📰 **최신 공지** (최근 {len(recent)}건)")
+                lines.append(f" **최신 공지** (최근 {len(recent)}건)")
                 lines.append("")
                 for n in recent:
                     lines.append(_format_notice_item(n))
@@ -2619,7 +3297,7 @@ class AgentRouter:
                 filter_desc.append("조치 필요")
 
             filter_label = " · ".join(filter_desc) if filter_desc else "전체"
-            lines.append(f"🔍 **공지 필터 결과** ({filter_label})")
+            lines.append(f" **공지 필터 결과** ({filter_label})")
             lines.append("")
 
             matched = []
@@ -2686,7 +3364,7 @@ class AgentRouter:
                         if is_important and n.get("unread", False):
                             matched.append(n)
                 if matched:
-                    lines = [f"🔍 **미읽음 중요 공지** ({len(matched)}건)", ""]
+                    lines = [f" **미읽음 중요 공지** ({len(matched)}건)", ""]
 
             if matched:
                 for n in matched[:10]:
@@ -2696,7 +3374,7 @@ class AgentRouter:
                 if unread_only:
                     lines.append("")
                     lines.append(
-                        '💡 모든 미읽음 공지를 확인하려면 "미읽음 공지 전체"라고 물어보세요.'
+                        ' 모든 미읽음 공지를 확인하려면 "미읽음 공지 전체"라고 물어보세요.'
                     )
 
             return "\n".join(lines)
@@ -2705,7 +3383,7 @@ class AgentRouter:
         if intent == "NOTICE_ACTION_REQUIRED":
             lines = []
             action_notices = notice_snapshot.get("action_required_notices") or []
-            lines.append(f"⚡ **즉시 조치 필요 공지** ({len(action_notices)}건)")
+            lines.append(f" **즉시 조치 필요 공지** ({len(action_notices)}건)")
             lines.append("")
             if action_notices:
                 for n in action_notices[:8]:
@@ -2720,7 +3398,7 @@ class AgentRouter:
                     for n in urgent_notices[:5]:
                         lines.append(_format_notice_item(n))
                 else:
-                    lines.append("현재 즉시 조치가 필요한 공지가 없습니다. ✅")
+                    lines.append("현재 즉시 조치가 필요한 공지가 없습니다. ")
             return "\n".join(lines)
 
         # Fallback
@@ -2759,7 +3437,7 @@ class AgentRouter:
         if action_required > 0:
             suggestions.append(
                 {
-                    "text": f"⚡ 조치 필요 공지 {action_required}건 보여줘",
+                    "text": f" 조치 필요 공지 {action_required}건 보여줘",
                     "source": "notice",
                     "reason": "action_required",
                 }
@@ -2805,11 +3483,11 @@ def _format_notice_item(n: dict) -> str:
     parts = []
     prefix = ""
     if action_required:
-        prefix = "⚡ "
+        prefix = " "
     elif n.get("unread", False):
-        prefix = "🔵 "
+        prefix = " "
     elif n.get("tag") in ("urgent", "긴급") or "긴급" in title:
-        prefix = "🚨 "
+        prefix = " "
 
     header = f"{prefix}[{date}] {title}"
     if category:

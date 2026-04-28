@@ -6,6 +6,7 @@ import logging
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import text
 
 from app.dependencies import (
     get_current_user_role,
@@ -198,10 +199,12 @@ async def analytics_promo_performance(
     role: str = Depends(get_current_user_role),
     db=Depends(get_postgres_db),
     store_id: str = Query(default=DEMO_PRIMARY_STORE_ID),
+    demo_date: date | None = Query(default=None),
 ):
     """프로모션 성과 분석.
 
-    NOTE: fact_promo_day 테이블이 현재 비어 있습니다. 수동 입력 데이터가 있으면 표시합니다.
+    demo_date가 있으면 biz_date <= demo_date까지만 집계합니다.
+    미래 데이터는 절대 포함하지 않습니다.
     """
     from app.tools import sql_queries
 
@@ -215,35 +218,42 @@ async def analytics_promo_performance(
         """,
         {"store_id": sid},
     )
-    end_date = (
+    agg_end = (
         promo_latest.get("biz_date")
         if promo_latest and promo_latest.get("biz_date")
         else date.today()
     )
-    start_date = end_date - timedelta(days=30)
+    if demo_date:
+        agg_end = min(agg_end, demo_date)
+    start_date = agg_end - timedelta(days=30)
 
     promo_rows = await sql_queries.get_promo_analysis(
         db,
         sid,
         start_date=start_date,
-        end_date=end_date,
+        end_date=agg_end,
     )
 
+    note_text = f"집계 기준: {agg_end.isoformat()}까지입니다." if promo_rows else "선택한 기간에 프로모션 실적 데이터가 없습니다."
     if promo_rows:
         result = {
             "status": "active",
             "data_source": "실데이터 (dunkin_mart_copy.new_campaign_day_gold)",
-            "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+            "period": {"start": start_date.isoformat(), "end": agg_end.isoformat()},
             "promotions": promo_rows,
-            "note": "최신 프로모션 캠페인 집계 기준입니다.",
+            "note": note_text,
+            "aggregation_cutoff_date": agg_end.isoformat(),
+            "future_data_excluded": True,
         }
     else:
         result = {
             "status": "no_data",
             "data_source": "dunkin_mart_copy.new_campaign_day_gold",
-            "note": "선택한 기간에 프로모션 실적 데이터가 없습니다.",
-            "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+            "note": note_text,
+            "period": {"start": start_date.isoformat(), "end": agg_end.isoformat()},
             "promotions": [],
+            "aggregation_cutoff_date": agg_end.isoformat(),
+            "future_data_excluded": True,
         }
     return APIResponse(data=result)
 
@@ -761,23 +771,41 @@ async def analytics_promo_performance_detail(
     role: str = Depends(get_current_user_role),
     db=Depends(get_postgres_db),
     store_id: str = Query(default=DEMO_PRIMARY_STORE_ID),
+    demo_date: date | None = Query(default=None),
 ):
-    """프로모션 실적 상세 분석 (반응/매출/시간대/점포비교)."""
+    """프로모션 실적 상세 분석 (반응/매출/시간대/점포비교).
+
+    demo_date가 있으면 biz_date <= demo_date까지만 집계합니다.
+    """
     from app.tools import sql_queries
 
     sid = _validate_store_id(store_id or _store_id(request))
 
-    # 1. Promotion response & sales (all stores)
+    # Resolve cutoff: use demo_date if provided, else DB max
+    promo_latest = await sql_queries._fetch_gold_one(  # type: ignore[attr-defined]
+        db,
+        f"""
+        SELECT max(biz_date) AS biz_date
+        FROM {sql_queries.GOLD_SCHEMA}.new_campaign_day_gold
+        WHERE store_id = :store_id
+        """,
+        {"store_id": sid},
+    )
+    db_max = (promo_latest.get("biz_date") if promo_latest and promo_latest.get("biz_date") else date.today())
+    cutoff_date = min(db_max, demo_date) if demo_date else db_max
+
+    # 1. Promotion response & sales (all stores, cutoff applied)
     promo_rows = await sql_queries._fetch_gold_all(
         db,
         f"""
         SELECT store_id, campaign_id, campaign_name,
                SUM(bill_cnt) AS bill_cnt, SUM(sales_amt) AS sales_amt
         FROM {sql_queries.GOLD_SCHEMA}.new_campaign_day_gold
+        WHERE biz_date <= :cutoff_date
         GROUP BY store_id, campaign_id, campaign_name
         ORDER BY SUM(bill_cnt) DESC
         """,
-        {},
+        {"cutoff_date": cutoff_date},
     )
     promo_by_id = {}
     for r in promo_rows:
@@ -796,43 +824,46 @@ async def analytics_promo_performance_detail(
             }
         )
 
-    # 2. Hourly data from new_sales_campaign_hourly
-    hourly_rows = await sql_queries._fetch_gold_all(
-        db,
-        f"""
-        SELECT masked_stor_cd, cpi_cd, cpi_nm, bill_cnt,
-               qty_00, qty_01, qty_02, qty_03, qty_04, qty_05, qty_06, qty_07,
-               qty_08, qty_09, qty_10, qty_11, qty_12, qty_13, qty_14, qty_15,
-               qty_16, qty_17, qty_18, qty_19, qty_20, qty_21, qty_22, qty_23,
-               act_amt_00, act_amt_01, act_amt_02, act_amt_03, act_amt_04, act_amt_05, act_amt_06, act_amt_07,
-               act_amt_08, act_amt_09, act_amt_10, act_amt_11, act_amt_12, act_amt_13, act_amt_14, act_amt_15,
-               act_amt_16, act_amt_17, act_amt_18, act_amt_19, act_amt_20, act_amt_21, act_amt_22, act_amt_23
-        FROM {sql_queries.GOLD_SCHEMA}.new_sales_campaign_hourly
-        ORDER BY bill_cnt DESC
-        """,
-        {},
-    )
+    # 2. Hourly data — gracefully handle missing table
     hourly_by_promo = {}
-    for r in hourly_rows:
-        key = r["cpi_cd"] or r["cpi_nm"] or "unknown"
-        if key not in hourly_by_promo:
+    hourly_available = True
+    try:
+        hourly_rows = await sql_queries._fetch_gold_all(
+            db,
+            f"""
+            SELECT masked_stor_cd, cpi_cd, cpi_nm, bill_cnt,
+                   qty_00, qty_01, qty_02, qty_03, qty_04, qty_05, qty_06, qty_07,
+                   qty_08, qty_09, qty_10, qty_11, qty_12, qty_13, qty_14, qty_15,
+                   qty_16, qty_17, qty_18, qty_19, qty_20, qty_21, qty_22, qty_23,
+                   act_amt_00, act_amt_01, act_amt_02, act_amt_03, act_amt_04, act_amt_05, act_amt_06, act_amt_07,
+                   act_amt_08, act_amt_09, act_amt_10, act_amt_11, act_amt_12, act_amt_13, act_amt_14, act_amt_15,
+                   act_amt_16, act_amt_17, act_amt_18, act_amt_19, act_amt_20, act_amt_21, act_amt_22, act_amt_23
+            FROM {sql_queries.GOLD_SCHEMA}.new_sales_campaign_hourly
+            ORDER BY bill_cnt DESC
+            """,
+            {},
+        )
+        for r in hourly_rows:
+            key = r["cpi_cd"] or r["cpi_nm"] or "unknown"
+            if key not in hourly_by_promo:
+                hourly_by_promo[key] = {
+                    "cpi_cd": r["cpi_cd"],
+                    "cpi_nm": r["cpi_nm"],
+                    "total_bill_cnt": int(r["bill_cnt"] or 0),
+                    "stores": [],
+                }
             qty_fields = [f"qty_{str(i).zfill(2)}" for i in range(24)]
             amt_fields = [f"act_amt_{str(i).zfill(2)}" for i in range(24)]
-            hourly_by_promo[key] = {
-                "cpi_cd": r["cpi_cd"],
-                "cpi_nm": r["cpi_nm"],
-                "total_bill_cnt": int(r["bill_cnt"] or 0),
-                "stores": [],
-            }
-        qty_fields = [f"qty_{str(i).zfill(2)}" for i in range(24)]
-        amt_fields = [f"act_amt_{str(i).zfill(2)}" for i in range(24)]
-        hourly_by_promo[key]["stores"].append(
-            {
-                "store_id": r["masked_stor_cd"],
-                "hourly_qty": [int(r.get(f, 0) or 0) for f in qty_fields],
-                "hourly_amt": [float(r.get(f, 0) or 0) for f in amt_fields],
-            }
-        )
+            hourly_by_promo[key]["stores"].append(
+                {
+                    "store_id": r["masked_stor_cd"],
+                    "hourly_qty": [int(r.get(f, 0) or 0) for f in qty_fields],
+                    "hourly_amt": [float(r.get(f, 0) or 0) for f in amt_fields],
+                }
+            )
+    except Exception:
+        hourly_available = False
+        hourly_by_promo = {}
 
     # 3. Store comparison for top promo
     top_promo_id = list(promo_by_id.keys())[0] if promo_by_id else None
@@ -859,8 +890,12 @@ async def analytics_promo_performance_detail(
     return APIResponse(
         data={
             "store_id": sid,
+            "aggregation_cutoff_date": cutoff_date.isoformat(),
+            "latest_aggregation_date": cutoff_date.isoformat(),
+            "future_data_excluded": True,
             "promotions": all_promos[:20],
-            "hourly": hourly_by_promo,
+            "hourly": hourly_by_promo if hourly_available else [],
+            "hourly_available": hourly_available,
             "store_comparison": {
                 "top_promo_id": top_promo_id,
                 "top_promo_name": promo_by_id.get(top_promo_id, {}).get(
@@ -870,7 +905,8 @@ async def analytics_promo_performance_detail(
             }
             if top_promo_id
             else None,
-            "data_source": f"{sql_queries.GOLD_SCHEMA}.new_campaign_day_gold + new_sales_campaign_hourly",
+            "data_source": f"{sql_queries.GOLD_SCHEMA}.new_campaign_day_gold"
+            + (" + new_sales_campaign_hourly" if hourly_available else ""),
         }
     )
 
@@ -1092,7 +1128,7 @@ async def analytics_delivery_count_comparison(
             "data_source": f"{sql_queries.GOLD_SCHEMA}.new_sales_channel_daily",
         }
     )
-    latest_dt = (latest_row or {}).get("latest_dt") or "2026-03-10"
+    latest_dt = (latest_row or {}).get("latest_dt") or await sql_queries.get_latest_biz_date(db, sid)
 
     weekly_rows = await sql_queries._fetch_gold_all(
         db,
@@ -1183,5 +1219,498 @@ async def analytics_delivery_count_comparison(
                 "diff_pct": monthly_diff_pct,
             },
             "data_source": f"{sql_queries.GOLD_SCHEMA}.new_sales_channel_daily",
+        }
+    )
+
+
+# ── POC 가이드 매출 분석 6 개 질문 대응 API ──────────────────────────────
+
+@router.get("/monthly-compare", response_model=APIResponse)
+async def monthly_compare(
+    request: Request,
+    role: str = Depends(get_current_user_role),
+    db=Depends(get_postgres_db),
+    store_id: str = Query(default=DEMO_PRIMARY_STORE_ID),
+    current_month: str = Query(default="2026-02"),
+    compare_month: str = Query(default="2025-02"),
+):
+    """월별 매출 비교 (질문 1: 26 년 2 월 매출과 25 년 2 월 매출 비교해줘)."""
+    from calendar import monthrange
+    from datetime import date
+
+    sid = _validate_store_id(store_id)
+
+    y1, m1 = int(current_month[:4]), int(current_month[5:7])
+    y2, m2 = int(compare_month[:4]), int(compare_month[5:7])
+    current_start = date(y1, m1, 1)
+    current_end = date(y1, m1, monthrange(y1, m1)[1])
+    compare_start = date(y2, m2, 1)
+    compare_end = date(y2, m2, monthrange(y2, m2)[1])
+
+    query = """
+        SELECT
+            SUM(CASE WHEN biz_date >= :current_start AND biz_date <= :current_end THEN sales_amt ELSE 0 END) AS current_total,
+            SUM(CASE WHEN biz_date >= :compare_start AND biz_date <= :compare_end THEN sales_amt ELSE 0 END) AS compare_total,
+            COUNT(DISTINCT CASE WHEN biz_date >= :current_start AND biz_date <= :current_end THEN biz_date END) AS current_days,
+            COUNT(DISTINCT CASE WHEN biz_date >= :compare_start AND biz_date <= :compare_end THEN biz_date END) AS compare_days
+        FROM dunkin_mart_copy.gold__sales_channel_day
+        WHERE store_id = :store_id
+          AND (
+            (biz_date >= :current_start AND biz_date <= :current_end)
+            OR
+            (biz_date >= :compare_start AND biz_date <= :compare_end)
+          )
+    """
+
+    result = await db.execute(text(query), {
+        "current_start": current_start,
+        "current_end": current_end,
+        "compare_start": compare_start,
+        "compare_end": compare_end,
+        "store_id": sid,
+    })
+    rows = result.mappings().all()
+    row = rows[0] if rows else None
+
+    current_total = float(row["current_total"]) if row and row["current_total"] else 0
+    compare_total = float(row["compare_total"]) if row and row["compare_total"] else 0
+    current_days = int(row["current_days"]) if row and row["current_days"] else 0
+    compare_days = int(row["compare_days"]) if row and row["compare_days"] else 0
+
+    current_daily = current_total / current_days if current_days > 0 else 0
+    compare_daily = compare_total / compare_days if compare_days > 0 else 0
+    daily_change_pct = ((current_daily - compare_daily) / compare_daily * 100) if compare_daily > 0 else 0
+
+    if daily_change_pct > 10:
+        action = "전년 동월 대비 매출이 크게 증가했습니다. 성공 요인을 분석하여 지속하세요."
+    elif daily_change_pct < -10:
+        action = "전년 동월 대비 매출이 감소했습니다. 프로모션 또는 진열 개선을 고려해보세요."
+    else:
+        action = "전년 동월과 유사한 흐름입니다. 현재 전략을 유지하세요."
+
+    return APIResponse(
+        data={
+            "current_month": current_month,
+            "compare_month": compare_month,
+            "current_total_sales": round(current_total, 2),
+            "compare_total_sales": round(compare_total, 2),
+            "current_business_days": current_days,
+            "compare_business_days": compare_days,
+            "current_daily_avg": round(current_daily, 2),
+            "compare_daily_avg": round(compare_daily, 2),
+            "daily_change_pct": round(daily_change_pct, 2),
+            "action": action,
+            "data_source": "dunkin_mart_copy.gold__sales_channel_day",
+        }
+    )
+
+
+@router.get("/delivery-orders", response_model=APIResponse)
+async def delivery_orders(
+    request: Request,
+    role: str = Depends(get_current_user_role),
+    db=Depends(get_postgres_db),
+    store_id: str = Query(default=DEMO_PRIMARY_STORE_ID),
+    current_month: str = Query(default="2026-02"),
+    compare_month: str = Query(default="2026-01"),
+):
+    """배달 건수 비교 (질문 2: 전 주/전 월 대비 배달 건 수 비교해줘)."""
+    from calendar import monthrange
+    from datetime import date
+
+    sid = _validate_store_id(store_id)
+
+    y1, m1 = int(current_month[:4]), int(current_month[5:7])
+    y2, m2 = int(compare_month[:4]), int(compare_month[5:7])
+    current_start = date(y1, m1, 1)
+    current_end = date(y1, m1, monthrange(y1, m1)[1])
+    compare_start = date(y2, m2, 1)
+    compare_end = date(y2, m2, monthrange(y2, m2)[1])
+
+    query = """
+        SELECT
+            SUM(CASE WHEN biz_date >= :current_start AND biz_date <= :current_end THEN ord_cnt ELSE 0 END) as current_orders,
+            SUM(CASE WHEN biz_date >= :compare_start AND biz_date <= :compare_end THEN ord_cnt ELSE 0 END) as compare_orders,
+            SUM(CASE WHEN biz_date >= :current_start AND biz_date <= :current_end THEN sales_amt ELSE 0 END) as current_sales,
+            SUM(CASE WHEN biz_date >= :compare_start AND biz_date <= :compare_end THEN sales_amt ELSE 0 END) as compare_sales
+        FROM dunkin_mart_copy.gold__sales_channel_day
+        WHERE store_id = :store_id
+          AND channel_div = '온라인-배달'
+          AND (
+            (biz_date >= :current_start AND biz_date <= :current_end)
+            OR
+            (biz_date >= :compare_start AND biz_date <= :compare_end)
+          )
+    """
+
+    result = await db.execute(text(query), {
+        "current_start": current_start,
+        "current_end": current_end,
+        "compare_start": compare_start,
+        "compare_end": compare_end,
+        "store_id": sid,
+    })
+    rows = result.mappings().all()
+    row = rows[0] if rows else None
+
+    current_orders = float(row["current_orders"]) if row and row["current_orders"] else 0
+    compare_orders = float(row["compare_orders"]) if row and row["compare_orders"] else 0
+    current_sales = float(row["current_sales"]) if row and row["current_sales"] else 0
+    compare_sales = float(row["compare_sales"]) if row and row["compare_sales"] else 0
+
+    order_change_pct = ((current_orders - compare_orders) / compare_orders * 100) if compare_orders > 0 else 0
+
+    if order_change_pct > 20:
+        action = "배달 건수가 크게 증가했습니다. 배달 인력 또는 포장 용품 재고를 확인하세요."
+    elif order_change_pct < -20:
+        action = "배달 건수가 감소했습니다. 배달 앱 프로모션을 검토해보세요."
+    else:
+        action = "배달 건수가 안정적입니다."
+
+    return APIResponse(
+        data={
+            "current_month": current_month,
+            "compare_month": compare_month,
+            "current_period_start": current_start.isoformat(),
+            "current_period_end": current_end.isoformat(),
+            "compare_period_start": compare_start.isoformat(),
+            "compare_period_end": compare_end.isoformat(),
+            "current_delivery_orders": round(current_orders, 0),
+            "compare_delivery_orders": round(compare_orders, 0),
+            "current_delivery_sales": round(current_sales, 2),
+            "compare_delivery_sales": round(compare_sales, 2),
+            "order_change_pct": round(order_change_pct, 2),
+            "action": action,
+            "data_source": "dunkin_mart_copy.gold__sales_channel_day",
+        }
+    )
+
+
+@router.get("/campaign-effect", response_model=APIResponse)
+async def campaign_effect(
+    request: Request,
+    role: str = Depends(get_current_user_role),
+    db=Depends(get_postgres_db),
+    store_id: str = Query(default=DEMO_PRIMARY_STORE_ID),
+    campaign_keyword: str = Query(default="티데이"),
+):
+    """프로모션 효과 분석 (질문 3: 이번 티데이 프로모션은 전체적으로 어땠어?)."""
+    sid = _validate_store_id(store_id)
+
+    query = """
+        SELECT
+            campaign_id,
+            campaign_name,
+            SUM(lift_est) as total_lift,
+            SUM(redemption_cnt) as total_redemptions,
+            COUNT(DISTINCT biz_date) as active_days
+        FROM dunkin_mart_copy.gold__campaign_hourly
+        WHERE store_id = :store_id
+          AND (
+            campaign_name ILIKE :k1
+            OR campaign_name ILIKE :k2
+            OR campaign_name ILIKE :k3
+            OR campaign_name ILIKE :k4
+            OR campaign_name ILIKE :k5
+          )
+        GROUP BY campaign_id, campaign_name
+        ORDER BY total_redemptions DESC
+    """
+
+    keywords = [
+        f"%{campaign_keyword}%",
+        "%T day%",
+        "%T-Day%",
+        "%D-DAY%",
+        "%티데이%",
+    ]
+
+    result = await db.execute(text(query), {
+        "store_id": sid,
+        "k1": keywords[0],
+        "k2": keywords[1],
+        "k3": keywords[2],
+        "k4": keywords[3],
+        "k5": keywords[4],
+    })
+    rows = result.mappings().all()
+
+    if not rows:
+        return APIResponse(
+            data={
+                "campaigns_found": 0,
+                "message": "매칭된 프로모션 캠페인이 없습니다. campaign_name을 확인하세요.",
+                "action": "campaign_keyword 파라미터를 조정하여 검색하세요.",
+                "data_source": "dunkin_mart_copy.gold__campaign_hourly",
+            }
+        )
+
+    has_dday_mapping = any("D-DAY" in r["campaign_name"] for r in rows)
+    has_tday_exact = any("티데이" in r["campaign_name"] for r in rows)
+
+    campaigns = [
+        {
+            "campaign_id": r["campaign_id"],
+            "campaign_name": r["campaign_name"],
+            "total_lift": round(float(r["total_lift"]) if r["total_lift"] else 0, 2),
+            "total_redemptions": round(float(r["total_redemptions"]) if r["total_redemptions"] else 0, 0),
+            "active_days": int(r["active_days"]) if r["active_days"] else 0,
+        }
+        for r in rows
+    ]
+
+    total_redemptions = sum(c["total_redemptions"] for c in campaigns)
+    total_lift = sum(c["total_lift"] for c in campaigns)
+
+    if total_redemptions > 100:
+        action = f"프로모션 캠페인 {len(campaigns)}개 확인됨. 참여 건수 {total_redemptions} 건으로 반응이 좋습니다. 성공 요인을 분석하세요."
+    else:
+        action = "프로모션 캠페인 참여가 낮습니다. 프로모션 강화를 고려해보세요."
+
+    match_basis = "exact_tday" if has_tday_exact else ("dday_candidate" if has_dday_mapping else "keyword_search")
+    mapping_note = None
+    if has_dday_mapping and not has_tday_exact:
+        mapping_note = "현재 DB에는 '티데이' 명칭이 직접 존재하지 않아, 'D-DAY' 캠페인을 티데이 후보로 분석했습니다. 정확한 티데이 캠페인 ID 매핑이 필요합니다."
+
+    response_data = {
+        "campaign_keyword": campaign_keyword,
+        "matched_campaigns": campaigns,
+        "match_basis": match_basis,
+        "total_campaigns": len(campaigns),
+        "total_redemptions": round(total_redemptions, 0),
+        "total_lift": round(total_lift, 2),
+        "action": action,
+        "data_source": "dunkin_mart_copy.gold__campaign_hourly",
+    }
+    if mapping_note:
+        response_data["mapping_note"] = mapping_note
+
+    return APIResponse(data=response_data)
+
+
+@router.get("/product-compare", response_model=APIResponse)
+async def product_compare(
+    request: Request,
+    role: str = Depends(get_current_user_role),
+    db=Depends(get_postgres_db),
+    store_id: str = Query(default=DEMO_PRIMARY_STORE_ID),
+    product_keyword: str = Query(default="글레이즈드"),
+    current_month: str = Query(default="2026-02"),
+    compare_month: str = Query(default="2026-01"),
+):
+    """상품별 전월 대비 분석 (질문 4: 글레이즈드 전 월 대비 매출 금액 비교해줘)."""
+    from calendar import monthrange
+    from datetime import date
+
+    sid = _validate_store_id(store_id)
+
+    y1, m1 = int(current_month[:4]), int(current_month[5:7])
+    y2, m2 = int(compare_month[:4]), int(compare_month[5:7])
+    current_start = date(y1, m1, 1)
+    current_end = date(y1, m1, monthrange(y1, m1)[1])
+    compare_start = date(y2, m2, 1)
+    compare_end = date(y2, m2, monthrange(y2, m2)[1])
+
+    product_query = """
+        SELECT
+            product_name,
+            product_id,
+            SUM(CASE WHEN biz_date >= :current_start AND biz_date <= :current_end THEN sold_qty ELSE 0 END) as current_qty,
+            SUM(CASE WHEN biz_date >= :compare_start AND biz_date <= :compare_end THEN sold_qty ELSE 0 END) as compare_qty,
+            SUM(CASE WHEN biz_date >= :current_start AND biz_date <= :current_end THEN sale_amt ELSE 0 END) as current_sales,
+            SUM(CASE WHEN biz_date >= :compare_start AND biz_date <= :compare_end THEN sale_amt ELSE 0 END) as compare_sales
+        FROM dunkin_mart_copy.new_product_sales_day_gold
+        WHERE store_id = :store_id
+          AND product_name ILIKE :keyword
+          AND (
+            (biz_date >= :current_start AND biz_date <= :current_end)
+            OR
+            (biz_date >= :compare_start AND biz_date <= :compare_end)
+          )
+        GROUP BY product_id, product_name
+        ORDER BY current_sales DESC
+    """
+
+    product_result = await db.execute(text(product_query), {
+        "current_start": current_start,
+        "current_end": current_end,
+        "compare_start": compare_start,
+        "compare_end": compare_end,
+        "store_id": sid,
+        "keyword": f"%{product_keyword}%",
+    })
+    product_rows = product_result.mappings().all()
+
+    if not product_rows:
+        return APIResponse(
+            data={
+                "products_found": 0,
+                "message": f"'{product_keyword}' 관련 상품이 없습니다.",
+                "data_source": "dunkin_mart_copy.new_product_sales_day_gold",
+            }
+        )
+
+    products = []
+    for idx, r in enumerate(product_rows):
+        current_qty = float(r["current_qty"]) if r["current_qty"] else 0
+        compare_qty = float(r["compare_qty"]) if r["compare_qty"] else 0
+        current_sales = float(r["current_sales"]) if r["current_sales"] else 0
+        compare_sales = float(r["compare_sales"]) if r["compare_sales"] else 0
+
+        qty_change_pct = round(((current_qty - compare_qty) / compare_qty * 100) if compare_qty > 0 else 0, 2)
+        sales_change_pct = round(((current_sales - compare_sales) / compare_sales * 100) if compare_sales > 0 else 0, 2)
+
+        products.append({
+            "product_name": r["product_name"],
+            "current_qty": round(current_qty, 0),
+            "compare_qty": round(compare_qty, 0),
+            "qty_change_pct": qty_change_pct,
+            "current_sales": round(current_sales, 2),
+            "compare_sales": round(compare_sales, 2),
+            "sales_change_pct": sales_change_pct,
+            "current_rank": idx + 1,
+            "compare_rank": None,
+            "sales_basis": "actual_sales",
+            "limitation_note": None,
+        })
+
+    if products and products[0]["current_sales"] > 0:
+        action = f"'{product_keyword}' 상품군 매출이 전월 대비 {products[0]['sales_change_pct']}% 변동했습니다. 상품별 판매 현황을 확인하여 재고 및 생산 계획을 조정하세요."
+    else:
+        action = f"'{product_keyword}' 상품군 전월 대비 분석 완료. 세부 데이터를 확인하세요."
+
+    return APIResponse(
+        data={
+            "products": products,
+            "current_month": current_month,
+            "compare_month": compare_month,
+            "store_id": sid,
+            "action": action,
+            "data_source": "dunkin_mart_copy.new_product_sales_day_gold",
+        }
+    )
+
+
+@router.get("/channel-sales", response_model=APIResponse)
+async def channel_sales(
+    request: Request,
+    role: str = Depends(get_current_user_role),
+    db=Depends(get_postgres_db),
+    store_id: str = Query(default=DEMO_PRIMARY_STORE_ID),
+    month: str = Query(default="2026-02"),
+):
+    """채널별 매출 분석 (질문 5: 이번 2 월 배달 채널 별 매출 알려줘)."""
+    from datetime import date
+
+    sid = _validate_store_id(store_id)
+
+    month_start = date.fromisoformat(f"{month}-01")
+    month_end = date.fromisoformat(f"{month}-28")
+
+    query = """
+        SELECT
+            channel_name,
+            SUM(sales_amt) as channel_sales,
+            SUM(ord_cnt) as channel_orders,
+            AVG(sales_ratio_pct) as avg_sales_ratio
+        FROM dunkin_mart_copy.gold__sales_channel_day
+        WHERE store_id = :store_id
+          AND biz_date >= :month_start
+          AND biz_date <= :month_end
+          AND channel_div = '온라인-배달'
+        GROUP BY channel_name
+        ORDER BY channel_sales DESC
+    """
+
+    result = await db.execute(text(query), {
+        "store_id": sid,
+        "month_start": month_start,
+        "month_end": month_end,
+    })
+    rows = result.mappings().all()
+
+    channels = [
+        {
+            "channel_name": r["channel_name"],
+            "channel_sales": round(float(r["channel_sales"]) if r["channel_sales"] else 0, 2),
+            "channel_orders": round(float(r["channel_orders"]) if r["channel_orders"] else 0, 0),
+            "avg_sales_ratio": round(float(r["avg_sales_ratio"]) if r["avg_sales_ratio"] else 0, 2),
+        }
+        for r in rows
+    ]
+
+    total_delivery_sales = sum(c["channel_sales"] for c in channels)
+
+    action = "배달 채널 매출이 안정적입니다. 주요 채널에 집중하여 프로모션을 강화하세요."
+
+    return APIResponse(
+        data={
+            "month": month,
+            "channels": channels,
+            "total_delivery_sales": round(total_delivery_sales, 2),
+            "action": action,
+            "data_source": "dunkin_mart_copy.gold__sales_channel_day",
+        }
+    )
+
+
+@router.get("/peer-compare", response_model=APIResponse)
+async def peer_compare(
+    request: Request,
+    role: str = Depends(get_current_user_role),
+    db=Depends(get_postgres_db),
+    store_id: str = Query(default=DEMO_PRIMARY_STORE_ID),
+    month: str = Query(default="2026-02"),
+):
+    """타점포 비교 (질문 6: 이번 달 일평균 매출을 타 점포 평균과 비교해줘)."""
+    from datetime import date
+
+    sid = _validate_store_id(store_id)
+
+    month_start = date.fromisoformat(f"{month}-01")
+    month_end = date.fromisoformat(f"{month}-28")
+
+    query = """
+        SELECT
+            AVG(total_sales) as store_avg_sales,
+            AVG(peer_avg_sales) as peer_avg_sales,
+            AVG(vs_peer_sales_delta_pct) as avg_vs_peer_delta,
+            COUNT(DISTINCT biz_date) as business_days
+        FROM dunkin_mart_copy.gold__store_peer_day
+        WHERE store_id = :store_id
+          AND biz_date >= :month_start
+          AND biz_date <= :month_end
+    """
+
+    result = await db.execute(text(query), {
+        "store_id": sid,
+        "month_start": month_start,
+        "month_end": month_end,
+    })
+    rows = result.mappings().all()
+    row = rows[0] if rows else None
+
+    store_avg = float(row["store_avg_sales"]) if row and row["store_avg_sales"] else 0
+    peer_avg = float(row["peer_avg_sales"]) if row and row["peer_avg_sales"] else 0
+    avg_delta = float(row["avg_vs_peer_delta"]) if row and row["avg_vs_peer_delta"] else 0
+    business_days = int(row["business_days"]) if row and row["business_days"] else 0
+
+    if avg_delta > 5:
+        action = "타점포 평균 대비 매출이 높습니다. 성공 요인을 분석하여 유지하세요."
+    elif avg_delta < -5:
+        action = "타점포 평균 대비 매출이 낮습니다. 경쟁점포 분석 및 개선 방안 모색 필요."
+    else:
+        action = "타점포 평균과 유사한 수준입니다."
+
+    return APIResponse(
+        data={
+            "month": month,
+            "store_daily_avg": round(store_avg, 2),
+            "peer_daily_avg": round(peer_avg, 2),
+            "vs_peer_delta_pct": round(avg_delta, 2),
+            "business_days": business_days,
+            "action": action,
+            "note": "클러스터 기준이 없으므로 전체 POC 평균 대비입니다. 동종 클러스터 비교는 추후 기준 데이터 필요.",
+            "data_source": "dunkin_mart_copy.gold__store_peer_day",
         }
     )

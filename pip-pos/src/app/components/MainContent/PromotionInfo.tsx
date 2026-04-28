@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ContentWrapper from "./ContentWrapper";
-import { getPromotions, getPromoPerformanceData } from "../../../lib/api";
-import type { Promotion, SimulationData, PromotionChannel, PromoPerformanceData } from "../../../types";
+import { getPromotions, getPromoPerformanceData, getCampaignDashboard } from "../../../lib/api";
+import type { Promotion, SimulationData, PromotionChannel, PromoPerformanceData, CampaignDashboardResponse } from "../../../types";
 import {
   RadarChart,
   Radar,
@@ -46,6 +46,12 @@ function SimulationView({
   const maxMetricA = Math.max(...sim.metrics.map((m) => m.valueA));
   const maxMetricB = Math.max(...sim.metrics.map((m) => m.valueB));
   const maxMetric = Math.max(maxMetricA, maxMetricB);
+
+  function formatPct(value: number | null | undefined, signed = false) {
+    if (value === null || value === undefined || !Number.isFinite(value)) return "-";
+    const sign = signed && value > 0 ? "+" : "";
+    return `${sign}${value.toFixed(1)}%`;
+  }
 
   return (
     <div className="flex flex-col gap-[14px]">
@@ -188,7 +194,7 @@ function SimulationView({
                       className="text-[10px] font-bold"
                       style={{ color: positive ? "#3aaedd" : "#ff522c" }}
                     >
-                      {positive ? "+" : ""}{m.diffPct}%
+                      {formatPct(m.diffPct, true)}
                     </p>
                   </div>
                   <div className="flex items-center gap-[6px]">
@@ -433,10 +439,12 @@ export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProp
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [selected, setSelected] = useState<Promotion | null>(null);
   const [perfData, setPerfData] = useState<PromoPerformanceData | null>(null);
+  const [campaignDashboard, setCampaignDashboard] = useState<CampaignDashboardResponse | null>(null);
 
   useEffect(() => {
     getPromotions().then(setPromotions);
     getPromoPerformanceData().then(setPerfData).catch(() => {});
+    getCampaignDashboard().then(setCampaignDashboard).catch(() => {});
   }, []);
 
   const aiPromos = promotions.filter((p) => p.status === "ai");
@@ -499,6 +507,96 @@ export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProp
                   />
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* 캠페인 영향 보정 */}
+          {campaignDashboard && (
+            <div className="bg-white border border-[#f0f1f3] rounded-[20px] px-[16px] pt-[14px] pb-[14px]">
+              <div className="flex items-center justify-between mb-[10px]">
+                <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
+                  <span className="w-[7px] h-[4px] bg-[#f0ad4e] rounded-[30px]" />
+                  캠페인 영향 보정
+                </p>
+                <span className="text-[9px] text-[#aaa]">{campaignDashboard.demo_date.replace(/-/g, ".")} {campaignDashboard.demo_time}</span>
+              </div>
+              {campaignDashboard.campaign_impact.campaigns.length === 0 ? (
+                <div className="bg-[#f5f6f7] rounded-[12px] px-[10px] py-[8px]">
+                  <p className="text-[9px] text-[#888] leading-[14px]">현재 적용 중인 캠페인이 없습니다</p>
+                  <p className="text-[9px] text-[#aaa] mt-[4px] leading-[14px]" style={{ color: "#aaa" }}>{campaignDashboard.campaign_impact.note}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-[8px] mb-[10px]">
+                    <div className="bg-[#f0f8fe] rounded-[12px] px-[10px] py-[8px]">
+                      <p className="text-[8px] text-[#888]">진행 캠페인</p>
+                      <p className="font-bold text-[14px] text-[#3aaedd]">{campaignDashboard.campaign_impact.active_campaign_count}개</p>
+                    </div>
+                    <div className="bg-[#f0f8fe] rounded-[12px] px-[10px] py-[8px]">
+                      <p className="text-[8px] text-[#888]">해당 품목</p>
+                      <p className="font-bold text-[14px] text-[#3aaedd]">{campaignDashboard.campaign_impact.affected_product_count}개</p>
+                    </div>
+                    <div className="bg-[#f0f8fe] rounded-[12px] px-[10px] py-[8px]">
+                      <p className="text-[8px] text-[#888]">보정 수량</p>
+                      <p className="font-bold text-[14px] text-[#3aaedd]">
+                        {campaignDashboard.campaign_impact.summary.total_adjustment_qty > 0 ? "+" : ""}{campaignDashboard.campaign_impact.summary.total_adjustment_qty}
+                      </p>
+                    </div>
+                  </div>
+                  {campaignDashboard.campaign_impact.campaigns.map((campaign) => (
+                    <div key={campaign.campaign_id} className="mb-[10px] bg-[#f8f9fa] rounded-[12px] px-[12px] py-[10px]">
+                      <div className="flex items-center justify-between mb-[6px]">
+                        <p className="font-bold text-[11px] text-[#222]">{campaign.campaign_name}</p>
+                        <div className="flex items-center gap-[6px]">
+                          <span className="text-[9px] text-[#888]">{campaign.period.start_date?.replace(/-/g, ".")} ~ {campaign.period.end_date?.replace(/-/g, ".")}</span>
+                          <span className="text-[9px] font-bold text-[#555]">{campaign.affected_product_count}개 품목 해당</span>
+                        </div>
+                      </div>
+                      {campaign.affected_products.map((product) => (
+                        <div key={product.product_id} className="flex items-start justify-between gap-[6px] py-[6px] border-b border-[#eee] last:border-b-0">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-[4px] mb-[2px]">
+                              <span className="text-[10px] font-bold text-[#333]">{product.product_name}</span>
+                              <span
+                                className="text-[8px] font-bold px-[4px] py-[1px] rounded-full"
+                                style={{
+                                  backgroundColor: product.confidence === "high" ? "#edf7f0" : product.confidence === "medium" ? "#fff8e8" : "#f5f5f5",
+                                  color: product.confidence === "high" ? "#2f8a51" : product.confidence === "medium" ? "#c4910a" : "#888",
+                                }}
+                              >
+                                {product.confidence === "high" ? "신뢰도 높음" : product.confidence === "medium" ? "신뢰도 중간" : "참고"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-[6px] mb-[3px]">
+                              <span className="text-[9px] text-[#666]">
+                                기준 {product.base_recommended_qty}개
+                                {product.campaign_adjustment_qty !== 0 ? ` → 보정 ${product.campaign_adjustment_qty > 0 ? "+" : ""}${product.campaign_adjustment_qty}개 → 최종 ${product.final_recommended_qty}개` : ` → 유지`}
+                              </span>
+                            </div>
+                            <p className="text-[8px] text-[#888] leading-[12px]">{product.guide}</p>
+                          </div>
+                          <span
+                            className="text-[9px] font-bold shrink-0 flex items-center gap-[2px]"
+                            style={{
+                              color: product.impact_direction === "increase" ? "#3aaedd" : "#ff522c",
+                            }}
+                          >
+                            {product.impact_direction === "increase" ? "▲" : "▼"}
+                            {Number.isFinite(product.impact_rate) ? `${Math.abs(product.impact_rate * 100).toFixed(0)}%` : "-"}
+                          </span>
+                        </div>
+                      ))}
+                      <p className="text-[9px] text-[#aaa] mt-[4px] leading-[14px]">{campaign.campaign_name} 캠페인 매출 {fmtKRW(campaign.total_sales_amt)} / {campaign.total_bill_cnt}건</p>
+                    </div>
+                  ))}
+                  <div className="bg-[#f5f6f7] rounded-[12px] px-[10px] py-[8px]">
+                    <p className="text-[9px] text-[#555] leading-[14px]">보정 기준: 기준 {campaignDashboard.campaign_impact.summary.total_base_qty}개 → 보정 {campaignDashboard.campaign_impact.summary.total_adjustment_qty > 0 ? "+" : ""}{campaignDashboard.campaign_impact.summary.total_adjustment_qty}개 → 최종 {campaignDashboard.campaign_impact.summary.total_final_qty}개</p>
+                    <p className="text-[9px] text-[#888] mt-[2px] leading-[14px]">
+                      {campaignDashboard.campaign_impact.note}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -698,19 +796,30 @@ export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProp
           )}
 
           {/* ── C. 시간대별 성과 ── */}
-          {perfData && (
-            <div className="bg-white border border-[#f0f1f3] rounded-[20px] px-[16px] pt-[14px] pb-[14px]">
-              <div className="flex items-center justify-between mb-[10px]">
-                <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
-                  <span className="w-[7px] h-[4px] bg-[#f0ad4e] rounded-[30px]" />
-                  시간대별 성과
-                </p>
+          <div className="bg-white border border-[#f0f1f3] rounded-[20px] px-[16px] pt-[14px] pb-[14px]">
+            <div className="flex items-center justify-between mb-[10px]">
+              <p className="font-bold text-[12px] text-[#222] flex items-center gap-[6px]">
+                <span className="w-[7px] h-[4px] bg-[#f0ad4e] rounded-[30px]" />
+                시간대별 성과
+              </p>
+              {perfData && (
                 <span className="text-[9px] text-[#aaa]">{perfData.hourly.promoName}</span>
-              </div>
-              {(() => {
-                const activeHours = perfData.hourly.hourlyData.filter((h) => h.qty > 0);
-                const maxQty = Math.max(...activeHours.map((h) => h.qty), 1);
+              )}
+            </div>
+            {perfData && (() => {
+              const activeHours = perfData.hourly.hourlyData.filter((h) => h.qty > 0);
+              if (activeHours.length === 0) {
                 return (
+                  <div className="bg-[#f5f6f7] rounded-[12px] px-[10px] py-[8px]">
+                    <p className="text-[9px] text-[#555] leading-[14px]">시간대별 성과 데이터는 아직 연결되지 않았습니다.</p>
+                    <p className="text-[9px] text-[#888] mt-[3px] leading-[14px]">현재는 캠페인 기간과 상품 반응 기준으로만 분석 중입니다.</p>
+                    <p className="text-[9px] text-[#888] mt-[1px] leading-[14px]">시간대 매출 데이터가 연결되면 강한 시간대를 표시하겠습니다.</p>
+                  </div>
+                );
+              }
+              const maxQty = Math.max(...activeHours.map((h) => h.qty), 1);
+              return (
+                <>
                   <div className="mb-[10px]">
                     <div className="flex items-end gap-[2px] h-[60px]">
                       {perfData.hourly.hourlyData.map((h) => {
@@ -740,14 +849,21 @@ export default function PromotionInfo({ isAiPanelOpen, isSidebarOpen }: MenuProp
                       <div className="flex items-center gap-[3px]"><span className="w-[8px] h-[3px] rounded bg-[#ff8a65]" /><span className="text-[8px] text-[#888]">약한 시간대</span></div>
                     </div>
                   </div>
-                );
-              })()}
+                  <div className="bg-[#f5f6f7] rounded-[12px] px-[10px] py-[8px]">
+                    <p className="text-[9px] text-[#555] leading-[14px]">{perfData.hourly.interpretation}</p>
+                    <p className="text-[9px] font-bold text-[#f0ad4e] mt-[4px]">지금 할 일: {perfData.hourly.action}</p>
+                  </div>
+                </>
+              );
+            })()}
+            {!perfData && (
               <div className="bg-[#f5f6f7] rounded-[12px] px-[10px] py-[8px]">
-                <p className="text-[9px] text-[#555] leading-[14px]">{perfData.hourly.interpretation}</p>
-                <p className="text-[9px] font-bold text-[#f0ad4e] mt-[4px]">지금 할 일: {perfData.hourly.action}</p>
+                <p className="text-[9px] text-[#555] leading-[14px]">시간대별 성과 데이터는 아직 연결되지 않았습니다.</p>
+                <p className="text-[9px] text-[#888] mt-[3px] leading-[14px]">현재는 캠페인 기간과 상품 반응 기준으로만 분석 중입니다.</p>
+                <p className="text-[9px] text-[#888] mt-[1px] leading-[14px]">시간대 매출 데이터가 연결되면 강한 시간대를 표시하겠습니다.</p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* ── D. 점포 간 비교 ── */}
           {perfData && perfData.storeCompare.stores.length > 0 && (

@@ -1,0 +1,287 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e5]:
+    - generic [ref=e10]:
+      - generic:
+        - generic [ref=e13]:
+          - img [ref=e15]
+          - generic [ref=e19]:
+            - img [ref=e21]
+            - img [ref=e26]
+            - img [ref=e31]
+        - generic:
+          - paragraph: 환영합니다.
+          - paragraph: 강서구01 운영 화면
+          - paragraph: 현재 기준 매장 분석 중
+        - img [ref=e40]
+        - generic [ref=e41]:
+          - paragraph [ref=e42]: MAIN
+          - generic [ref=e43]:
+            - button "종합 현황" [ref=e44] [cursor=pointer]:
+              - paragraph: 종합 현황
+            - button "AI 실시간 현황" [ref=e49] [cursor=pointer]:
+              - paragraph: AI 실시간 현황
+        - img [ref=e53]
+        - generic [ref=e54]:
+          - paragraph [ref=e55]: ACTION
+          - generic [ref=e56]:
+            - button "생산관리" [ref=e268] [cursor=pointer]:
+              - paragraph: 생산관리
+            - button "발주 관리" [ref=e269] [cursor=pointer]:
+              - paragraph [ref=e65]: 발주 관리
+            - button "프로모션" [ref=e67] [cursor=pointer]:
+              - paragraph [ref=e70]: 프로모션
+        - img [ref=e72]
+        - generic [ref=e73]:
+          - paragraph [ref=e74]: SUB
+          - generic [ref=e75]:
+            - button "AI 기반 성과 분석" [ref=e76] [cursor=pointer]:
+              - paragraph: AI 기반 성과 분석
+            - button "AI 검증" [ref=e80] [cursor=pointer]:
+              - paragraph: AI 검증
+            - button "벤치마킹" [ref=e84] [cursor=pointer]:
+              - paragraph: 벤치마킹
+            - button "알람 설정" [ref=e270] [cursor=pointer]:
+              - paragraph: 알람 설정
+      - button "사이드바 토글" [ref=e101] [cursor=pointer]
+      - generic [ref=e103]:
+        - paragraph [ref=e104]:
+          - generic [ref=e105]: pos
+          - generic [ref=e106]: system
+        - generic:
+          - generic:
+            - generic:
+              - img
+      - img [ref=e108]
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - button "HQ POS >" [ref=e111] [cursor=pointer]
+          - button "새로고침" [ref=e112] [cursor=pointer]:
+            - paragraph [ref=e115]: 새로고침
+          - button "AI 리포트 생성" [ref=e116] [cursor=pointer]:
+            - paragraph [ref=e117]: AI 리포트 생성
+        - img [ref=e119]
+        - button "PIP AI BOT" [ref=e120] [cursor=pointer]:
+          - img [ref=e121]
+          - paragraph [ref=e123]: PIP AI BOT
+      - generic [ref=e271]:
+        - generic [ref=e272]:
+          - generic [ref=e273]:
+            - img [ref=e274]
+            - generic [ref=e276]: PIP AI
+          - generic [ref=e277]:
+            - button [ref=e278] [cursor=pointer]
+            - button [ref=e279] [cursor=pointer]:
+              - img [ref=e280]
+        - generic [ref=e283]:
+          - generic [ref=e285]:
+            - button "Today's AI Insights" [ref=e286] [cursor=pointer]:
+              - generic [ref=e287]:
+                - img [ref=e288]
+                - generic [ref=e290]: Today's AI Insights
+              - img [ref=e291]
+            - generic [ref=e293]:
+              - paragraph [ref=e294]: 던킨의 생산·주문·매출을 한 번에!!
+              - paragraph [ref=e295]: 운영을 돕는 올인원 AI, PIP
+              - paragraph [ref=e296]: AI 실시간 현황 분석 중
+          - generic [ref=e299]:
+            - generic [ref=e301]:
+              - paragraph [ref=e302]: 2026-03-05 12:00 기준 AI 실시간 현황 데이터입니다.
+              - paragraph [ref=e303]: 추천 질문을 눌러 확인해 주세요.
+            - generic [ref=e304]:
+              - button "긴급 생산 대상 확인" [ref=e305] [cursor=pointer]
+              - button "보충 후보 확인" [ref=e306] [cursor=pointer]
+              - button "미대응 예상 손실 확인" [ref=e307] [cursor=pointer]
+            - paragraph [ref=e308]: 12:00
+        - generic [ref=e310]:
+          - textbox "what's in your mind..?" [ref=e311]
+          - button [ref=e312] [cursor=pointer]
+      - generic [ref=e314]:
+        - generic [ref=e315]:
+          - generic [ref=e316]:
+            - paragraph [ref=e319]: 생산관리 에이전트
+            - paragraph [ref=e321]: 실적 기반 추정
+          - generic [ref=e322]:
+            - generic [ref=e323]:
+              - generic [ref=e324]:
+                - paragraph [ref=e327]: 스트로베리필드
+                - paragraph [ref=e328]: 권장 40개
+              - button "부족 발주" [ref=e329] [cursor=pointer]:
+                - paragraph [ref=e330]: 부족 발주
+            - generic [ref=e331]:
+              - generic [ref=e332]:
+                - paragraph [ref=e335]: 스트로베리먼치킨
+                - paragraph [ref=e336]: 권장 39개
+              - button "부족 발주" [ref=e337] [cursor=pointer]:
+                - paragraph [ref=e338]: 부족 발주
+            - generic [ref=e339]:
+              - generic [ref=e340]:
+                - paragraph [ref=e343]: 두바이ST쫀득먼치킨
+                - paragraph [ref=e344]: 권장 37개
+              - button "부족 발주" [ref=e345] [cursor=pointer]:
+                - paragraph [ref=e346]: 부족 발주
+            - generic [ref=e347]:
+              - generic [ref=e348]:
+                - paragraph [ref=e351]: 바바리안먼치킨
+                - paragraph [ref=e352]: 권장 31개
+              - button "부족 발주" [ref=e353] [cursor=pointer]:
+                - paragraph [ref=e354]: 부족 발주
+            - generic [ref=e355]:
+              - generic [ref=e356]:
+                - paragraph [ref=e359]: 레드벨벳먼치킨
+                - paragraph [ref=e360]: 권장 31개
+              - button "부족 발주" [ref=e361] [cursor=pointer]:
+                - paragraph [ref=e362]: 부족 발주
+            - generic [ref=e363]:
+              - generic [ref=e364]:
+                - paragraph [ref=e367]: 오리지널 케익 먼치킨
+                - paragraph [ref=e368]: 권장 31개
+              - button "부족 발주" [ref=e369] [cursor=pointer]:
+                - paragraph [ref=e370]: 부족 발주
+            - generic [ref=e371]:
+              - generic [ref=e372]:
+                - paragraph [ref=e375]: 카카오하니딥먼치킨
+                - paragraph [ref=e376]: 권장 31개
+              - button "부족 발주" [ref=e377] [cursor=pointer]:
+                - paragraph [ref=e378]: 부족 발주
+            - generic [ref=e379]:
+              - generic [ref=e380]:
+                - paragraph [ref=e383]: 보스톤크림
+                - paragraph [ref=e384]: 권장 28개
+              - button "부족 발주" [ref=e385] [cursor=pointer]:
+                - paragraph [ref=e386]: 부족 발주
+            - generic [ref=e387]:
+              - generic [ref=e388]:
+                - paragraph [ref=e391]: 바바리안 필드
+                - paragraph [ref=e392]: 권장 3개
+              - button "부족 발주" [ref=e393] [cursor=pointer]:
+                - paragraph [ref=e394]: 부족 발주
+            - generic [ref=e395]:
+              - generic [ref=e396]:
+                - paragraph [ref=e399]: 스트로베리필드
+                - paragraph [ref=e400]: 권장 3개
+              - button "부족 발주" [ref=e401] [cursor=pointer]:
+                - paragraph [ref=e402]: 부족 발주
+            - generic [ref=e403]:
+              - generic [ref=e404]:
+                - paragraph [ref=e407]: 올드훼션드 먼치킨
+                - paragraph [ref=e408]: 권장 3개
+              - button "부족 발주" [ref=e409] [cursor=pointer]:
+                - paragraph [ref=e410]: 부족 발주
+            - generic [ref=e411]:
+              - generic [ref=e412]:
+                - paragraph [ref=e415]: 요거트 올드훼션드
+                - paragraph [ref=e416]: 권장 3개
+              - button "부족 발주" [ref=e417] [cursor=pointer]:
+                - paragraph [ref=e418]: 부족 발주
+          - generic [ref=e419]: 최근 판매 패턴과 예상 재고를 기준으로 긴급 생산 대상을 선별했습니다.
+        - generic [ref=e420]:
+          - generic [ref=e421]:
+            - paragraph [ref=e424]: 주문관리 에이전트
+            - generic [ref=e425]:
+              - paragraph [ref=e426]: ₩252,871
+              - paragraph [ref=e427]: 현재 시각 누적
+          - generic [ref=e428]:
+            - generic [ref=e430]:
+              - generic [ref=e431]:
+                - generic [ref=e432]: 11:00 기준 추정
+                - generic [ref=e433]: 집중
+              - paragraph [ref=e434]: 페이머스글레이즈드
+              - generic [ref=e435]:
+                - paragraph [ref=e436]: 현재 추정 15개
+                - paragraph [ref=e437]: 마감 예상 71개
+            - generic [ref=e439]:
+              - generic [ref=e440]:
+                - generic [ref=e441]: 11:00 기준 추정
+                - generic [ref=e442]: 주의
+              - paragraph [ref=e443]: 카푸치노츄이스티
+              - generic [ref=e444]:
+                - paragraph [ref=e445]: 현재 추정 9개
+                - paragraph [ref=e446]: 마감 예상 44개
+            - generic [ref=e448]:
+              - generic [ref=e449]:
+                - generic [ref=e450]: 11:00 기준 추정
+                - generic [ref=e451]: 주의
+              - paragraph [ref=e452]: 스트로베리필드
+              - generic [ref=e453]:
+                - paragraph [ref=e454]: 현재 추정 8개
+                - paragraph [ref=e455]: 마감 예상 36개
+            - generic [ref=e457]:
+              - generic [ref=e458]:
+                - generic [ref=e459]: 11:00 기준 추정
+                - generic [ref=e460]: 주의
+              - paragraph [ref=e461]: 올리브츄이스티
+              - generic [ref=e462]:
+                - paragraph [ref=e463]: 현재 추정 8개
+                - paragraph [ref=e464]: 마감 예상 36개
+            - generic [ref=e466]:
+              - generic [ref=e467]:
+                - generic [ref=e468]: 11:00 기준 추정
+                - generic [ref=e469]: 주의
+              - paragraph [ref=e470]: 카카오하니딥
+              - generic [ref=e471]:
+                - paragraph [ref=e472]: 현재 추정 8개
+                - paragraph [ref=e473]: 마감 예상 40개
+            - generic [ref=e475]:
+              - generic [ref=e476]:
+                - generic [ref=e477]: 11:00 기준 추정
+                - generic [ref=e478]: 주의
+              - paragraph [ref=e479]: 소금우유도넛
+              - generic [ref=e480]:
+                - paragraph [ref=e481]: 현재 추정 5개
+                - paragraph [ref=e482]: 마감 예상 26개
+          - generic [ref=e483]:
+            - application [ref=e486]:
+              - generic [ref=e495]:
+                - generic [ref=e497]: 08:00
+                - generic [ref=e499]: 09:00
+                - generic [ref=e501]: 10:00
+                - generic [ref=e503]: 11:00
+            - paragraph [ref=e504]: 시간대별 판매액 추이
+        - generic [ref=e505]:
+          - generic [ref=e506]:
+            - paragraph [ref=e509]:
+              - text: 제품분석 에이전트
+              - generic [ref=e510]: 데모 데이터
+              - generic [ref=e511]: 데모 데이터 기반 상품 분석
+            - generic [ref=e512]:
+              - button "도넛" [ref=e513] [cursor=pointer]
+              - button "커피원두" [ref=e514] [cursor=pointer]
+              - button "냉동/냉장" [ref=e515] [cursor=pointer]
+              - button "기타 상품" [ref=e516] [cursor=pointer]
+          - generic [ref=e517]:
+            - paragraph [ref=e518]: 상품명
+            - paragraph [ref=e519]: 수량
+            - paragraph [ref=e520]: 매출액
+            - paragraph [ref=e521]: 매출 비중
+            - paragraph [ref=e522]: 프로모션 효과
+          - generic [ref=e524]:
+            - generic [ref=e525]:
+              - generic [ref=e526]:
+                - img [ref=e527]
+                - paragraph [ref=e529]: 도넛1
+              - paragraph [ref=e530]: "284"
+              - paragraph [ref=e531]: ₩200,230원
+              - paragraph [ref=e535]: 67%
+              - paragraph [ref=e539]: 81%
+            - generic [ref=e540]:
+              - generic [ref=e541]:
+                - img [ref=e542]
+                - paragraph [ref=e544]: 카카오혼스크리드
+              - paragraph [ref=e545]: "156"
+              - paragraph [ref=e546]: ₩140,100원
+              - paragraph [ref=e550]: 52%
+              - paragraph [ref=e554]: 71%
+            - generic [ref=e555]:
+              - generic [ref=e556]:
+                - img [ref=e557]
+                - paragraph [ref=e559]: 올리보후이스티
+              - paragraph [ref=e560]: "96"
+              - paragraph [ref=e561]: ₩120,100원
+              - paragraph [ref=e565]: 42%
+              - paragraph [ref=e569]: 61%
+          - paragraph [ref=e571]: "데모 안내 : 현재 제품분석은 샘플 데이터 기준이며, 실제 API 연동 전까지 참고용으로 표시됩니다."
+    - generic [ref=e251]:
+      - generic [ref=e254]: ONLINE
+      - generic [ref=e257]: BR KOREA POS SYSTEM
+      - generic [ref=e260]: PWR
+  - generic [ref=e572]: 11:00

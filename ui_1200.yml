@@ -1,0 +1,255 @@
+- generic [ref=e5]:
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e13]:
+        - img [ref=e15]
+        - generic [ref=e19]:
+          - img [ref=e21]
+          - img [ref=e26]
+          - img [ref=e31]
+      - generic [ref=e35]:
+        - paragraph [ref=e36]: 환영합니다.
+        - paragraph [ref=e37]: 강서구01 운영 화면
+        - paragraph [ref=e38]: 현재 기준 매장 분석 중
+      - img [ref=e40]
+      - generic [ref=e41]:
+        - paragraph [ref=e42]: MAIN
+        - generic [ref=e43]:
+          - button "종합 현황" [ref=e44] [cursor=pointer]:
+            - paragraph [ref=e47]: 종합 현황
+          - button "AI 실시간 현황" [ref=e49] [cursor=pointer]:
+            - paragraph [ref=e51]: AI 실시간 현황
+      - img [ref=e53]
+      - generic [ref=e54]:
+        - paragraph [ref=e55]: ACTION
+        - generic [ref=e56]:
+          - button "생산관리 1" [ref=e57] [cursor=pointer]:
+            - paragraph [ref=e60]: 생산관리
+            - generic [ref=e61]: "1"
+          - button "발주 관리 3" [ref=e62] [cursor=pointer]:
+            - paragraph [ref=e65]: 발주 관리
+            - generic [ref=e66]: "3"
+          - button "프로모션" [ref=e67] [cursor=pointer]:
+            - paragraph [ref=e70]: 프로모션
+      - img [ref=e72]
+      - generic [ref=e73]:
+        - paragraph [ref=e74]: SUB
+        - generic [ref=e75]:
+          - button "AI 기반 성과 분석" [ref=e76] [cursor=pointer]:
+            - paragraph [ref=e79]: AI 기반 성과 분석
+          - button "AI 검증" [ref=e80] [cursor=pointer]:
+            - paragraph [ref=e83]: AI 검증
+          - button "벤치마킹" [ref=e84] [cursor=pointer]:
+            - paragraph [ref=e87]: 벤치마킹
+          - button "알람 설정 2" [ref=e88] [cursor=pointer]:
+            - paragraph [ref=e91]: 알람 설정
+            - generic [ref=e92]: "2"
+      - button "기준 일자 및 시간 설정" [ref=e93] [cursor=pointer]:
+        - generic [ref=e94]:
+          - img [ref=e96]
+          - generic [ref=e98]:
+            - paragraph [ref=e99]: 2026-03-05
+            - paragraph [ref=e100]: 클릭 시연 기준값 변경
+    - button "사이드바 토글" [ref=e101] [cursor=pointer]
+    - generic [ref=e103]:
+      - paragraph [ref=e104]:
+        - generic [ref=e105]: pos
+        - generic [ref=e106]: system
+      - generic:
+        - generic:
+          - generic:
+            - img
+    - img [ref=e108]
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - button "HQ POS >" [ref=e111] [cursor=pointer]
+        - button "새로고침" [ref=e112] [cursor=pointer]:
+          - paragraph [ref=e115]: 새로고침
+        - button "AI 리포트 생성" [ref=e116] [cursor=pointer]:
+          - paragraph [ref=e117]: AI 리포트 생성
+      - img [ref=e119]
+      - button "PIP AI BOT" [ref=e120] [cursor=pointer]:
+        - img [ref=e121]
+        - paragraph [ref=e123]: PIP AI BOT
+    - generic [ref=e124]:
+      - generic [ref=e125]:
+        - generic [ref=e126]:
+          - img [ref=e127]
+          - generic [ref=e129]: PIP AI
+        - generic [ref=e130]:
+          - button [ref=e131] [cursor=pointer]
+          - button [ref=e132] [cursor=pointer]:
+            - img [ref=e133]
+      - generic [ref=e136]:
+        - generic [ref=e138]:
+          - button "Today's AI Insights" [ref=e139] [cursor=pointer]:
+            - generic [ref=e140]:
+              - img [ref=e141]
+              - generic [ref=e143]: Today's AI Insights
+            - img [ref=e144]
+          - generic [ref=e146]:
+            - paragraph [ref=e147]: 던킨의 생산·주문·매출을 한 번에!!
+            - paragraph [ref=e148]: 운영을 돕는 올인원 AI, PIP
+            - paragraph [ref=e149]: 발주 관리 분석 중
+        - generic [ref=e152]:
+          - generic [ref=e154]:
+            - paragraph [ref=e155]: 2026-03-05 12:00 기준 발주 관리 데이터입니다.
+            - paragraph [ref=e156]: 추천 질문을 눌러 확인해 주세요.
+          - generic [ref=e157]:
+            - button "주문 마감 전 추천 옵션 보여줘" [ref=e158] [cursor=pointer]
+            - button "전주/전전주/전월 기준으로 비교해줘" [ref=e159] [cursor=pointer]
+            - button "각 옵션의 근거를 보여줘" [ref=e160] [cursor=pointer]
+            - button "단체 주문은 제외해서 다시 계산해줘" [ref=e161] [cursor=pointer]
+            - button "최종 선택 전에 차이를 요약해줘" [ref=e162] [cursor=pointer]
+            - button "지금 어떤 옵션이 가장 안전한지 알려줘" [ref=e163] [cursor=pointer]
+          - paragraph [ref=e164]: 12:00
+      - generic [ref=e166]:
+        - textbox "what's in your mind..?" [ref=e167]
+        - button [ref=e168] [cursor=pointer]
+    - generic [ref=e170]:
+      - generic [ref=e239]:
+        - generic [ref=e240]:
+          - paragraph [ref=e241]: 이번달 총 발주
+          - paragraph [ref=e243]: 1,216,986 원
+        - generic [ref=e244]:
+          - generic [ref=e245]:
+            - paragraph [ref=e247]: AI 추천 발주
+            - button "바로가기" [ref=e248] [cursor=pointer]:
+              - paragraph [ref=e249]: 바로가기
+          - generic [ref=e250]:
+            - paragraph [ref=e252]: 수동발주
+            - button "바로가기" [ref=e253] [cursor=pointer]:
+              - paragraph [ref=e254]: 바로가기
+      - generic [ref=e171]:
+        - generic [ref=e172]:
+          - generic [ref=e173]:
+            - paragraph [ref=e175]: 발주 목록
+            - generic [ref=e176]: 총 49개
+          - generic [ref=e177]:
+            - generic [ref=e178]:
+              - img [ref=e179]
+              - textbox "품목명 검색" [ref=e182]
+            - button "초기화" [ref=e183] [cursor=pointer]:
+              - img "초기화" [ref=e184]
+        - generic [ref=e185]:
+          - paragraph [ref=e186]: 카테고리
+          - generic [ref=e187]:
+            - button "전체" [ref=e188] [cursor=pointer]
+            - button "도넛" [ref=e189] [cursor=pointer]
+            - button "음료" [ref=e190] [cursor=pointer]
+            - button "커피원두" [ref=e191] [cursor=pointer]
+            - button "냉동/냉장" [ref=e192] [cursor=pointer]
+            - button "용품/상품" [ref=e193] [cursor=pointer]
+            - button "기타" [ref=e194] [cursor=pointer]
+        - generic [ref=e195]:
+          - paragraph [ref=e196]: 상태
+          - generic [ref=e197]:
+            - button "전체" [ref=e198] [cursor=pointer]
+            - button "대기" [ref=e199] [cursor=pointer]
+            - button "승인완료" [ref=e200] [cursor=pointer]
+            - button "발주완료" [ref=e201] [cursor=pointer]
+            - button "납품완료" [ref=e202] [cursor=pointer]
+            - button "취소" [ref=e203] [cursor=pointer]
+        - generic [ref=e204]:
+          - generic [ref=e205]:
+            - paragraph [ref=e206]: 발주번호 / 품목명
+            - paragraph [ref=e207]: 카테고리
+            - paragraph [ref=e208]: 수량
+            - paragraph [ref=e209]: 총금액
+            - paragraph [ref=e210]: 납품요청일
+            - paragraph [ref=e211]: 상태·액션
+          - generic [ref=e213]:
+            - generic [ref=e255]:
+              - paragraph [ref=e257]:
+                - generic [ref=e258]: PO-2026-070
+                - text: 해피먼치킨컵(10개입)
+              - paragraph [ref=e261]: 용품/상품
+              - paragraph [ref=e262]: 14개
+              - paragraph [ref=e263]: 62,944원
+              - paragraph [ref=e264]: "-"
+              - generic [ref=e265]:
+                - paragraph [ref=e267]: 대기
+                - button [ref=e268] [cursor=pointer]:
+                  - img [ref=e269]
+                - button "승인완료" [ref=e272] [cursor=pointer]:
+                  - paragraph [ref=e273]: 승인완료
+            - generic [ref=e274]:
+              - paragraph [ref=e276]:
+                - generic [ref=e277]: PO-2026-049
+                - text: (HO)올스타도넛세트
+              - paragraph [ref=e280]: 용품/상품
+              - paragraph [ref=e281]: 1개
+              - paragraph [ref=e282]: 16,727원
+              - paragraph [ref=e283]: "-"
+              - generic [ref=e284]:
+                - paragraph [ref=e286]: 대기
+                - button [ref=e287] [cursor=pointer]:
+                  - img [ref=e288]
+                - button "승인완료" [ref=e291] [cursor=pointer]:
+                  - paragraph [ref=e292]: 승인완료
+            - generic [ref=e293]:
+              - paragraph [ref=e295]:
+                - generic [ref=e296]: PO-2026-043
+                - text: 미니도넛세트 (6개입)
+              - paragraph [ref=e299]: 용품/상품
+              - paragraph [ref=e300]: 2개
+              - paragraph [ref=e301]: 8,182원
+              - paragraph [ref=e302]: "-"
+              - generic [ref=e303]:
+                - paragraph [ref=e305]: 대기
+                - button [ref=e306] [cursor=pointer]:
+                  - img [ref=e307]
+                - button "승인완료" [ref=e310] [cursor=pointer]:
+                  - paragraph [ref=e311]: 승인완료
+            - generic [ref=e312]:
+              - paragraph [ref=e314]:
+                - generic [ref=e315]: PO-2026-041
+                - text: 던킨 콤보(글레+HOT아메)
+              - paragraph [ref=e318]: 도넛
+              - paragraph [ref=e319]: 2개
+              - paragraph [ref=e320]: 7,090원
+              - paragraph [ref=e321]: "-"
+              - generic [ref=e322]:
+                - paragraph [ref=e324]: 대기
+                - button [ref=e325] [cursor=pointer]:
+                  - img [ref=e326]
+                - button "승인완료" [ref=e329] [cursor=pointer]:
+                  - paragraph [ref=e330]: 승인완료
+            - generic [ref=e331]:
+              - paragraph [ref=e333]:
+                - generic [ref=e334]: PO-2026-040
+                - text: 레귤러 사이즈UP(ICE)
+              - paragraph [ref=e337]: 도넛
+              - paragraph [ref=e338]: 12개
+              - paragraph [ref=e339]: 4,932원
+              - paragraph [ref=e340]: "-"
+              - generic [ref=e341]:
+                - paragraph [ref=e343]: 대기
+                - button [ref=e344] [cursor=pointer]:
+                  - img [ref=e345]
+                - button "승인완료" [ref=e348] [cursor=pointer]:
+                  - paragraph [ref=e349]: 승인완료
+            - generic [ref=e350]:
+              - paragraph [ref=e352]:
+                - generic [ref=e353]: PO-2026-039
+                - text: 카라멜마끼아또
+              - paragraph [ref=e356]: 음료
+              - paragraph [ref=e357]: 1개
+              - paragraph [ref=e358]: 4,455원
+              - paragraph [ref=e359]: "-"
+              - generic [ref=e360]:
+                - paragraph [ref=e362]: 대기
+                - button [ref=e363] [cursor=pointer]:
+                  - img [ref=e364]
+                - button "승인완료" [ref=e367] [cursor=pointer]:
+                  - paragraph [ref=e368]: 승인완료
+        - generic [ref=e214]:
+          - button "이전 페이지" [disabled] [ref=e215] [cursor=pointer]:
+            - img [ref=e216]
+          - paragraph [ref=e218]: 1 / 9
+          - button "다음 페이지" [ref=e219] [cursor=pointer]:
+            - img [ref=e220]
+  - generic [ref=e222]:
+    - generic [ref=e225]: ONLINE
+    - generic [ref=e228]: BR KOREA POS SYSTEM
+    - generic [ref=e231]: PWR

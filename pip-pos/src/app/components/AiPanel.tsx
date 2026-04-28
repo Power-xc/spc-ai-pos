@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 import mic from "../../assets/mic.svg";
 import chatstar from "../../assets/chat-star.svg";
 import submit from "../../assets/Submit Icon.svg";
@@ -6,10 +7,14 @@ import {
   getDemoDateTimeLabel,
   getDemoDateTimeState,
   appendDemoQueryParams,
+  getDemoTime,
 } from "../../lib/demoDateTime";
 import {
   getAiPerformanceData,
   getProductionAgent,
+  getProductionBatchItems,
+  getProductionSummary,
+  getInventorySnapshotSummary,
   getAiValidationChatSummary,
   getBenchmarkSnapshot,
   getPromotions,
@@ -28,11 +33,14 @@ import {
   DEMO_STORE_NAME_MAP,
   resolveDemoStoreName,
 } from "../../lib/demoStoreConfig";
+import { PRODUCT_CODE_NAME_MAP, resolveProductDisplayName } from "../../lib/productNameResolver";
 import {
   BENCHMARK_COMPARE_STORE_OPTIONS,
   getBenchmarkCompareStoreIds,
   setBenchmarkCompareStoreIds,
 } from "../../lib/benchmarkCompareStores";
+
+const ENABLE_GOLD_ANALYTICS = false;
 
 type NotificationSettingsData = {
   enabled: boolean;
@@ -63,13 +71,41 @@ interface SuggestedQuestion {
   reason?: string;
 }
 
+interface InsightCardRow {
+  label: string;
+  value?: string;
+  current?: number;
+  target?: number;
+  recommended?: number;
+  reason?: string;
+  firstProductionInfo?: string;
+  secondProductionInfo?: string;
+}
+
+interface InsightCard {
+  title: string;
+  description?: string;
+  rows: InsightCardRow[];
+  summaryLabel?: string;
+  summaryValue?: string;
+}
+
+interface ActionButton {
+  label: string;
+  value: string;
+  variant: "primary" | "secondary";
+}
+
 interface Message {
   id: string;
   type: "user" | "ai";
   lines: string[];
+  markdown?: string;
   time: string;
   actionCards?: ActionCard[];
   suggestedQuestions?: SuggestedQuestion[];
+  insightCard?: InsightCard;
+  actions?: ActionButton[];
 }
 
 interface AiPanelProps {
@@ -91,19 +127,7 @@ type LocalIntent =
   | "NOTIFICATION_MUTE"
   | "NOTIFICATION_UNMUTE"
   | "NOTIFICATION_STATUS"
-  | "ORDER_RECOMMEND"
-  | "ORDER_COMPARISON"
-  | "ORDER_RATIONALE"
-  | "ORDER_EXCEPTION"
-  | "ORDER_FINAL_SUMMARY"
-  | "ORDER_SAFE_OPTION"
-  | "INVENTORY_RISK"
-  | "FORECAST"
-  | "PRODUCTION_RECOMMEND"
   | "PERF_MONTHLY"
-  | "PERF_DELIVERY_WEEKLY"
-  | "PERF_DELIVERY_MONTHLY"
-  | "PERF_CHANNEL_MIX"
   | "PERF_PRODUCT_COMPARE"
   | "PERF_STORE_AVG"
   | "PROMO_RESPONSE"
@@ -112,12 +136,16 @@ type LocalIntent =
   | "PROMO_STORE_COMPARE"
   | "CHANCE_LOSS"
   | "MENU_SUMMARY"
+  | "SALES_REASON"
   | "UNKNOWN";
 
 type LocalMenuResponse = {
   lines: string[];
+  markdown?: string;
   suggestedQuestions?: SuggestedQuestion[];
   actionCards?: ActionCard[];
+  insightCard?: InsightCard;
+  actions?: ActionButton[];
   skipIntro?: boolean;
 };
 
@@ -166,10 +194,34 @@ const PAGE_CONTEXT: Record<string, string> = {
   "알람 설정": "알람 설정",
 };
 
+const MENU_TO_CURRENT_PAGE: Record<string, string> = {
+  "종합 현황": "/",
+  "AI 실시간 현황": "/realtime",
+  생산관리: "/actions",
+  "발주 관리": "/orders",
+  프로모션: "/promotions",
+  "AI 기반 성과 분석": "/analytics",
+  "AI 검증": "/ai-insights",
+  벤치마킹: "/benchmarking",
+  "알람 설정": "/alerts",
+};
+
+const MENU_TO_PAGE_KEY: Record<string, string> = {
+  "종합 현황": "dashboard",
+  "AI 실시간 현황": "realtime",
+  생산관리: "actions",
+  "발주 관리": "orders",
+  프로모션: "promotions",
+  "AI 기반 성과 분석": "analytics",
+  "AI 검증": "ai_insights",
+  벤치마킹: "benchmarking",
+  "알람 설정": "alerts",
+};
+
 const QUICK_CHIPS: Record<string, string[]> = {
-  "종합 현황": ["오늘 핵심 이슈 요약해줘", "이번 달 일평균 매출을 타 점포 평균과 비교해줘", "벤치마킹이 뭔데"],
-  "AI 실시간 현황": ["현재 재고 현황과 부족 예상 품목 알려줘", "1시간 뒤 예상 재고량 보여줘", "1차/2차 생산 권장량 알려줘"],
-  생산관리: ["현재 재고 현황과 부족 예상 품목 알려줘", "1시간 뒤 예상 재고량 보여줘", "1차/2차 생산 권장량 알려줘"],
+  "종합 현황": ["오늘 핵심 이슈 요약해줘", "지금 뭐부터 처리하면 돼?", "AI 추정 순매출이 뭐야?"],
+  "AI 실시간 현황": ["긴급 생산 대상 확인", "보충 후보 확인", "미대응 예상 손실 확인"],
+  생산관리: ["긴급 생산 대상 확인", "보충 후보 확인", "미대응 예상 손실 확인"],
   "발주 관리": [
     "주문 마감 전 추천 옵션 보여줘",
     "전주/전전주/전월 기준으로 비교해줘",
@@ -178,12 +230,9 @@ const QUICK_CHIPS: Record<string, string[]> = {
     "최종 선택 전에 차이를 요약해줘",
     "지금 어떤 옵션이 가장 안전한지 알려줘",
   ],
-  프로모션: ["반응 좋은 프로모션", "프로모션 매출 기여도", "시간대별 강한 프로모션", "점포별 프로모션 차이"],
+  프로모션: ["반응 좋은 행사", "더 준비할 상품", "행사 강한 시간대", "발주 보정 보기"],
   "AI 기반 성과 분석": [
     "월간 매출 비교",
-    "전주 배달 건수 비교",
-    "전월 배달 건수 비교",
-    "채널별 매출 비중",
     "글레이즈드 전월 비교",
     "타 점포 평균 비교",
     "반응 좋은 프로모션",
@@ -192,35 +241,106 @@ const QUICK_CHIPS: Record<string, string[]> = {
   "AI 검증": ["이 화면에서 뭘 봐야 해", "각 옵션의 근거를 보여줘", "최종 선택 전에 차이를 요약해줘"],
   벤치마킹: [
     "이번 달 일평균 매출을 타 점포 평균과 비교해줘",
-    "벤치마킹이 뭔데",
     "나보다 매출 높은데 유사한 매장 알려줘",
   ],
   "알람 설정": ["왜 지금 알림이 떴는지 설명해줘", "알림 꺼줘", "알람 상태 알려줘"],
 };
 
 const FOLLOWUP_CHIPS: Record<string, string[]> = {
-  INVENTORY_RISK: ["1시간 뒤 예상 재고량", "1차/2차 생산 권장량"],
-  FORECAST: ["재고 현황과 부족 품목", "1차/2차 생산 권장량"],
-  PRODUCTION_RECOMMEND: ["재고 현황과 부족 품목", "1시간 뒤 예상 재고량"],
-  ORDER_RECOMMEND: ["전주/전월 기준 비교", "각 옵션 근거", "가장 안전한 옵션"],
-  ORDER_COMPARISON: ["추천 옵션 보여줘", "각 옵션 근거", "최종 선택 차이 요약"],
-  ORDER_RATIONALE: ["추천 옵션 보여줘", "단체 주문 제외 계산", "최종 선택 차이 요약"],
-  ORDER_EXCEPTION: ["추천 옵션 보여줘", "각 옵션 근거", "가장 안전한 옵션"],
-  ORDER_FINAL_SUMMARY: ["전주/전월 기준 비교", "각 옵션 근거", "가장 안전한 옵션"],
-  ORDER_SAFE_OPTION: ["추천 옵션 보여줘", "전주/전월 기준 비교", "단체 주문 제외 계산"],
-  PERF_MONTHLY: ["전주 배달 건수 비교", "채널별 매출 비중", "글레이즈드 전월 비교"],
-  PERF_DELIVERY_WEEKLY: ["전월 배달 건수 비교", "채널별 매출 비중", "타 점포 평균 비교"],
-  PERF_DELIVERY_MONTHLY: ["전주 배달 건수 비교", "채널별 매출 비중", "월간 매출 비교"],
-  PERF_CHANNEL_MIX: ["전주 배달 건수 비교", "전월 배달 건수 비교", "타 점포 평균 비교"],
-  PERF_PRODUCT_COMPARE: ["월간 매출 비교", "타 점포 평균 비교", "채널별 매출 비중"],
-  PERF_STORE_AVG: ["월간 매출 비교", "채널별 매출 비중", "글레이즈드 전월 비교"],
-  PROMO_RESPONSE: ["매출 기여도", "시간대별 강한 프로모션", "점포별 차이"],
-  PROMO_SALES: ["반응 좋은 프로모션", "시간대별 강한 프로모션", "점포별 차이"],
-  PROMO_HOURLY: ["반응 좋은 프로모션", "점포별 차이", "매출 기여도"],
-  PROMO_STORE_COMPARE: ["반응 좋은 프로모션", "매출 기여도", "시간대별 강한 프로모션"],
+  PERF_MONTHLY: ["글레이즈드 전월 비교", "타 점포 평균 비교"],
+  PERF_PRODUCT_COMPARE: ["월간 매출 비교", "타 점포 평균 비교"],
+  PERF_STORE_AVG: ["월간 매출 비교", "글레이즈드 전월 비교"],
+  PROMO_RESPONSE: ["더 준비할 상품", "행사 강한 시간대", "발주 보정 보기"],
+  PROMO_SALES: ["반응 좋은 행사", "행사 강한 시간대", "발주 보정 보기"],
+  PROMO_HOURLY: ["반응 좋은 행사", "발주 보정 보기", "더 준비할 상품"],
+  PROMO_STORE_COMPARE: ["반응 좋은 행사", "더 준비할 상품", "행사 강한 시간대"],
+  PRODUCTION_DEFAULT: ["1시간 뒤 예상 재고량", "1차/2차 생산 권장량"],
+  ORDER_DEFAULT: ["각 옵션의 근거를 보여줘", "최종 선택 전에 차이를 요약해줘"],
 };
 
 const DEFAULT_CHIPS = ["너는 뭘 할 수 있어", "니가 뭔데", "이 화면에서 뭘 봐야 해"];
+
+/**
+ * 백엔드가 실수로 JSON 문자열을 반환할 경우 사람이 읽는 문장으로 변환한다.
+ * JSON이 아닌 일반적인 텍스트는 그대로 반환한다.
+ */
+function formatBackendAnswer(raw: string): string {
+  if (!raw || typeof raw !== "string") return raw;
+  const trimmed = raw.trim();
+
+  // JSON으로 보이지 않으면 그대로 반환
+  if (!trimmed.startsWith("{")) return trimmed;
+
+  // JSON.parse 시도
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    // 중괄호 내에 있는 JSON 객체만 추출
+    const match = trimmed.match(/\{[\s\S]*\}/);
+    if (!match) return trimmed;
+    try {
+      parsed = JSON.parse(match[0]);
+    } catch {
+      return trimmed;
+    }
+  }
+
+  // JSON 구조가 아니면 그대로 반환
+  if (typeof parsed !== "object" || Array.isArray(parsed)) return trimmed;
+
+  const analysis = typeof parsed.analysis === "string" ? parsed.analysis : "";
+  const rootCauses = Array.isArray(parsed.root_causes) ? parsed.root_causes : [];
+  const actions = Array.isArray(parsed.actions) || Array.isArray(parsed.recommendations)
+    ? (Array.isArray(parsed.actions) ? parsed.actions : parsed.recommendations)
+    : [];
+
+  const lines: string[] = [];
+
+  // 핵심 요약 1~2문장
+  if (analysis) {
+    lines.push(truncateSentence(analysis, 80));
+  }
+
+  // 이유 1문장
+  if (rootCauses.length > 0) {
+    const cause = typeof rootCauses[0] === "string" ? rootCauses[0] : "";
+    if (cause) lines.push(truncateSentence(cause, 80));
+  }
+
+  // 지금 할 일 1문장
+  if (actions.length > 0) {
+    const action = typeof actions[0] === "string" ? actions[0] : "";
+    if (action) lines.push(truncateSentence(action, 80));
+  }
+
+  // 최대 4줄
+  return (lines.length > 0 ? lines.slice(0, 4) : [trimmed.slice(0, 200)]).join("\n");
+}
+
+function truncateSentence(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const cut = text.slice(0, maxChars);
+  const sentenceEnd = Math.max(cut.lastIndexOf("."), cut.lastIndexOf("입니다"), cut.lastIndexOf("습니다"), cut.lastIndexOf("요"));
+  if (sentenceEnd > maxChars * 0.5) {
+    return cut.slice(0, sentenceEnd + 1);
+  }
+  return cut + "...";
+}
+
+function buildProductionCardActions(): ActionButton[] {
+  return [
+    { label: "생산 등록", value: "production", variant: "primary" as const },
+    { label: "나중에", value: "later", variant: "secondary" as const },
+  ];
+}
+
+function buildOrderCardActions(): ActionButton[] {
+  return [
+    { label: "부족 발주 진행", value: "order", variant: "primary" as const },
+    { label: "나중에", value: "later", variant: "secondary" as const },
+  ];
+}
 
 const NOTIFICATION_CATEGORY_LABELS: Record<string, string> = {
   inventory: "재고",
@@ -258,12 +378,7 @@ const ROUTE_TO_MENU: Record<string, string> = {
   "/alerts": "알람 설정",
 };
 
-const PRODUCT_CODE_NAME_MAP: Record<string, string> = {
-  "700721": "초코파우더(길라델리)",
-  "811902": "미니글레이즈드",
-  "811962": "미니스트로베리필드",
-  "811963": "미니초코링",
-};
+
 
 const ALLOWED_ACTION_ENDPOINT_PREFIXES = [
   "/api/order/confirm",
@@ -309,6 +424,7 @@ function formatCount(value: number | null | undefined) {
 
 function formatSignedPct(value: number | null | undefined, digits = 1) {
   const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return "-";
   const sign = numeric > 0 ? "+" : "";
   return `${sign}${numeric.toFixed(digits)}%`;
 }
@@ -324,9 +440,9 @@ function joinCompact(parts: Array<string | null | undefined>) {
   return parts.map((part) => String(part ?? "").trim()).filter(Boolean).join(" · ");
 }
 
-function formatBurnRate(value: number | null | undefined) {
-  const numeric = Number(value ?? 0);
-  if (!Number.isFinite(numeric) || numeric <= 0) return "0개/시간";
+function formatBurnRate(value: number | null | undefined): string | null {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
   return `${numeric.toFixed(1)}개/시간`;
 }
 
@@ -337,7 +453,7 @@ function getStockDisplay(rawValue: number | null | undefined) {
   return {
     currentCount,
     shortage,
-    currentLabel: `현재 보유 ${formatCount(currentCount)}개`,
+    currentLabel: `${formatCount(currentCount)}개`,
     badgeLabel: shortage > 0 ? `부족 ${formatCount(shortage)}개` : `${formatCount(currentCount)}개`,
   };
 }
@@ -345,11 +461,6 @@ function getStockDisplay(rawValue: number | null | undefined) {
 function hasMeaningfulProductName(value: string | null | undefined) {
   const normalized = String(value ?? "").trim();
   return normalized.length > 1 && normalized !== "B" && normalized !== "미분류";
-}
-
-function resolveProductDisplayName(value: string | null | undefined) {
-  const normalized = String(value ?? "").trim();
-  return PRODUCT_CODE_NAME_MAP[normalized] ?? normalized;
 }
 
 function toSuggestedQuestions(values: string[]) {
@@ -678,50 +789,22 @@ function classifyLocalIntent(message: string): LocalIntent {
   if (/알림.*상태|알람.*상태/.test(lower)) return "NOTIFICATION_STATUS";
   if (/(알림|알람).*(다시 켜|켜줘|활성화)/.test(lower)) return "NOTIFICATION_UNMUTE";
   if (/(알림|알람).*(꺼줘|끄기|중지|mute)/.test(lower)) return "NOTIFICATION_MUTE";
-  if (/(단체 주문|대형 예약|예약 주문|행사 주문).*(제외|빼고|제외해서|다시 계산)/.test(lower)) {
-    return "ORDER_EXCEPTION";
-  }
-  if (/(최종 선택|최종 확정|차이).*(요약|정리)|요약.*최종 선택/.test(lower)) {
-    return "ORDER_FINAL_SUMMARY";
-  }
-  if (/(어떤 옵션|어느 옵션|가장 안전).*(안전|무난|괜찮)|안전한지 알려줘/.test(lower)) {
-    return "ORDER_SAFE_OPTION";
-  }
-  if (/옵션.*근거|근거.*보여|왜.*수량|각.*옵션.*근거/.test(lower)) return "ORDER_RATIONALE";
-  if (
-    /(전주.*전전주|전전주.*전월|전주.*전월|전주\/전전주\/전월|옵션.*비교|주문.*기준.*비교|발주.*기준.*비교|전주.*기준으로 비교|전전주.*기준으로 비교|전월.*기준으로 비교)/.test(
-      lower,
-    )
-  ) {
-    return "ORDER_COMPARISON";
-  }
-  if (/주문.*추천|추천.*주문|추천.*옵션|옵션.*보여|주문 마감.*추천|발주 추천|발주 옵션|발주 마감/.test(lower)) {
-    return "ORDER_RECOMMEND";
-  }
-  if (/1시간.*뒤.*예상|예상.*재고.*1시간|1시간.*예상.*재고/.test(lower)) return "FORECAST";
-  if (/1차.*2차.*생산|생산.*권장량|권장.*생산/.test(lower)) return "PRODUCTION_RECOMMEND";
+
   if (/(최근.*월간.*매출|월간.*매출.*비교|최근 월간 매출 비교|최근 월간 비교|26년 2월.*26년 1월|2월.*1월.*매출)/.test(lower)) {
     return "PERF_MONTHLY";
   }
-  if (/전주.*배달.*건수/.test(lower)) return "PERF_DELIVERY_WEEKLY";
-  if (/전월.*배달.*건수|이번 달.*배달.*지난 달|지난달.*배달.*건수/.test(lower)) {
-    return "PERF_DELIVERY_MONTHLY";
-  }
-  if (/배달.*채널.*비중|채널별.*매출.*비중|배달 채널별/.test(lower)) return "PERF_CHANNEL_MIX";
   if (/(글레이즈드|glazed).*(전월|지난달).*매출|글레이즈드.*비교/.test(lower)) {
     return "PERF_PRODUCT_COMPARE";
   }
   if (/(일평균 매출|타 점포 평균|점포 평균과 비교|최근 30일.*평균).*(비교|알려)/.test(lower)) {
     return "PERF_STORE_AVG";
   }
-  if (/재고.*현황|부족.*예상|부족.*품목|재고.*부족|품절.*위험|현재.*재고/.test(lower)) return "INVENTORY_RISK";
-  if (/생산.*우선순위|지금.*생산|어떤.*품목.*생산/.test(lower)) return "INVENTORY_RISK";
-  if (/예측.*정확도|검증|오차|±10/.test(lower)) return "PRODUCTION_RECOMMEND";
-  if (/알림.*이유|알림.*뜳|왜.*알림|알림.*시점/.test(lower)) return "INVENTORY_RISK";
-  if (/반응.*좋은|반응.*프로모션|좋은.*프로모션/.test(lower)) return "PROMO_RESPONSE";
-  if (/매출.*기여|기여도|프로모션.*매출/.test(lower)) return "PROMO_SALES";
-  if (/시간대별.*프로모션|시간대별.*강한|강한.*프로모션/.test(lower)) return "PROMO_HOURLY";
-  if (/점포.*차이|점포.*성과|다른.*점포|강서구01.*차이|점포.*비교.*프로모션/.test(lower)) return "PROMO_STORE_COMPARE";
+
+    if (/매출.*(낮은|하락|떨어졌|부진).*이유|이유.*매출.*(낮|하락|떨어)|매출.*(원인|부진).*분석|왜.*매출.*(떨어|낮)/.test(lower)) return "SALES_REASON";
+    if (/반응.*좋은|반응.*프로모션|좋은.*프로모션|반응.*좋은.*행사|좋은.*행사.*알려/.test(lower)) return "PROMO_RESPONSE";
+    if (/매출.*기여|기여도|프로모션.*매출|발주.*(보정|바꾸)|더 준비할|준비할.*상품/.test(lower)) return "PROMO_SALES";
+    if (/시간대별.*프로모션|시간대별.*강한|강한.*프로모션|강한.*시간대|행사.*강한.*시간대|몇 시에.*효과/.test(lower)) return "PROMO_HOURLY";
+   if (/점포.*차이|점포.*성과|다른.*점포|강서구01.*차이|점포.*비교.*프로모션/.test(lower)) return "PROMO_STORE_COMPARE";
   if (/기회손실|손실/.test(lower)) return "CHANCE_LOSS";
   if (/오늘 요약|핵심 이슈|이 화면|지금 상태|요약해줘|정리해줘/.test(lower)) {
     return "MENU_SUMMARY";
@@ -784,7 +867,7 @@ function findMentionedBenchmarkStoreIds(message: string) {
   return Array.from(new Set(matches));
 }
 
-function shouldPreferLocalFirst(selectedMenu: string, intent: LocalIntent) {
+function shouldPreferLocalOnly(intent: LocalIntent) {
   if (
     intent === "GREETING" ||
     intent === "IDENTITY" ||
@@ -796,31 +879,11 @@ function shouldPreferLocalFirst(selectedMenu: string, intent: LocalIntent) {
     intent === "NOTIFICATION_MUTE" ||
     intent === "NOTIFICATION_UNMUTE" ||
     intent === "NOTIFICATION_STATUS" ||
-    intent === "ORDER_RECOMMEND" ||
-    intent === "ORDER_COMPARISON" ||
-    intent === "ORDER_RATIONALE" ||
-    intent === "ORDER_EXCEPTION" ||
-    intent === "ORDER_FINAL_SUMMARY" ||
-    intent === "ORDER_SAFE_OPTION" ||
-    intent === "INVENTORY_RISK" ||
-    intent === "FORECAST" ||
-    intent === "PRODUCTION_RECOMMEND" ||
-    intent === "PERF_MONTHLY" ||
-    intent === "PERF_DELIVERY_WEEKLY" ||
-    intent === "PERF_DELIVERY_MONTHLY" ||
-    intent === "PERF_CHANNEL_MIX" ||
-    intent === "PERF_PRODUCT_COMPARE" ||
-    intent === "PERF_STORE_AVG" ||
-    intent === "PROMO_RESPONSE" ||
-    intent === "PROMO_SALES" ||
-    intent === "PROMO_HOURLY" ||
-    intent === "PROMO_STORE_COMPARE" ||
-    intent === "CHANCE_LOSS" ||
-    intent === "MENU_SUMMARY"
+    intent === "SALES_REASON"
   ) {
     return true;
   }
-  return selectedMenu === "생산관리" || selectedMenu === "발주 관리" || selectedMenu === "AI 실시간 현황" || selectedMenu === "프로모션";
+  return false;
 }
 
 function shouldPreferSalesQueryFirst(selectedMenu: string, message: string, intent: LocalIntent) {
@@ -873,8 +936,10 @@ async function fetchChat(
   message: string,
   selectedMenu: string,
   sessionId?: string,
+  recentMessages: Message[] = [],
 ): Promise<BackendChatResponse> {
   const demo = getDemoDateTimeState();
+  const pageContext = PAGE_CONTEXT[selectedMenu] ?? selectedMenu;
   return requestJson<BackendChatResponse>("/chat", {
     method: "POST",
     body: JSON.stringify({
@@ -882,12 +947,19 @@ async function fetchChat(
       message,
       session_id: sessionId,
       context: {
-        page: PAGE_CONTEXT[selectedMenu] ?? selectedMenu,
+        page: pageContext,
         menu: selectedMenu,
+        current_page: MENU_TO_CURRENT_PAGE[selectedMenu] ?? "/",
+        page_context: pageContext,
+        page_key: MENU_TO_PAGE_KEY[selectedMenu] ?? "dashboard",
         store_name: DEMO_PRIMARY_STORE_NAME,
         demo_date: demo.date,
         demo_time: demo.time,
         demo_datetime: demo.iso,
+        recent_client_messages: recentMessages.slice(-6).map((item) => ({
+          role: item.type === "user" ? "user" : "assistant",
+          content: item.lines.join("\n"),
+        })),
         benchmark_compare_store_ids: getBenchmarkCompareStoreIds(),
         benchmark_compare_store_names: getBenchmarkCompareStoreIds().map((storeId) =>
           resolveDemoStoreName(storeId, storeId),
@@ -1006,11 +1078,11 @@ function buildTermExplainResponse(selectedMenu: string, message: string): LocalM
     return {
       lines: addGroundingAndAction(
         [
-          "프로모션 화면은 프로모션 전용 실측이 아니라 캠페인 실적 기반 성과와 적용 시뮬레이션을 함께 보여줍니다.",
-          "최근 반응이 좋았던 캠페인과 적용 전후 예상 차이를 같이 확인하도록 구성했습니다.",
+          "프로모션 화면은 프로모션 전용 실측이 아니라 프로모션 실적 기반 성과와 적용 시뮬레이션을 함께 보여줍니다.",
+          "최근 반응이 좋았던 프로모션과 적용 전후 예상 차이를 같이 확인하도록 구성했습니다.",
         ],
-        "new_campaign_day_gold 기반 최근 집계와 파생 시뮬레이션을 함께 사용합니다.",
-        "성과 높은 캠페인 1건과 관찰 필요 캠페인 1건을 골라 적용 전후 차이를 확인하세요.",
+        "실시간 판매 데이터 기반 최근 집계와 파생 시뮬레이션을 함께 사용합니다.",
+        "성과 높은 프로모션 1건과 관찰 필요 프로모션 1건을 골라 적용 전후 차이를 확인하세요.",
       ),
       suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["프로모션"]),
     };
@@ -1046,8 +1118,8 @@ function buildScreenGuideResponse(selectedMenu: string): LocalMenuResponse {
       action: "15시 마감 전 옵션 차이를 보고 점주 최종 선택을 확정하세요.",
     },
     프로모션: {
-      focus: "성과 높은 캠페인, 관찰 필요 캠페인, 적용 전후 예상 차이를 먼저 보시면 됩니다.",
-      action: "적용 전후 증분 매출이 큰 캠페인부터 검토하세요.",
+      focus: "성과 높은 프로모션, 관찰 필요 프로모션, 적용 전후 예상 차이를 먼저 보시면 됩니다.",
+      action: "적용 전후 증분 매출이 큰 프로모션부터 검토하세요.",
     },
     "AI 기반 성과 분석": {
       focus: "시간대별 매출, 상위 상품, 결제 비중을 보시면 됩니다.",
@@ -1109,22 +1181,72 @@ async function buildSalesQueryResponse(message: string, selectedMenu: string): P
   }
 }
 
-async function buildDashboardResponse(message: string): Promise<LocalMenuResponse> {
-  const demoLabel = getDemoDateTimeLabel();
-  const [salesSummary, analyticsSummary, deadlines, homeBriefing] = await Promise.all([
-    requestJson<{
+async function buildSalesReasonResponse(message: string): Promise<LocalMenuResponse | null> {
+  try {
+    const demoLabel = getDemoDateTimeLabel();
+    const salesSummary: {
       today_revenue?: number;
       vs_yesterday_same_time_pct?: number;
-      top_selling?: Array<{
-        product_name?: string;
-        qty?: number;
-        revenue?: number;
-      }>;
-    }>("/home/sales-summary").catch(() => null),
+      top_selling?: Array<{ product_name?: string; qty?: number; revenue?: number }>;
+    } | null = await requestJson("/home/sales-summary").catch(() => null);
+
+    if (!salesSummary) return null;
+
+    const vsPct = Number(salesSummary.vs_yesterday_same_time_pct ?? 0);
+    const topItem = (salesSummary.top_selling ?? []).find(
+      (item) => hasMeaningfulProductName(item.product_name) && (item.qty ?? 0) > 0
+    ) ?? null;
+    const isDown = vsPct < 0;
+
+    const lines: string[] = [
+      `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME} 매출 현황입니다.`,
+      isDown
+        ? `전일 동시간 대비 매출이 ${vsPct.toFixed(1)}% 감소했습니다.`
+        : `전일 동시간 대비 매출이 ${vsPct > 0 ? "+" : ""}${vsPct.toFixed(1)}%입니다.`,
+    ];
+
+    if (topItem) {
+      lines.push(`상위 상품은 ${resolveProductDisplayName(topItem.product_name)} ${formatCount(topItem.qty)}개입니다.`);
+    } else {
+      lines.push("현재 시간대별 판매 흐름을 다시 확인하세요.");
+    }
+
+    return {
+      lines: addGroundingAndAction(
+        lines,
+        "sales-summary API (전일 동시간比对)",
+        "실시간 현황 화면에서 시간대별 판매 흐름과 주요 품목 소진 여부를 확인하세요.",
+      ),
+      suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function buildDashboardResponse(message: string): Promise<LocalMenuResponse> {
+  const demoLabel = getDemoDateTimeLabel();
+  const lower = message.toLowerCase();
+  const [salesSummary, prodSummary, invItems, snapSummary, deadlines, orderOptions] = await Promise.all([
     requestJson<{
-      chance_loss_est?: number;
-      products_with_stockout?: number;
-    }>(`/v1/analytics/summary?store_id=${STORE_ID}`).catch(() => null),
+      today_revenue?: number;
+      cumulative_revenue_until?: number | null;
+      vs_yesterday_same_time_pct?: number;
+      vs_last_week_same_day_pct?: number;
+      profitability?: { gross_profit_margin_pct?: number | null } | null;
+    }>("/home/sales-summary").catch(() => null),
+    getProductionSummary().catch(() => ({
+      totalEstimatedLoss: 0,
+      urgentCount: 0,
+      restCount: 0,
+      lossItems: [],
+    })),
+    requestJson<Array<{
+      product_id: string;
+      product_name?: string | null;
+      estimated_chance_loss?: number | null;
+    }>>(`/inventory/current`).catch(() => null),
+    getInventorySnapshotSummary().catch(() => null),
     requestJson<
       Array<{
         product_group?: string;
@@ -1134,550 +1256,124 @@ async function buildDashboardResponse(message: string): Promise<LocalMenuRespons
       }>
     >("/order/deadlines").catch(() => []),
     requestJson<{
-      active_alerts?: Array<{
-        alert_type?: string;
-        severity?: string;
-        message?: string;
-        product_name?: string;
-      }>;
-    }>("/home/briefing").catch(() => null),
+      options?: Array<{ label?: string; total_qty?: number; items?: Array<{ product_id: string; product_name?: string }> }>
+    }>(`/v1/orders/${STORE_ID}/options`).catch(() => null),
   ]);
 
-  const topItem =
-    (salesSummary?.top_selling ?? []).find((item) => hasMeaningfulProductName(item.product_name)) ??
-    null;
-  const urgentDeadline =
-    (deadlines ?? []).find((item) => item.status === "urgent" || item.status === "soon") ??
-    (deadlines ?? [])[0] ??
-    null;
-  const topAlert = homeBriefing?.active_alerts?.[0] ?? null;
-  const lines =
-    classifyLocalIntent(message) === "CHANCE_LOSS"
-      ? addGroundingAndAction(
+  const hasCumulative = salesSummary?.cumulative_revenue_until != null && salesSummary?.cumulative_revenue_until > 0;
+  const displayRevenue = hasCumulative ? salesSummary.cumulative_revenue_until! : salesSummary.today_revenue;
+  const lossFromInventory = (invItems ?? []).reduce((s, i) => s + (Number(i.estimated_chance_loss ?? 0) || 0), 0);
+  const lossValue = Math.round(Math.max(lossFromInventory, prodSummary.totalEstimatedLoss));
+  const marginPct = (salesSummary?.profitability?.gross_profit_margin_pct != null && salesSummary.profitability?.gross_profit_margin_pct > 0)
+    ? salesSummary.profitability.gross_profit_margin_pct / 100
+    : 0.68;
+  const netSales = Math.round(displayRevenue * marginPct);
+  const vsPct = Number(salesSummary?.vs_yesterday_same_time_pct ?? 0);
+  // Use inventory-snapshot summary for consistent counts across all screens
+  const snapUrgent = snapSummary?.urgentCount ?? prodSummary.urgentCount;
+  const snapSupplement = snapSummary?.supplementCount ?? prodSummary.restCount;
+  const snapTotal = snapSummary?.totalCount ?? 0;
+
+  const orderOpts = orderOptions?.options ?? [];
+  const optQtyArr = orderOpts.map((o) => o.total_qty).filter((q): q is number => q != null);
+
+  // === AI 추정 순매출 ===
+  if (/순매출|net\s*sales/.test(lower)) {
+    return {
+      lines: addGroundingAndAction(
+        [
+          `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME}의 AI 추정 순매출입니다.`,
+          `금일 예상 누적 매출 ₩${formatKrw(displayRevenue)}에 매출이익률 ${Math.round(marginPct * 100)}%를 적용해 ₩${formatKrw(netSales)}로 표시됩니다.`,
+          "실제 회계 확정값이 아니라 시간대 판매 패턴 기반 추정치입니다.",
+        ],
+        "sales-summary + 금일 예상 매출에 매출이익률 적용",
+        "실제 순매출은 정산 완료 후 확인 가능합니다.",
+      ),
+      suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
+      actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치를 다시 확인합니다.", "/")],
+    };
+  }
+
+  // === 금일 예상 기회손실 ===
+  if (/기회손실|손실.*계산|기회.*손실.*계산/.test(lower)) {
+    return {
+      lines: addGroundingAndAction(
+        [
+          `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME}의 금일 예상 기회손실은 ₩${formatKrw(lossValue)}입니다.`,
+          snapTotal > 0
+            ? `전체 판매 제품 ${snapTotal}개 중 긴급 ${snapUrgent}개, 재고 주의 ${snapSupplement}개입니다.`
+            : "전체 판매 제품 기준 긴급/재고 주의 품목이 있습니다.",
+          "리드타임 1시간 기준으로 위험 품목을 처리하지 않았을 때의 예상 손실입니다.",
+        ],
+        "inventory-snapshot summary + inventory/current estimated_chance_loss 합산",
+        snapUrgent > 0
+          ? "생산관리에서 긴급 품목부터 확인하세요."
+          : "현재 핵심 수치를 다시 확인하세요.",
+      ),
+      suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
+      actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치를 다시 확인합니다.", "/")],
+    };
+  }
+
+  // === 지금 뭐부터 처리하면 돼? / 우선순위 ===
+  if (/지금.*뭐부터|처리하면|우선순위|먼저/.test(lower)) {
+    if (lossValue > 0 && snapUrgent > 0) {
+      return {
+        lines: addGroundingAndAction(
           [
-            `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME} 종합 현황입니다.`,
-            `의미: 현재 추정 기회손실은 ${formatKrw(analyticsSummary?.chance_loss_est)}이고 품절 위험 상품은 ${formatCount(analyticsSummary?.products_with_stockout)}개입니다.`,
-            topItem
-              ? `상위 판매 상품은 ${resolveProductDisplayName(topItem.product_name)} ${formatCount(topItem.qty)}개입니다.`
-              : "상위 판매 상품 데이터는 정리 중입니다.",
-            topAlert?.message ||
-              (urgentDeadline
-                ? `${urgentDeadline.product_group ?? "주문"} 발주 마감은 ${urgentDeadline.deadline ?? "-"}이며 상태는 ${urgentDeadline.status ?? "-"}입니다.`
-                : "현재 종합 현황 기준 긴급 이슈는 없습니다."),
+            `${demoLabel} 기준 지금 생산관리부터 보는 것이 우선입니다.`,
+            `금일 예상 기회손실이 ₩${formatKrw(lossValue)}로 표시되고, 리드타임 1시간 기준 위험 품목이 있습니다.`,
+            `그다음 발주관리에서 ${optQtyArr.length}개 추천 옵션을 비교하세요.`,
           ],
-          "실적 기반 추정 + 전일 동시간/기회손실 집계",
-          urgentDeadline
-            ? `${urgentDeadline.product_group ?? "주문"} 마감 전 추천 옵션을 먼저 확인하세요.`
-            : topItem
-              ? `${resolveProductDisplayName(topItem.product_name)} 재고와 진열 상태를 먼저 점검하세요.`
-              : "현재 핵심 수치를 다시 확인하고 다음 액션을 준비하세요.",
-        )
-      : addGroundingAndAction(
-          [
-            `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME} 종합 현황입니다.`,
-            `의미: 오늘 매출은 ${formatKrw(salesSummary?.today_revenue)}이고 전일 동시간 대비 ${Number(salesSummary?.vs_yesterday_same_time_pct ?? 0) > 0 ? "+" : ""}${Number(salesSummary?.vs_yesterday_same_time_pct ?? 0).toFixed(1)}%입니다.`,
-            `현재 추정 기회손실은 ${formatKrw(analyticsSummary?.chance_loss_est)}이며 품절 위험 상품은 ${formatCount(analyticsSummary?.products_with_stockout)}개입니다.`,
-            urgentDeadline
-              ? `${urgentDeadline.product_group ?? "주문"} 발주 마감은 ${urgentDeadline.deadline ?? "-"}이며 상태는 ${urgentDeadline.status ?? "-"}입니다.`
-              : topAlert?.message ||
-                (topItem
-                  ? `현재 상위 판매 상품은 ${resolveProductDisplayName(topItem.product_name)} ${formatCount(topItem.qty)}개입니다.`
-                  : "현재 화면에서 즉시 대응할 주요 이슈는 없습니다."),
-          ],
-          "전일 동시간 매출, 기회손실 추정, 발주 마감 데이터",
-          urgentDeadline
-            ? `${urgentDeadline.product_group ?? "주문"} 마감 전 추천 발주를 검토하세요.`
-            : analyticsSummary?.products_with_stockout
-              ? "품절 위험 상품부터 생산/발주 대응 여부를 확인하세요."
-              : "상위 판매 상품과 매출 흐름을 먼저 점검하세요.",
-        );
+          "기회손실 + 생산관리 요약 + 발주 옵션 수",
+          "생산관리 → 발주관리 순서로 확인하세요.",
+        ),
+        suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
+        actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치를 다시 확인합니다.", "/")],
+      };
+    }
+    return {
+      lines: addGroundingAndAction(
+        [
+          `${demoLabel} 기준 현재 모든 재고가 적정 수준입니다.`,
+          `금일 예상 누적 매출은 ₩${formatKrw(displayRevenue)}이고 AI 추정 순매출은 ₩${formatKrw(netSales)}입니다.`,
+          `발주관리에서 ${optQtyArr.length}개 추천 옵션을 비교하세요.`,
+        ],
+        "금일 예상 매출 + AI 추정 순매출 + 발주 옵션",
+        "발주관리에서 추천 옵션을 확인하세요.",
+      ),
+      suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
+      actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치를 다시 확인합니다.", "/")],
+    };
+  }
+
+  // === 오늘 핵심 이슈 요약 / 기본 종합현황 답변 ===
   return {
-    lines,
+    lines: addGroundingAndAction(
+      [
+        `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME} 종합 현황 요약입니다.`,
+        `금일 예상 누적 매출 ₩${formatKrw(displayRevenue)}이며 전일 대비 ${vsPct > 0 ? "+" : ""}${vsPct.toFixed(1)}%입니다.`,
+        `AI 추정 순매출 ₩${formatKrw(netSales)}입니다. 매출이익률 ${Math.round(marginPct * 100)}%를 적용한 추정값입니다.`,
+        snapTotal > 0
+          ? `전체 판매 제품 ${snapTotal}개 중 긴급 ${snapUrgent}개 · 재고 주의 ${snapSupplement}개입니다. 금일 예상 기회손실 ₩${formatKrw(lossValue)}입니다. 리드타임 1시간 기준 위험 품목을 처리하지 않았을 때의 예상 손실입니다.`
+          : `금일 예상 기회손실 ₩${formatKrw(lossValue)}입니다. 리드타임 1시간 기준 위험 품목을 처리하지 않았을 때의 예상 손실입니다.`,
+        snapUrgent > 0
+          ? `생산관리에서 긴급 품목 ${snapUrgent}개, 재고 주의 ${snapSupplement}개 처리가 필요합니다.`
+          : "현재 재고는 적정 수준입니다.",
+        optQtyArr.length > 0
+          ? `발주관리 ${optQtyArr.length}개 옵션(수량 ${optQtyArr.join(", ")})을 검토하세요.`
+          : "발주 옵션을 확인하세요.",
+      ],
+      "sales-summary + inventory-snapshot summary + order recommendations",
+      lossValue > 0
+        ? "생산관리에서 긴급 품목부터 확인한 뒤 발주관리를 검토하세요."
+        : "발주관리에서 추천 옵션을 확인하세요.",
+    ),
     suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
     actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치와 추천 액션을 다시 확인합니다.", "/")],
   };
 }
 
-async function buildProductionResponse(message: string): Promise<LocalMenuResponse> {
-  const intent = classifyLocalIntent(message);
-
-  try {
-    const production = await getProductionAgent();
-    const productionItems = production.items;
-    const lowItems = productionItems.filter((item) => item.isLow);
-
-    const chips = (key: string) => toSuggestedQuestions(FOLLOWUP_CHIPS[key] ?? QUICK_CHIPS["생산관리"]);
-
-    // === INVENTORY_RISK: 현재 재고 현황과 부족 예상 품목 ===
-    if (intent === "INVENTORY_RISK") {
-      const top3 = lowItems.slice(0, 3);
-      const lines = top3.length > 0
-        ? [
-            `현재 부족 예상 품목은 ${lowItems.length}개입니다.`,
-            ...top3.map((item) => {
-              const parts = [
-                item.name,
-                item.currentLabel,
-                item.shortage && item.shortage > 0 ? `부족 ${formatCount(item.shortage)}개` : null,
-                item.statusLabel,
-              ].filter(Boolean);
-              return parts.join(" · ");
-            }),
-          ]
-        : ["현재 부족 예상 품목은 없습니다."];
-      const topRec = lowItems[0];
-      return {
-        lines: addGroundingAndAction(
-          lines,
-          topRec?.groundingLabel ?? "최근 1시간 판매 속도와 최근 4주 동일 요일 패턴 기준",
-          topRec?.actionLabel ?? "생산 우선순위 상위 품목부터 확인하세요.",
-        ),
-        suggestedQuestions: chips("INVENTORY_RISK"),
-      };
-    }
-
-    // === FORECAST: 1시간 뒤 예상 재고량 ===
-    if (intent === "FORECAST") {
-      const items = lowItems.slice(0, 3);
-      const lines = items.length > 0
-        ? [
-            `1시간 뒤 예상 재고 기준 우선 확인 품목입니다.`,
-            ...items.map((item) => {
-              const probability = Math.round(Number(item.stockoutProbability ?? 0) * 100);
-              return [
-                item.name,
-                item.currentLabel,
-                item.predictedLabel,
-                probability > 0 ? `품절 확률 ${probability}%` : null,
-              ]
-                .filter(Boolean)
-                .join(" · ");
-            }),
-          ]
-        : ["1시간 내 품절 위험이 높은 품목은 현재 없습니다."];
-      if (items[0]?.statusDescription) {
-        lines.push(`알림 사유: ${items[0].statusDescription}`);
-      }
-      return {
-        lines: addGroundingAndAction(
-          lines,
-          items[0]?.groundingLabel ?? "4주 동일 요일 패턴과 현재 판매 속도 기준",
-          items[0]?.actionLabel ?? "현재 즉시 대응이 필요한 품목은 없습니다.",
-        ),
-        suggestedQuestions: chips("FORECAST"),
-      };
-    }
-
-    // === PRODUCTION_RECOMMEND: 1차/2차 생산 권장량 ===
-    if (intent === "PRODUCTION_RECOMMEND") {
-      const items = lowItems.slice(0, 3);
-      const lines = items.length > 0
-        ? [
-            `최근 4주 생산 패턴 기준 권장 생산량입니다.`,
-            ...items.map((item) => {
-              const first = item.firstProductionTime
-                ? `${item.firstProductionTime} ${formatCount(Number(item.firstProductionQty ?? 0))}개`
-                : "데이터 부족";
-              const second = item.secondProductionTime
-                ? `${item.secondProductionTime} ${formatCount(Number(item.secondProductionQty ?? 0))}개`
-                : "데이터 부족";
-              return `${item.name}: 권장 ${formatCount(item.recommendedProductionQty ?? 0)}개 · 1차 ${first} · 2차 ${second}`;
-            }),
-          ]
-        : ["현재 생산 권장 품목이 없습니다."];
-      return {
-        lines: addGroundingAndAction(
-          lines,
-          "최근 4주 동일 요일 생산 이력 평균 (2차는 데이터 부족 시 명시)",
-          items[0]?.actionLabel ?? "생산 관리 화면에서 권장량을 확인하세요.",
-        ),
-        suggestedQuestions: chips("PRODUCTION_RECOMMEND"),
-      };
-    }
-
-    // Default fallback for production menu
-    const topRec = lowItems[0] ?? productionItems[0];
-    return {
-      lines: addGroundingAndAction(
-        [
-          topRec
-            ? [topRec.name, topRec.currentLabel, topRec.predictedLabel, topRec.statusLabel].filter(Boolean).join(" · ")
-            : "현재 추가 생산 추천 품목이 없습니다.",
-          ...(lowItems.length > 1
-            ? [`부족 위험 품목 총 ${lowItems.length}개: ${lowItems.slice(0, 3).map((i) => i.name).join(", ")}${lowItems.length > 3 ? ` 외 ${lowItems.length - 3}개` : ""}`]
-            : []),
-        ],
-        topRec?.groundingLabel ?? "최근 1시간 판매 속도와 리드타임 1시간 기준",
-        topRec?.actionLabel ?? "생산관리 화면에서 권장량을 확인하세요.",
-      ),
-      suggestedQuestions: chips("INVENTORY_RISK"),
-    };
-  } catch {
-    return {
-      lines: addGroundingAndAction(
-        ["생산 데이터를 불러오지 못했습니다.", "생산관리 화면 카드에서 직접 확인해 주세요."],
-        "실시간 재고 재조회 실패",
-        "생산관리 화면에서 부족 품목과 권장 생산량을 다시 확인하세요.",
-      ),
-      suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["생산관리"]),
-    };
-  }
-}
-
-async function buildOrderResponse(message: string): Promise<LocalMenuResponse> {
-  const intent = classifyLocalIntent(message);
-  const chips = (key: string) => toSuggestedQuestions(FOLLOWUP_CHIPS[key] ?? QUICK_CHIPS["발주 관리"]);
-
-  const [recommendations, deadlines] = await Promise.all([
-    requestJson<{
-      target_date?: string;
-      category?: string | null;
-      deadline?: string | null;
-      four_week_avg_qty?: number | null;
-      explanation?: string | null;
-      rationale?: {
-        summary?: string | null;
-        weather_impact?: { status?: string | null; note?: string | null } | null;
-        event_impact?: { status?: string | null; note?: string | null } | null;
-        mutual_support_impact?: { status?: string | null; note?: string | null } | null;
-        time_band_impact?: { status?: string | null; note?: string | null } | null;
-      } | null;
-      options?: Array<{
-        label?: string;
-        reference_date?: string;
-        total_qty?: number;
-        total_amount?: number;
-        deviation_from_avg_pct?: number | null;
-        deviation_label?: string;
-        flags?: string[];
-        items?: Array<{
-          product_id?: string;
-          product_name?: string;
-          quantity?: number;
-          base_price?: number;
-          category?: string | null;
-          rationale?: string | null;
-        }>;
-      }>;
-    }>("/order/recommendations").catch(() => null),
-    requestJson<
-      Array<{
-        product_group?: string;
-        deadline?: string;
-        minutes_remaining?: number;
-        status?: string;
-        confirmed_order_count?: number;
-      }>
-    >("/order/deadlines").catch(() => []),
-  ]);
-
-  type OrderOption = {
-    label: string;
-    referenceDate: string | null;
-    totalQty: number;
-    totalAmount: number;
-    deviationPct: number | null;
-    deviationLabel: string;
-    flags: string[];
-    items: Array<{
-      productId: string;
-      productName: string;
-      quantity: number;
-      basePrice: number;
-    }>;
-  };
-
-  const formatReferenceDate = (value: string | null | undefined) =>
-    String(value ?? "").trim() ? String(value).replace(/-/g, ".") : "기준일 없음";
-  const humanizeDeadlineStatus = (value: string | null | undefined) => {
-    const normalized = String(value ?? "").toLowerCase();
-    if (normalized === "urgent") return "마감 임박";
-    if (normalized === "soon") return "확인 필요";
-    if (normalized === "scheduled") return "예정";
-    if (normalized === "past_due") return "마감 지남";
-    return "확인 필요";
-  };
-  const humanizeOrderFlag = (flag: string) => {
-    const normalized = flag.trim().toUpperCase();
-    if (normalized === "ESTIMATED_FROM_SALES") return "최근 실판매 흐름을 기준으로 계산했습니다.";
-    if (normalized === "CAMPAIGN_PERIOD") return "최근 프로모션 영향이 일부 반영됐습니다.";
-    if (normalized === "EVENT_ADJUSTED") return "행사 영향 가능성을 반영했습니다.";
-    return null;
-  };
-  const getOptionMeaning = (label: string) => {
-    if (label.includes("전주")) return "가장 최근 운영 패턴을 그대로 반영한 기본안";
-    if (label.includes("전전주")) return "직전주보다 수요를 낮게 본 절감형 안";
-    if (label.includes("전월")) return "월간 패턴을 반영한 안정형 안";
-    return "실적 흐름을 기준으로 만든 추천안";
-  };
-  const buildTopItemsLabel = (option: OrderOption, limit = 3) => {
-    const topItems = option.items.slice(0, limit);
-    if (topItems.length === 0) return "대표 품목 데이터 없음";
-    return topItems
-      .map((item) => `${resolveProductDisplayName(item.productName)} ${formatCount(item.quantity)}개`)
-      .join(", ");
-  };
-  const buildAverageDeltaText = (option: OrderOption) => {
-    if (option.deviationPct == null) return "4주 평균과 비슷한 수준";
-    const abs = Math.abs(option.deviationPct).toFixed(1);
-    return option.deviationPct > 0
-      ? `4주 평균보다 ${abs}% 많은 안`
-      : option.deviationPct < 0
-        ? `4주 평균보다 ${abs}% 적은 안`
-        : "4주 평균과 같은 수준";
-  };
-  const pickSafestOption = (optionList: OrderOption[]) =>
-    optionList
-      .slice()
-      .sort((a, b) => {
-        const aScore = Math.abs(Number(a.deviationPct ?? 0)) + (a.label.includes("전주") ? -1 : 0);
-        const bScore = Math.abs(Number(b.deviationPct ?? 0)) + (b.label.includes("전주") ? -1 : 0);
-        return aScore - bScore || b.totalQty - a.totalQty;
-      })[0] ?? null;
-  const buildSpreadItems = (optionList: OrderOption[]) => {
-    const spreadMap = new Map<string, { name: string; min: number; max: number }>();
-    optionList.forEach((option) => {
-      option.items.forEach((item) => {
-        const key = item.productId || item.productName;
-        const existing = spreadMap.get(key);
-        if (!existing) {
-          spreadMap.set(key, {
-            name: resolveProductDisplayName(item.productName),
-            min: item.quantity,
-            max: item.quantity,
-          });
-          return;
-        }
-        existing.min = Math.min(existing.min, item.quantity);
-        existing.max = Math.max(existing.max, item.quantity);
-      });
-    });
-    return Array.from(spreadMap.values())
-      .map((item) => ({
-        ...item,
-        diff: item.max - item.min,
-      }))
-      .filter((item) => item.diff > 0)
-      .sort((a, b) => b.diff - a.diff)
-      .slice(0, 3);
-  };
-
-  const options: OrderOption[] = (recommendations?.options ?? []).slice(0, 3).map((option) => ({
-    label: String(option.label ?? "추천 옵션"),
-    referenceDate: option.reference_date ?? null,
-    totalQty: Math.round(Number(option.total_qty ?? 0)),
-    totalAmount: Number(option.total_amount ?? 0),
-    deviationPct:
-      option.deviation_from_avg_pct == null ? null : Number(option.deviation_from_avg_pct),
-    deviationLabel: String(option.deviation_label ?? "평균 수준"),
-    flags: Array.isArray(option.flags) ? option.flags.map((flag) => String(flag)) : [],
-    items: (option.items ?? []).map((item) => ({
-      productId: String(item.product_id ?? ""),
-      productName: resolveProductDisplayName(String(item.product_name ?? item.product_id ?? "품목")),
-      quantity: Math.round(Number(item.quantity ?? 0)),
-      basePrice: Number(item.base_price ?? 0),
-    })),
-  }));
-  const optionSummary = options.map((option) => ({
-    ...option,
-    meaning: getOptionMeaning(option.label),
-    topItemsLabel: buildTopItemsLabel(option, 3),
-    avgDeltaText: buildAverageDeltaText(option),
-  }));
-  const safestOption = pickSafestOption(optionSummary);
-  const focusDeadline =
-    (deadlines ?? []).find((item) => item.product_group === "도넛") ??
-    (deadlines ?? []).slice().sort((a, b) => Number(a.minutes_remaining ?? 9999) - Number(b.minutes_remaining ?? 9999))[0] ??
-    null;
-  const deadlineLine = focusDeadline
-    ? `${focusDeadline.product_group ?? "주문"} 마감은 ${focusDeadline.deadline ?? "-"}이고 지금 ${formatCount(
-        Math.max(0, Math.round(Number(focusDeadline.minutes_remaining ?? 0))),
-      )}분 남았습니다.`
-    : "현재 주문 마감 시간을 불러오지 못했습니다.";
-  const deadlineAction = focusDeadline
-    ? `${focusDeadline.deadline ?? "-"} 전까지 세 옵션을 비교한 뒤 최종 발주를 확정하세요.`
-    : "추천 옵션을 비교해 오늘 발주안을 먼저 정리하세요.";
-  const spreadItems = buildSpreadItems(optionSummary);
-  const commonGrounding = joinCompact([
-    "근거: 전주·전전주·전월 동요일 실적 비교",
-    recommendations?.four_week_avg_qty != null
-      ? `최근 4주 평균 ${formatCount(recommendations.four_week_avg_qty)}개와 편차 비교`
-      : "최근 4주 평균 비교",
-    optionSummary
-      .flatMap((option) => option.flags.map((flag) => humanizeOrderFlag(flag)).filter(Boolean))
-      .filter((value, index, array) => array.indexOf(value) === index)
-      .join(" / ") || "프로모션·이벤트 별도 태그는 제한적",
-  ]);
-  const externalFactorNotes = [
-    recommendations?.rationale?.event_impact?.note,
-    recommendations?.rationale?.weather_impact?.note,
-    recommendations?.rationale?.time_band_impact?.note,
-  ]
-    .map((value) => String(value ?? "").trim())
-    .filter(Boolean)
-    .slice(0, 2)
-    .join(" / ");
-
-  if (optionSummary.length === 0) {
-    return {
-      lines: addGroundingAndAction(
-        ["주문 추천 옵션 데이터를 불러오지 못했습니다.", deadlineLine],
-        "발주 추천 API 재조회 실패",
-        "발주 관리 화면에서 추천 옵션과 마감 시간을 다시 확인하세요.",
-      ),
-      suggestedQuestions: chips("ORDER_RECOMMEND"),
-    };
-  }
-
-  if (intent === "ORDER_EXCEPTION") {
-    const variableItems =
-      spreadItems.length > 0
-        ? spreadItems
-            .map((item) => `${item.name} ${formatCount(item.diff)}개 차이`)
-            .join(", ")
-        : "옵션 간 편차가 큰 품목을 아직 찾지 못했습니다.";
-    return {
-      lines: addGroundingAndAction(
-        [
-          "현재 데이터에는 단체 주문이나 대형 예약을 구분하는 전용 태그가 없어 자동 완전 분리는 어렵습니다.",
-          `대신 옵션 간 차이가 큰 품목은 ${variableItems}입니다.`,
-          "행사나 예약 주문이 있으면 기본안에서 해당 품목 수량을 직접 더하거나 빼서 보정하는 방식이 가장 현실적입니다.",
-        ],
-        "옵션별 품목 수량 편차와 현재 추천안 비교",
-        "행사·예약 주문이 있으면 전주 기준안을 기본으로 두고 해당 품목 수량만 수동 보정하세요.",
-      ),
-      suggestedQuestions: chips("ORDER_EXCEPTION"),
-    };
-  }
-
-  if (intent === "ORDER_SAFE_OPTION") {
-    return {
-      lines: addGroundingAndAction(
-        [
-          safestOption
-            ? `지금 가장 안전한 옵션은 ${safestOption.label}입니다.`
-            : "현재 가장 안전한 옵션을 계산하지 못했습니다.",
-          safestOption
-            ? `${formatReferenceDate(safestOption.referenceDate)} 실적을 그대로 반영했고 총 ${formatCount(safestOption.totalQty)}개로 ${safestOption.avgDeltaText}입니다.`
-            : deadlineLine,
-          safestOption
-            ? `대표 품목은 ${safestOption.topItemsLabel}입니다.`
-            : "대표 품목 데이터가 없습니다.",
-        ],
-        commonGrounding,
-        safestOption
-          ? `${safestOption.label}을 먼저 검토하고 행사·예약 수요가 있으면 수동 보정하세요.`
-          : deadlineAction,
-      ),
-      suggestedQuestions: chips("ORDER_SAFE_OPTION"),
-    };
-  }
-
-  if (intent === "ORDER_FINAL_SUMMARY") {
-    const conservativeOption =
-      optionSummary.slice().sort((a, b) => a.totalQty - b.totalQty)[0] ?? null;
-    const aggressiveOption =
-      optionSummary.slice().sort((a, b) => b.totalQty - a.totalQty)[0] ?? null;
-    return {
-      lines: addGroundingAndAction(
-        [
-          "최종 선택 전에 보면 전주 기준안은 기본안, 전전주 기준안은 절감형, 전월 기준안은 안정형으로 볼 수 있습니다.",
-          safestOption
-            ? `가장 무난한 안은 ${safestOption.label} ${formatCount(safestOption.totalQty)}개입니다.`
-            : "가장 무난한 안을 계산하지 못했습니다.",
-          conservativeOption && aggressiveOption
-            ? `옵션 간 총량 차이는 ${formatCount(Math.abs(aggressiveOption.totalQty - conservativeOption.totalQty))}개입니다.`
-            : "옵션 간 총량 차이는 계산 중입니다.",
-          focusDeadline && Number(focusDeadline.minutes_remaining ?? 0) <= 60
-            ? "마감이 가까워 지금은 기본안부터 확인하는 편이 안전합니다."
-            : "시간 여유가 있으면 세 안을 모두 보고 행사 수요를 함께 반영하세요.",
-        ],
-        commonGrounding,
-        safestOption
-          ? `${safestOption.label}을 기준으로 최종 발주를 정하고, 행사·예약 품목만 별도 보정하세요.`
-          : deadlineAction,
-      ),
-      suggestedQuestions: chips("ORDER_FINAL_SUMMARY"),
-    };
-  }
-
-  if (intent === "ORDER_COMPARISON") {
-    const conservativeOption =
-      optionSummary.slice().sort((a, b) => a.totalQty - b.totalQty)[0] ?? null;
-    const aggressiveOption =
-      optionSummary.slice().sort((a, b) => b.totalQty - a.totalQty)[0] ?? null;
-    return {
-      lines: addGroundingAndAction(
-        [
-          "세 옵션을 비교하면 전주 기준안이 가장 최근 패턴에 가깝고, 전전주 기준안이 가장 보수적입니다.",
-          ...optionSummary.map(
-            (option) =>
-              `${option.label}: ${formatCount(option.totalQty)}개 · ${option.avgDeltaText} · 기준일 ${formatReferenceDate(option.referenceDate)}`,
-          ),
-          conservativeOption && aggressiveOption
-            ? `최대·최소 차이는 ${formatCount(Math.abs(aggressiveOption.totalQty - conservativeOption.totalQty))}개입니다.`
-            : "옵션 간 차이를 계산하지 못했습니다.",
-        ],
-        commonGrounding,
-        safestOption
-          ? `${safestOption.label}을 먼저 보고, 더 보수적으로 가려면 ${conservativeOption?.label ?? "보수적 안"}을 검토하세요.`
-          : deadlineAction,
-      ),
-      suggestedQuestions: chips("ORDER_COMPARISON"),
-    };
-  }
-
-  if (intent === "ORDER_RATIONALE") {
-    return {
-      lines: addGroundingAndAction(
-        [
-          "이 수량은 과거 동요일 실적을 기준으로 계산한 화이트박스 추천입니다.",
-          recommendations?.explanation
-            ? recommendations.explanation
-            : "가장 최근 동요일 실적과 4주 평균 편차를 함께 비교해 추천 수량을 만들었습니다.",
-          ...optionSummary.map((option) => {
-            const flagLabel =
-              option.flags
-                .map((flag) => humanizeOrderFlag(flag))
-                .filter(Boolean)
-                .join(" / ") || "일반 판매 패턴 기준";
-            return `${option.label}: ${formatReferenceDate(option.referenceDate)} 실적을 기준으로 총 ${formatCount(option.totalQty)}개를 제안합니다. 대표 품목은 ${buildTopItemsLabel(
-              option,
-              5,
-            )}이며 ${option.avgDeltaText}입니다. ${flagLabel}`;
-          }),
-          externalFactorNotes
-            ? `외부 요인 메모: ${externalFactorNotes}`
-            : "현재 별도 행사 데이터는 감지되지 않았고, 날씨 영향은 아직 자동 반영되지 않습니다.",
-          "현재 데이터에는 단체 주문 전용 태그가 없어 예약·행사 수요는 점주가 수동 확인해야 합니다.",
-        ],
-        commonGrounding,
-        safestOption
-          ? `${safestOption.label}을 기본안으로 보고, 예약·행사 수량만 별도로 반영해 최종 발주를 확정하세요.`
-          : deadlineAction,
-      ),
-      suggestedQuestions: chips("ORDER_RATIONALE"),
-    };
-  }
-
-  return {
-    lines: addGroundingAndAction(
-      [
-        "주문 마감 전에 바로 볼 추천 옵션 3가지입니다.",
-        deadlineLine,
-        ...optionSummary.map(
-          (option) =>
-            `${option.label} ${formatCount(option.totalQty)}개 · ${option.meaning} · 대표 품목 ${option.topItemsLabel}`,
-        ),
-      ],
-      commonGrounding,
-      safestOption
-        ? `${safestOption.label}부터 검토하고, 행사·예약 수요가 있으면 전월 기준안까지 함께 비교하세요.`
-        : deadlineAction,
-    ),
-    suggestedQuestions: chips("ORDER_RECOMMEND"),
-  };
-}
 
 async function buildPromotionResponse(message: string): Promise<LocalMenuResponse> {
   const intent = classifyLocalIntent(message);
@@ -1728,7 +1424,7 @@ async function buildPromotionResponse(message: string): Promise<LocalMenuRespons
         top
           ? [
               `최근 집계 기준 매출 기여가 가장 큰 프로모션은 ${topName}입니다.`,
-              `1위 ${topName} 매출 ${formatKrw(top.total_sales_amt)}${totalSales > 0 ? ` · 전체 프로모션 매출의 ${(Number(top.total_sales_amt) / totalSales * 100).toFixed(1)}%` : ""}`,
+              `1위 ${topName} 매출 ${formatKrw(top.total_sales_amt)}${totalSales > 0 ? ` · 전체 프로모션 매출의 ${Number.isFinite(top.total_sales_amt / totalSales) ? `${(top.total_sales_amt / totalSales * 100).toFixed(1)}%` : "-"}` : ""}`,
               second
                 ? `2위 ${cleanPromoName(second.campaign_name)} 매출 ${formatKrw(second.total_sales_amt)}`
                 : null,
@@ -1747,16 +1443,16 @@ async function buildPromotionResponse(message: string): Promise<LocalMenuRespons
     const promoTitle = cleanPromoName(topPromotion?.title);
     const lines = topPromotion
       ? [
-          `시간대별 프로모션 강세 분석입니다.`,
-          `현재 프로모션 데이터는 일일 단위 집계이며, 시간대별 상세 집계는 프로모션 화면에서 확인 가능합니다.`,
-          `가장 활성 프로모션: ${promoTitle} (${topPromotion.channel ?? "전체"}) · 매출 ${formatKrw(topPromotion.actualSales)} · 참여 ${formatCount(topPromotion.actualBills)}건`,
+          `시간대별 성과 데이터는 아직 연결되지 않았습니다.`,
+          `현재는 캠페인 기간과 상품 반응 기준으로만 분석 중입니다.`,
+          `${promoTitle}이 가장 활성 프로모션입니다 (${topPromotion.channel ?? "전체"}) · 매출 ${formatKrw(topPromotion.actualSales)} · 참여 ${formatCount(topPromotion.actualBills)}건`,
         ]
       : ["프로모션 데이터가 없습니다."];
     return {
       lines: addGroundingAndAction(
         lines,
-        "프로모션 일일 집계 (시간대별 상세는 프로모션 화면 참조)",
-        topPromotion ? `${promoTitle}의 시간대별 판매 패턴을 프로모션 화면에서 확인하세요.` : "프로모션 화면에서 실적을 확인하세요.",
+        "프로모션 일일 집계 기준 (시간대별 매출 데이터 미연결)",
+        "시간대 매출 데이터가 연결되면 강한 시간대를 표시하겠습니다.",
       ),
       suggestedQuestions: chips("PROMO_HOURLY"),
     };
@@ -1780,7 +1476,7 @@ async function buildPromotionResponse(message: string): Promise<LocalMenuRespons
       ),
       suggestedQuestions: chips("PROMO_STORE_COMPARE"),
     };
-  }
+}
 
   // Default promotion fallback
   const promoTitleDefault = cleanPromoName(topPromotion?.title);
@@ -1839,72 +1535,6 @@ async function buildPerformanceResponse(message: string): Promise<LocalMenuRespo
     }
   }
 
-  if (intent === "PERF_DELIVERY_WEEKLY") {
-    const comparison = await getDeliveryCountComparison();
-    if (comparison) {
-      return {
-        lines: addGroundingAndAction(
-          [
-            `전주 대비 배달 건수는 ${formatCount(comparison.weekly.this_week_orders)}건으로 ${formatSignedPct(comparison.weekly.diff_pct)}입니다.`,
-            `지난주 동기간은 ${formatCount(comparison.weekly.last_week_orders)}건이었습니다.`,
-            "주간 배달 건수는 프로모션 노출과 피크 시간 운영 변화에 바로 반응합니다.",
-          ],
-          "이번 주 누계와 지난주 동기간 배달 건수 비교",
-          "배달 건수가 줄었다면 점심 이후 채널 노출과 상위 메뉴 구성을 우선 점검하세요.",
-        ),
-        suggestedQuestions: chips("PERF_DELIVERY_WEEKLY"),
-      };
-    }
-  }
-
-  if (intent === "PERF_DELIVERY_MONTHLY") {
-    const comparison = await getDeliveryCountComparison();
-    if (comparison) {
-      return {
-        lines: addGroundingAndAction(
-          [
-            `전월 대비 배달 건수는 ${formatCount(comparison.monthly.this_month.total_orders)}건으로 ${formatSignedPct(comparison.monthly.diff_pct)}입니다.`,
-            `${comparison.monthly.this_month.month ?? "이번 달"} 매출은 ${formatKrw(comparison.monthly.this_month.total_sales)}, ${comparison.monthly.last_month.month ?? "지난달"}은 ${formatKrw(comparison.monthly.last_month.total_sales)}입니다.`,
-            "건수와 매출이 함께 줄면 배달 채널 운영 강도가 약해졌을 가능성이 큽니다.",
-          ],
-          `${comparison.monthly.last_month.month ?? "지난달"} 대비 ${comparison.monthly.this_month.month ?? "이번 달"} 배달 건수·매출 비교`,
-          "배달 채널별 노출과 할인 운영을 다시 점검하고, 하락 폭이 큰 채널부터 보완하세요.",
-        ),
-        suggestedQuestions: chips("PERF_DELIVERY_MONTHLY"),
-      };
-    }
-  }
-
-  if (intent === "PERF_CHANNEL_MIX") {
-    const comparison = await getDeliveryComparison(30);
-    const deliveryOnly = comparison.channels.filter((item) => !/^(pos)$/i.test(item.channel_name));
-    const totalDeliverySales = deliveryOnly.reduce((sum, item) => sum + Number(item.total_sales ?? 0), 0);
-    const top3 = [...deliveryOnly]
-      .sort((a, b) => Number(b.total_sales ?? 0) - Number(a.total_sales ?? 0))
-      .slice(0, 3);
-    if (top3.length > 0) {
-      return {
-        lines: addGroundingAndAction(
-          [
-            `최근 30일 배달 채널 비중은 ${top3
-              .map((item) => {
-                const share = totalDeliverySales > 0 ? (Number(item.total_sales ?? 0) / totalDeliverySales) * 100 : 0;
-                return `${item.channel_name} ${share.toFixed(1)}%`;
-              })
-              .join(", ")}입니다.`,
-            `${top3
-              .map((item) => `${item.channel_name} ${formatKrw(item.total_sales)} · ${formatCount(item.total_orders)}건`)
-              .join(" / ")}`,
-            `${top3[0].channel_name} 채널이 현재 가장 강한 배달 채널입니다.`,
-          ],
-          "최근 30일 배달 채널별 매출·건수 비교",
-          `${top3[0].channel_name} 운영을 기본축으로 두고, 2·3위 채널의 노출과 혜택을 보강하세요.`,
-        ),
-        suggestedQuestions: chips("PERF_CHANNEL_MIX"),
-      };
-    }
-  }
-
   if (intent === "PERF_PRODUCT_COMPARE") {
     const months = await getProductComparison("글레이즈드", 4);
     const pair = latestComparableMonths(months);
@@ -1917,15 +1547,60 @@ async function buildPerformanceResponse(message: string): Promise<LocalMenuRespo
         lines: addGroundingAndAction(
           [
             `글레이즈드 매출은 ${formatMonthLabel(latest.month)} ${formatKrw(latest.total_sales)}로 ${formatMonthLabel(previous.month)}보다 ${formatSignedPct(salesDiff)}입니다.`,
-            `판매수량은 ${formatCount(latest.total_qty)}개로 ${formatSignedPct(qtyDiff)}입니다.`,
             "글레이즈드는 대표 상품이라 감소 폭이 크면 전체 매출에도 바로 영향이 납니다.",
           ],
           `${formatMonthLabel(previous.month)}와 ${formatMonthLabel(latest.month)} 글레이즈드 매출·수량 비교`,
           "글레이즈드 진열량과 피크 시간 재고를 먼저 점검하고, 연계 프로모션 여부를 검토하세요.",
         ),
         suggestedQuestions: chips("PERF_PRODUCT_COMPARE"),
+        insightCard: {
+          title: resolveProductDisplayName("글레이즈드"),
+          description: "월간 제품 비교",
+          rows: [
+            {
+              label: formatMonthLabel(previous.month),
+              current: previous.total_sales,
+              reason: `${formatCount(previous.total_qty)}개`,
+            },
+            {
+              label: formatMonthLabel(latest.month),
+              current: latest.total_sales,
+              reason: `${formatCount(latest.total_qty)}개 (${formatSignedPct(qtyDiff)})`,
+            },
+          ],
+          summaryLabel: "매출 차이",
+          summaryValue: formatSignedPct(salesDiff),
+        },
       };
     }
+  }
+
+  // Delivery/channel data not available
+  if (/전주.*배달.*건수|전월.*배달.*건수|이번 달.*배달.*지난 달|지난달.*배달.*건수/.test(lower)) {
+    return {
+      lines: addGroundingAndAction(
+        [
+          "현재 배달 채널별 주문 건수 데이터가 없어 배달 건수 비교를 제공할 수 없습니다.",
+          "현재 확인 가능한 데이터는 전체 판매량과 재고 데이터입니다.",
+        ],
+        "배달 건수 비교 데이터 없음",
+        "배달 채널 연동 후 다시 확인해 주세요.",
+      ),
+      suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["AI 기반 성과 분석"]),
+    };
+  }
+  if (/배달.*채널.*비중|채널별.*매출.*비중|배달 채널별/.test(lower)) {
+    return {
+      lines: addGroundingAndAction(
+        [
+          "현재 채널별 매출 데이터가 없어 채널별 매출 비중을 확인할 수 없습니다.",
+          "현재 확인 가능한 데이터는 전체 판매량과 재고 데이터입니다.",
+        ],
+        "채널별 매출 비중 데이터 없음",
+        "배달 채널 연동 후 다시 확인해 주세요.",
+      ),
+      suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["AI 기반 성과 분석"]),
+    };
   }
 
   if (intent === "PERF_STORE_AVG") {
@@ -1992,14 +1667,14 @@ async function buildPerformanceResponse(message: string): Promise<LocalMenuRespo
       lines: addGroundingAndAction(
         [
           topCategory
-            ? `상위 카테고리: ${topCategory.name} ${topCategory.today.toLocaleString("ko-KR")}원`
+            ? `상위 카테고리: ${resolveProductDisplayName(topCategory.name)} ${topCategory.today.toLocaleString("ko-KR")}원`
             : "상위 상품 데이터를 불러오지 못했습니다.",
           ...data.categorySales.slice(1, 3).map(
-            (item) => `${item.name} ${item.today.toLocaleString("ko-KR")}원`,
+            (item) => `${resolveProductDisplayName(item.name)} ${item.today.toLocaleString("ko-KR")}원`,
           ),
         ],
         "상위 상품/카테고리 매출 집계",
-        topCategory ? `${topCategory.name} 재고와 프로모션 연계를 점검하세요.` : "상위 상품 데이터를 다시 조회하세요.",
+        topCategory ? `${resolveProductDisplayName(topCategory.name)} 재고와 프로모션 연계를 점검하세요.` : "상위 상품 데이터를 다시 조회하세요.",
       ),
       suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["AI 기반 성과 분석"]),
     };
@@ -2143,7 +1818,7 @@ async function buildBenchmarkResponse(message: string, intent: LocalIntent = "UN
       lines: addGroundingAndAction(
         [
           `${demoLabel} 기준 벤치마킹 설명입니다.`,
-          `${targetPeer.storeName}은 현재 ${targetPeer.peakHourLabel} 피크와 ${targetPeer.mainProduct} 판매력이 강합니다.`,
+          `${targetPeer.storeName}은 현재 ${targetPeer.peakHourLabel} 피크와 ${resolveProductDisplayName(targetPeer.mainProduct)} 판매력이 강합니다.`,
           targetPeer.whyBetter ??
             `${targetPeer.storeName}은 피크 시간 대응과 상위 상품 판매 비중이 높아 ${formatDiff(targetPeer.salesDiff)} 격차를 보입니다.`,
           targetPeer.similarityReasons?.length
@@ -2185,19 +1860,26 @@ async function buildBenchmarkResponse(message: string, intent: LocalIntent = "UN
         .find((store) => store.store_id === STORE_ID)
         ?.points.slice()
         .sort((a, b) => b.sales - a.sales)[0] ?? null;
+    const isHourlyFallback = snapshot.hourlyDataSource !== "real";
+    const hourlyLines: string[] = [`${demoLabel} 기준 벤치마킹 요약입니다.`];
+    if (isHourlyFallback) {
+      hourlyLines.push("시간대별 실측 데이터가 없어 일 매출 KPI와 기본 시간대 패턴으로 추정했습니다.");
+    }
+    hourlyLines.push(
+      ourPeak
+        ? `${snapshot.storeName}의 피크 시간은 ${ourPeak.hour}시${isHourlyFallback ? " (추정)" : ""}이며 피크 매출은 ₩${Math.round(ourPeak.sales).toLocaleString("ko-KR")}입니다.`
+        : "우리 매장 피크 시간 데이터가 없습니다."
+    );
+    hourlyLines.push(
+      targetPeer
+        ? `${targetPeer.storeName}은 ${targetPeer.peakHourLabel} 피크가 강하고 매출 격차는 ${targetPeer.salesDiff > 0 ? "+" : ""}${Math.abs(targetPeer.salesDiff).toFixed(1)}%입니다.`
+        : "비교 매장 피크 시간 데이터를 찾지 못했습니다."
+    );
+    hourlyLines.push("시간대별 비교에서는 오후 피크 대응력이 가장 큰 차이를 만듭니다.");
     return {
       lines: addGroundingAndAction(
-        [
-          `${demoLabel} 기준 벤치마킹 요약입니다.`,
-          ourPeak
-            ? `${snapshot.storeName}의 피크 시간은 ${ourPeak.hour}시, 피크 매출은 ₩${Math.round(ourPeak.sales).toLocaleString("ko-KR")}입니다.`
-            : "우리 매장 피크 시간 데이터가 없습니다.",
-          targetPeer
-            ? `${targetPeer.storeName}은 ${targetPeer.peakHourLabel} 피크가 강하고 매출 격차는 ${targetPeer.salesDiff > 0 ? "+" : ""}${Math.abs(targetPeer.salesDiff).toFixed(1)}%입니다.`
-            : "비교 매장 피크 시간 데이터를 찾지 못했습니다.",
-          "시간대별 비교에서는 오후 피크 대응력이 가장 큰 차이를 만듭니다.",
-        ],
-        "시간대별 매출 패턴 비교",
+        hourlyLines,
+        isHourlyFallback ? "일별 KPI 기반 시간대 추정값 (실시간 시간대 데이터 미적재)" : "시간대별 매출 패턴 비교",
         targetPeer ? `${targetPeer.storeName}의 강한 피크 시간 운영 방식을 참고하세요.` : "시간대별 비교 가능한 매장을 선택하세요.",
       ),
       suggestedQuestions: toSuggestedQuestions(snapshot.chatSummary.suggestedQuestions),
@@ -2213,10 +1895,10 @@ async function buildBenchmarkResponse(message: string, intent: LocalIntent = "UN
         [
           `${demoLabel} 기준 벤치마킹 요약입니다.`,
           ourTop
-            ? `${snapshot.storeName}의 상위 상품은 ${ourTop.product_name} ${Math.round(ourTop.sold_qty).toLocaleString("ko-KR")}개입니다.`
+            ? `${snapshot.storeName}의 상위 상품은 ${resolveProductDisplayName(ourTop.product_name)} ${Math.round(ourTop.sold_qty).toLocaleString("ko-KR")}개입니다.`
             : "우리 매장 상위 상품 데이터가 없습니다.",
           targetPeer && peerTop
-            ? `${targetPeer.storeName}은 ${peerTop.product_name} ${Math.round(peerTop.sold_qty).toLocaleString("ko-KR")}개입니다.`
+            ? `${targetPeer.storeName}은 ${resolveProductDisplayName(peerTop.product_name)} ${Math.round(peerTop.sold_qty).toLocaleString("ko-KR")}개입니다.`
             : "비교 매장의 상위 상품 데이터를 찾지 못했습니다.",
           "상위 상품 구성이 매출 차이에 직접 연결됩니다.",
         ],
@@ -2293,21 +1975,9 @@ async function buildMenuAwareResponse(
     return buildBenchmarkResponse(message, intent);
   }
 
-  // === Production intents ===
-  if (intent === "INVENTORY_RISK" || intent === "FORECAST" || intent === "PRODUCTION_RECOMMEND") {
-    return buildProductionResponse(message);
-  }
-
-  // === Order intents ===
-  if (
-    intent === "ORDER_RECOMMEND" ||
-    intent === "ORDER_COMPARISON" ||
-    intent === "ORDER_RATIONALE" ||
-    intent === "ORDER_EXCEPTION" ||
-    intent === "ORDER_FINAL_SUMMARY" ||
-    intent === "ORDER_SAFE_OPTION"
-  ) {
-    return buildOrderResponse(message);
+  // === Sales reason - works across all menus ===
+  if (intent === "SALES_REASON") {
+    return buildSalesReasonResponse(message);
   }
 
   // === Promotion intents ===
@@ -2336,13 +2006,17 @@ async function buildMenuAwareResponse(
   if (selectedMenu === "AI 기반 성과 분석") {
     if (
       intent === "PERF_MONTHLY" ||
-      intent === "PERF_DELIVERY_WEEKLY" ||
-      intent === "PERF_DELIVERY_MONTHLY" ||
-      intent === "PERF_CHANNEL_MIX" ||
       intent === "PERF_PRODUCT_COMPARE" ||
       intent === "PERF_STORE_AVG" ||
       /결제|카드|현금|간편결제|포인트|시간대|피크|몇 시|상품|상위|주력|메뉴|요약/.test(lower) ||
       intent === "MENU_SUMMARY"
+    ) {
+      return buildPerformanceResponse(message);
+    }
+    // Delivery/channel/promo questions in performance menu: handle via buildPerformanceResponse
+    if (
+      /전주.*배달.*건수|전월.*배달.*건수|배달.*채널.*비중|채널별.*매출.*비중/.test(lower) ||
+      /반응.*좋은|프로모션.*매출|매출.*기여/.test(lower)
     ) {
       return buildPerformanceResponse(message);
     }
@@ -2351,26 +2025,11 @@ async function buildMenuAwareResponse(
   if (selectedMenu === "알람 설정") {
     return buildAlarmSettingsResponse();
   }
-  if (selectedMenu === "AI 실시간 현황") {
-    if (/(발주|마감|주문)/.test(lower)) {
-      return buildOrderResponse(message);
-    }
-    if (/(상품|상위|카테고리|시간대|매출|성과|결제|피크)/.test(lower)) {
-      return buildPerformanceResponse(message);
-    }
-    return buildProductionResponse(message);
-  }
-  if (selectedMenu === "발주 관리") {
-    return buildOrderResponse(message);
-  }
-  if (selectedMenu === "생산관리") {
-    return buildProductionResponse(message);
-  }
   if (intent === "CHANCE_LOSS" || intent === "MENU_SUMMARY") {
     return buildDashboardResponse(message);
   }
   if (selectedMenu === "종합 현황") {
-    return null;
+    return buildDashboardResponse(message);
   }
   return null;
 }
@@ -2492,6 +2151,36 @@ export default function AiPanel({
     [],
   );
 
+  const handleActionButton = useCallback(
+    (button: ActionButton) => {
+      setMessages((prev) => [
+        ...prev,
+        { id: `u-${Date.now()}`, type: "user", lines: [button.label], time: now() },
+      ]);
+      setInput("");
+      setIsTyping(true);
+      const confirmationMap: Record<string, string[]> = {
+        "생산 등록": ["생산관리 화면에서 생산 등록을 확인해 주세요.", "실제 등록은 아직 실행하지 않았습니다."],
+        "부족 발주 진행": ["발주관리 화면에서 부족 발주 요청을 준비했어요.", "실제 등록은 아직 실행하지 않았습니다."],
+        "나중에": ["네, 나중에 처리하도록 하겠습니다."],
+      };
+      setTimeout(() => {
+        const response = confirmationMap[button.label] ?? ["요청을 처리했습니다."];
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}`,
+            type: "ai",
+            lines: response,
+            time: now(),
+          },
+        ]);
+        setIsTyping(false);
+      }, 600);
+    },
+    [],
+  );
+
   const sendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
@@ -2509,6 +2198,9 @@ export default function AiPanel({
         lines: string[],
         suggestedQuestions?: SuggestedQuestion[],
         actionCards?: ActionCard[],
+        insightCard?: InsightCard,
+        actions?: ActionButton[],
+        markdown?: string,
       ) => {
         setMessages((prev) => [
           ...prev,
@@ -2516,9 +2208,12 @@ export default function AiPanel({
             id: `a-${Date.now()}`,
             type: "ai",
             lines: sanitizeLines(lines),
+            markdown: markdown ?? undefined,
             time: now(),
             suggestedQuestions,
             actionCards,
+            insightCard,
+            actions,
           },
         ]);
         setIsTyping(false);
@@ -2575,24 +2270,49 @@ export default function AiPanel({
             salesQueryResponse.suggestedQuestions ??
               toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
             salesQueryResponse.actionCards,
+            salesQueryResponse.insightCard,
+            salesQueryResponse.actions,
           );
           return;
         }
       }
 
-      if (!needsBackendFirst && shouldPreferLocalFirst(selectedMenu, localIntent)) {
+      if (selectedMenu === "벤치마킹" && !needsBackendFirst) {
         try {
-          const menuAware = await buildMenuAwareResponse(
+          const bench = await buildMenuAwareResponse(selectedMenu, trimmed, localIntent);
+          if (bench) {
+            finishWith(
+              bench.lines,
+              bench.suggestedQuestions ??
+                toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
+              bench.actionCards,
+              bench.insightCard,
+              bench.actions,
+              bench.markdown,
+            );
+            return;
+          }
+        } catch {
+          /* local benchmark response failed; fall through to LLM */
+        }
+      }
+
+      if (!needsBackendFirst && shouldPreferLocalOnly(localIntent)) {
+        try {
+          const menuAwareLocal = await buildMenuAwareResponse(
             selectedMenu,
             trimmed,
             localIntent,
           );
-          if (menuAware) {
+          if (menuAwareLocal) {
             finishWith(
-              menuAware.lines,
-              menuAware.suggestedQuestions ??
+              menuAwareLocal.lines,
+              menuAwareLocal.suggestedQuestions ??
                 toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
-              menuAware.actionCards,
+              menuAwareLocal.actionCards,
+              menuAwareLocal.insightCard,
+              menuAwareLocal.actions,
+              menuAwareLocal.markdown,
             );
             return;
           }
@@ -2601,44 +2321,71 @@ export default function AiPanel({
         }
       }
 
+      // ── OVERVIEW: force local handler before any backend call ──
+      if (selectedMenu === "종합 현황") {
+        try {
+          const overviewResp = await buildDashboardResponse(trimmed);
+          if (overviewResp) {
+            finishWith(
+              overviewResp.lines,
+              overviewResp.suggestedQuestions,
+              overviewResp.actionCards,
+              overviewResp.insightCard,
+              overviewResp.actions,
+              overviewResp.markdown,
+            );
+            return;
+          }
+        } catch {
+          /* fall through to backend */
+        }
+      }
+
+      const benchmarkingHandled = false;
+
       let backendLines: string[] | null = null;
+      let backendMarkdown: string | undefined;
       let backendQuestions: SuggestedQuestion[] = [];
       let backendActionCards: ActionCard[] = [];
 
-      try {
-        const backend = await fetchChat(trimmed, selectedMenu, sessionId);
-        if (backend.session_id) {
-          setSessionId(backend.session_id);
-        }
-        const notificationLines = await handleNotificationIntent(backend);
-        if (notificationLines && notificationLines.length > 0) {
-          finishWith(
-            notificationLines,
-            toSuggestedQuestions(QUICK_CHIPS["알람 설정"]),
+      if (selectedMenu !== "벤치마킹") {
+        try {
+          const backend = await fetchChat(trimmed, selectedMenu, sessionId, messages);
+          if (backend.session_id) {
+            setSessionId(backend.session_id);
+          }
+          const notificationLines = await handleNotificationIntent(backend);
+          if (notificationLines && notificationLines.length > 0) {
+            finishWith(
+              notificationLines,
+              toSuggestedQuestions(QUICK_CHIPS["알람 설정"]),
+            );
+            return;
+          }
+          const answer =
+            typeof backend.content === "string"
+              ? backend.content
+              : backend.answer || backend.metadata?.answer || "";
+          const processedAnswer = formatBackendAnswer(answer);
+          const hasMarkdown = /(^[\s\n]*#{1,3}\s|^[\s\n]*\|.*\|.*\|)/m.test(processedAnswer);
+          backendMarkdown = hasMarkdown ? processedAnswer : undefined;
+          backendLines = sanitizeLines(processedAnswer.split("\n"));
+          backendQuestions = normalizeSuggestedQuestions(
+            backend.suggested_questions || backend.metadata?.suggested_questions,
           );
-          return;
+          backendActionCards =
+            backend.action_cards ||
+            backend.metadata?.action_cards ||
+            [];
+        } catch {
+          backendLines = null;
         }
-        const answer =
-          typeof backend.content === "string"
-            ? backend.content
-            : backend.answer || backend.metadata?.answer || "";
-        backendLines = sanitizeLines(answer.split("\n"));
-        backendQuestions = normalizeSuggestedQuestions(
-          backend.suggested_questions || backend.metadata?.suggested_questions,
-        );
-        backendActionCards =
-          backend.action_cards ||
-          backend.metadata?.action_cards ||
-          [];
-      } catch {
-        backendLines = null;
       }
 
-      const shouldUseSalesQuery =
+      const shouldUseSalesQueryFallback =
         selectedMenu === "종합 현황" ||
-        selectedMenu === "AI 기반 성과 분석" ||
-        selectedMenu === "벤치마킹";
-      if (shouldUseSalesQuery && isGenericBackendAnswer(backendLines)) {
+        selectedMenu === "AI 기반 성과 분석";
+      if (shouldUseSalesQueryFallback && isGenericBackendAnswer(backendLines)) {
         const salesQueryResponse = await buildSalesQueryResponse(trimmed, selectedMenu);
         if (salesQueryResponse) {
           finishWith(
@@ -2646,42 +2393,52 @@ export default function AiPanel({
             salesQueryResponse.suggestedQuestions ??
               toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
             salesQueryResponse.actionCards,
+            salesQueryResponse.insightCard,
+            salesQueryResponse.actions,
           );
           return;
         }
       }
 
-      try {
-        const menuAware = await buildMenuAwareResponse(
-          selectedMenu,
-          trimmed,
-          localIntent,
-        );
-        if (menuAware && isGenericBackendAnswer(backendLines)) {
+      if (selectedMenu !== "벤치마킹") {
+        try {
+          const menuAware = await buildMenuAwareResponse(
+            selectedMenu,
+            trimmed,
+            localIntent,
+          );
+          if (menuAware && isGenericBackendAnswer(backendLines)) {
+            finishWith(
+              menuAware.lines,
+              menuAware.suggestedQuestions ??
+                backendQuestions ??
+                toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
+              menuAware.actionCards && menuAware.actionCards.length > 0
+                ? menuAware.actionCards
+                : backendActionCards,
+              menuAware.insightCard,
+              menuAware.actions,
+              menuAware.markdown,
+            );
+            return;
+          }
+        } catch {
+          /* local menu fallback ignored */
+        }
+
+        if (backendLines && backendLines.length > 0) {
           finishWith(
-            menuAware.lines,
-            menuAware.suggestedQuestions ??
-              backendQuestions ??
-              toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
-            menuAware.actionCards && menuAware.actionCards.length > 0
-              ? menuAware.actionCards
-              : backendActionCards,
+            backendLines,
+            backendQuestions.length > 0
+              ? backendQuestions
+              : toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
+            backendActionCards,
+            undefined,
+            undefined,
+            backendMarkdown,
           );
           return;
         }
-      } catch {
-        /* local menu fallback ignored */
-      }
-
-      if (backendLines && backendLines.length > 0) {
-        finishWith(
-          backendLines,
-          backendQuestions.length > 0
-            ? backendQuestions
-            : toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
-          backendActionCards,
-        );
-        return;
       }
 
       finishWith(
@@ -2689,7 +2446,7 @@ export default function AiPanel({
         toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
       );
     },
-    [handleNotificationIntent, isTyping, selectedMenu, sessionId],
+    [handleNotificationIntent, isTyping, messages, selectedMenu, sessionId],
   );
 
   const chips = QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS;
@@ -2787,25 +2544,7 @@ export default function AiPanel({
           <div className="h-px shrink-0 w-full absolute left-0" style={{ background: "#2a2a2a" }} />
         </div>
 
-        <div ref={chatRef} className="chat scrolled relative top-1 mt-2 min-h-0 flex-1 overflow-y-auto px-[14px] py-[14px]">
-          {messages.length === 1 && messages[0]?.id.startsWith("welcome-") && (
-            <div className="mb-[10px] flex flex-col gap-[4px]">
-              <p className="text-[9px] text-[#8a8a8a] font-bold uppercase tracking-[0.06em]">
-                빠른 질문
-              </p>
-              {chips.map((text) => (
-                <button
-                  key={text}
-                  onClick={() => sendMessage(text)}
-                  className="text-left px-[8px] py-[4px] rounded-[8px] text-[10px] text-[#ebedef] font-[500] leading-[1.4] cursor-pointer hover:bg-[#2a2a2a] transition-colors"
-                  style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}
-                >
-                  {text}
-                </button>
-              ))}
-            </div>
-          )}
-
+        <div ref={chatRef} className="chat scrolled relative top-1 min-h-0 flex-1 overflow-y-auto px-[14px] py-[4px]">
           {messages.map((msg) =>
             msg.type === "user" ? (
               <div key={msg.id} className="flex flex-col items-end gap-[4px] mt-5 z-20 scrolled">
@@ -2819,71 +2558,187 @@ export default function AiPanel({
                 <p className="text-[#b3b3b3] text-[7px] leading-[20px]">{msg.time}</p>
               </div>
             ) : (
-              <div key={msg.id} className="flex flex-col items-start gap-[4px] mt-5">
-                <div className="px-[10px] py-[6px] max-w-[100%] w-full" style={{ background: "#2a97c8", borderRadius: "10px 10px 10px 0px", zIndex: 30 }}>
-                  {msg.lines.map((line, i) => (
-                    <p key={i} className="text-white text-[10px] font-[500] leading-[1.5]">
-                      {line}
-                    </p>
-                  ))}
-
-                  {msg.actionCards && msg.actionCards.length > 0 && (
-                    <div className="mt-[6px] flex flex-col gap-[4px]">
-                      {msg.actionCards.map((card, ci) => (
-                        <div
-                          key={ci}
-                          className="rounded-[6px] px-[6px] py-[4px]"
-                          style={{ background: "rgba(255,255,255,0.15)" }}
-                        >
-                          <p className="text-white text-[9px] font-bold leading-[1.3]">
-                            {card.title}
+              <div key={msg.id} className="flex flex-col items-start" style={{ marginTop: msg.id.startsWith("welcome-") ? "6px" : "16px" }}>
+                <div className="flex flex-col items-start gap-[4px] w-full">
+                  {msg.markdown ? (
+                      <div className="px-[10px] py-[6px] max-w-[100%] w-full overflow-x-auto" style={{ background: "#2a97c8", borderRadius: "10px 10px 10px 0px", zIndex: 30 }}>
+                        <ReactMarkdown
+                          components={{
+                            table: ({ children }) => <div className="overflow-x-auto"><table className="w-full text-[10px] border-collapse">{children}</table></div>,
+                            th: ({ children }) => <th className="border border-white/30 px-[6px] py-[3px] text-white font-bold text-[10px] text-left">{children}</th>,
+                            td: ({ children }) => <td className="border border-white/30 px-[6px] py-[3px] text-white text-[10px]">{children}</td>,
+                            tr: ({ children }) => <tr className="text-white">{children}</tr>,
+                            p: ({ children }) => <p className="text-white text-[10px] font-[500] leading-[1.5] mb-[6px]">{children}</p>,
+                            strong: ({ children }) => <strong className="text-white font-bold">{children}</strong>,
+                            em: ({ children }) => <em className="italic opacity-80">{children}</em>,
+                            h3: ({ children }) => <h3 className="text-[11px] font-bold text-white mb-[4px]">{children}</h3>,
+                            ul: ({ children }) => <ul className="list-disc list-inside text-white text-[10px] leading-[1.5] space-y-[2px]">{children}</ul>,
+                            li: ({ children }) => <li className="text-white text-[10px] leading-[1.5]">{children}</li>,
+                          }}
+                        >{msg.markdown}</ReactMarkdown>
+                      </div>
+                    ) : msg.lines.length > 0 ? (
+                      <div className="px-[10px] py-[6px] max-w-[100%] w-full" style={{ background: "#2a97c8", borderRadius: "10px 10px 10px 0px", zIndex: 30 }}>
+                        {msg.lines.map((line, i) => (
+                          <p key={i} className="text-white text-[10px] font-[500] leading-[1.5]">
+                            {line}
                           </p>
-                          {card.body && (
-                            <p className="text-[rgba(255,255,255,0.8)] text-[8px] leading-[1.3] mt-[2px]">
-                              {card.body}
-                            </p>
-                          )}
-                          {card.actions && card.actions.length > 0 && (
-                            <div className="mt-[3px] flex flex-wrap gap-[3px]">
-                              {card.actions.map((action, ai) => (
-                                <div key={ai} className="flex flex-col gap-[2px]">
-                                  <button
-                                    onClick={() => void handleAction(msg.id, ci, ai, action)}
-                                    className="px-[5px] py-[1px] rounded-[4px] text-[8px] text-white font-bold cursor-pointer hover:opacity-80 disabled:opacity-50"
-                                    style={{ background: "rgba(255,255,255,0.25)" }}
-                                    disabled={actionStates[`${msg.id}-${ci}-${ai}`]?.status === "running"}
-                                  >
-                                    {action.label}
-                                  </button>
-                                  {actionStates[`${msg.id}-${ci}-${ai}`]?.message && (
-                                    <p
-                                      className={`text-[7px] ${
-                                        actionStates[`${msg.id}-${ci}-${ai}`]?.status === "failed"
-                                          ? "text-[#ffd5d5]"
-                                          : "text-[rgba(255,255,255,0.8)]"
-                                      }`}
-                                    >
-                                      {actionStates[`${msg.id}-${ci}-${ai}`]?.message}
-                                    </p>
+                        ))}
+                      </div>
+                    ) : null}
+
+                  {msg.insightCard && (
+                    <div className="w-full rounded-[10px] overflow-hidden" style={{ background: "#1e2a3a", border: "1px solid rgba(42, 151, 200, 0.3)", zIndex: 30 }}>
+                      <div className="px-[10px] pt-[8px] pb-[4px]">
+                        <p className="text-[11px] font-bold text-white leading-[1.3]">{msg.insightCard.title}</p>
+                        {msg.insightCard.description && (
+                          <p className="text-[10px] text-[rgba(255,255,255,0.7)] leading-[1.4] mt-[3px]">{msg.insightCard.description}</p>
+                        )}
+                      </div>
+                      <div className="px-[10px] py-[6px]" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                        {msg.insightCard.rows.length > 0 && (() => {
+                          const hasFirst = msg.insightCard.rows.some((r) => r.firstProductionInfo);
+                          const hasSecond = msg.insightCard.rows.some((r) => r.secondProductionInfo);
+                          if (hasFirst || hasSecond) {
+                            return (
+                              <div className="mb-[4px]" style={{ display: "grid", gridTemplateColumns: "1fr auto auto", columnGap: "6px", alignItems: "center" }}>
+                                <p className="text-[8px] font-bold text-[rgba(255,255,255,0.4)]">품목</p>
+                                {hasFirst && <p className="text-[8px] font-bold text-[rgba(255,255,255,0.4)] text-right">1차 4주 평균</p>}
+                                {hasSecond && <p className="text-[8px] font-bold text-[rgba(255,255,255,0.4)] text-right">2차 4주 평균</p>}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="mb-[4px]" style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 6px", alignItems: "center" }}>
+                              <p className="text-[8px] font-bold text-[rgba(255,255,255,0.4)]">품목</p>
+                            {msg.insightCard.rows.some((r) => r.current != null) && (
+                              <p className="text-[8px] font-bold text-[rgba(255,255,255,0.4)] text-right">즉시 필요</p>
+                            )}
+                            {msg.insightCard.rows.some((r) => r.target != null || r.recommended != null) && (
+                              <p className="text-[8px] font-bold text-[rgba(255,255,255,0.4)] text-right">일일 권장</p>
+                            )}
+                            </div>
+                          );
+                        })()}
+                        {msg.insightCard.rows.map((row, ri) => {
+                          const hasFirst = row.firstProductionInfo;
+                          const hasSecond = row.secondProductionInfo;
+                          if (hasFirst || hasSecond) {
+                            return (
+                              <div key={ri} className="flex flex-col gap-[2px]">
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", columnGap: "6px", alignItems: "center", minHeight: "14px" }}>
+                                  <p className="text-[10px] text-white font-[500] leading-[1.3] pr-[4px] truncate">{row.label}</p>
+                                  {hasFirst ? (
+                                    <p className="text-[9px] text-[rgba(255,255,255,0.8)] text-right font-[500]">{row.firstProductionInfo}</p>
+                                  ) : <span />}
+                                  {hasSecond ? (
+                                    <p className="text-[9px] text-[rgba(255,255,255,0.8)] text-right font-[500]">{row.secondProductionInfo}</p>
+                                  ) : <span />}
+                                </div>
+                                <div className="flex gap-[8px] pl-[4px]">
+                                  {row.current != null && (
+                                    <p className="text-[8px] text-[#ff7b7b]">즉시 생산 필요 {formatCount(row.current)}개</p>
+                                  )}
+                                  {row.recommended != null && (
+                                    <p className="text-[8px] text-[rgba(255,255,255,0.5)]">일일 권장 {formatCount(row.recommended)}개</p>
                                   )}
                                 </div>
-                              ))}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={ri} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 6px", alignItems: "center", minHeight: "14px" }}>
+                              <p className="text-[10px] text-white font-[500] leading-[1.3] pr-[4px] truncate">{row.label}</p>
+                              {row.current != null && (
+                                <p className="text-[10px] font-bold text-right" style={{ color: row.target != null && row.current < row.target ? "#ff7b7b" : "#8be08b" }}>
+                                  {formatCount(row.current)}
+                                </p>
+                              )}
+                              {row.target != null ? (
+                                <p className="text-[10px] text-[rgba(255,255,255,0.7)] text-right">{formatCount(row.target)}</p>
+                              ) : row.recommended != null ? (
+                                <p className="text-[10px] text-[rgba(255,255,255,0.7)] text-right">{formatCount(row.recommended)}</p>
+                              ) : (
+                                <span />
+                              )}
                             </div>
-                          )}
+                          );
+                        })}
+                      </div>
+                      {(msg.insightCard.summaryLabel || msg.insightCard.summaryValue) && (
+                        <div className="px-[10px] py-[6px]" style={{ background: "rgba(42, 151, 200, 0.15)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <p className="text-[10px] font-[500] text-[rgba(255,255,255,0.8)]">{msg.insightCard.summaryLabel}</p>
+                            <p className="text-[11px] font-bold text-white">{msg.insightCard.summaryValue}</p>
+                          </div>
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {msg.actionCards && msg.actionCards.length > 0 && (
+                    <div className="w-full rounded-[10px] overflow-hidden" style={{ background: "#1e2a3a", border: "1px solid rgba(42, 151, 200, 0.3)", zIndex: 30 }}>
+                      <div className="px-[10px] py-[6px]">
+                        {msg.actionCards.map((card, ci) => (
+                          <div key={ci} className="flex flex-col gap-[3px]">
+                            <p className="text-[10px] font-bold text-white">{card.title}</p>
+                            {card.body && (
+                              <p className="text-[9px] text-[rgba(255,255,255,0.7)] leading-[1.4]">{card.body}</p>
+                            )}
+                            {card.actions && card.actions.length > 0 && (
+                              <div className="flex flex-wrap gap-[3px]">
+                                {card.actions.map((action, ai) => (
+                                  <div key={ai} className="flex flex-col gap-[2px]">
+                                    <button
+                                      onClick={() => void handleAction(msg.id, ci, ai, action)}
+                                      className="px-[6px] py-[3px] rounded-[6px] text-[9px] text-white font-bold cursor-pointer hover:opacity-80 disabled:opacity-50"
+                                      style={{ background: "rgba(255,255,255,0.2)" }}
+                                      disabled={actionStates[`${msg.id}-${ci}-${ai}`]?.status === "running"}
+                                    >
+                                      {action.label}
+                                    </button>
+                                    {actionStates[`${msg.id}-${ci}-${ai}`]?.message && (
+                                      <p className={`text-[7px] ${actionStates[`${msg.id}-${ci}-${ai}`]?.status === "failed" ? "text-[#ffd5d5]" : "text-[rgba(255,255,255,0.6)]"}`}>
+                                        {actionStates[`${msg.id}-${ci}-${ai}`]?.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.actions && msg.actions.length > 0 && (
+                    <div className="flex flex-wrap gap-[4px]">
+                      {msg.actions.map((btn, bi) => (
+                        <button
+                          key={bi}
+                          onClick={() => handleActionButton(btn)}
+                          className="px-[10px] py-[4px] rounded-[8px] text-[10px] font-bold cursor-pointer hover:opacity-80 transition-opacity"
+                          style={btn.variant === "primary"
+                            ? { background: "#2a97c8", color: "#fff" }
+                            : { background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }
+                          }
+                        >
+                          {btn.label}
+                        </button>
                       ))}
                     </div>
                   )}
                 </div>
 
                 {msg.suggestedQuestions && msg.suggestedQuestions.length > 0 && (
-                  <div className="flex flex-wrap gap-[3px] mt-[2px]">
+                  <div className="flex flex-wrap gap-[5px] mt-[5px]">
                     {msg.suggestedQuestions.map((sq, si) => (
                       <button
                         key={si}
                         onClick={() => sendMessage(sq.text)}
-                        className="px-[6px] py-[2px] rounded-[10px] text-[8px] text-[#c3e289] font-[500] cursor-pointer hover:opacity-80 transition-opacity"
-                        style={{ background: "rgba(195, 226, 137, 0.12)", border: "1px solid rgba(195, 226, 137, 0.3)" }}
+                        className="px-[6px] py-[2px] rounded-[10px] text-[8px] text-[#fff] opacity-80 font-[500] cursor-pointer hover:opacity-80 transition-opacity"
+                        style={{ background: "rgba(195, 226, 137, 0.12)", border: "1px solid #fff", opacity: 0.8 }}
                       >
                         {sq.text}
                       </button>

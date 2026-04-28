@@ -1,0 +1,58 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]: HQ
+      - generic [ref=e5]: BRKorea HQ Console
+      - generic [ref=e7]
+      - generic [ref=e10]
+    - generic [ref=e33]:
+      - navigation [ref=e34]
+      - generic [ref=e67]
+      - generic [ref=e276]
+  - generic [ref=e308]:
+    - generic:
+      - generic
+      - generic
+      - generic
+    - generic [ref=e309] [cursor=pointer]:
+      - generic [ref=e310]: HQ 요약
+      - generic [ref=e311]: ₩33.4M
+      - generic [ref=e312]: 위험 6
+      - generic [ref=e313]: 
+  - generic [ref=e314]:
+    - generic [ref=e315]:
+      - generic "PIP AI로 이동" [ref=e316] [cursor=pointer]
+      - generic: PIP AI
+    - generic [ref=e319]:
+      - generic "AI 채팅 열기" [ref=e320] [cursor=pointer]
+      - generic: HQ 채팅
+  - generic:
+    - generic:
+      - generic: PIP
+      - generic
+      - generic
+    - generic:
+      - generic
+    - generic:
+      - button "오늘 전체 매출 요약해줘"
+      - button "어느 점포가 가장 강한지 알려줘"
+      - button "재고 위험 점포 알려줘"
+      - button "발주 필요한 품목 TOP5"
+      - button "전주 대비 발주 추이 설명해줘"
+      - button "결제수단 비중 요약해줘"
+      - button "상위 점포와 하위 점포 차이"
+      - button "최근 집계 기준 반응 좋은 캠페인"
+      - button "시간대별로 약한 구간 알려줘"
+    - generic:
+      - textbox "PIP AI에게 질문하세요..."
+      - button ""
+  - generic:
+    - generic:
+      - generic: 알림
+      - generic: 모두 읽음
+    - generic:
+      - generic
+      - generic
+      - generic
+      - generic
+      - generic

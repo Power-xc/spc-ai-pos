@@ -62,7 +62,7 @@ export default function AiActionCard() {
             />
           </svg>
           <span className="text-[#555] text-[14px] font-bold leading-[20px]">
-            AI 추천 액션
+            실적 기반 추천 액션
           </span>
           <span className="bg-[#429ddd] text-white text-[10px] font-bold w-[17px] h-[17px] rounded-full flex items-center justify-center">
             {actions.length}

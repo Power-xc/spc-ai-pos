@@ -204,6 +204,10 @@ class ProductionCockpitItem(BaseModel):
     second_production: ProductionBatchPattern | None = None
     risk_level: str
     why: list[str] | None = None
+    current_stock_is_estimated: bool = False
+    current_stock_basis: str | None = None
+    current_stock_as_of: str | None = None
+    predicted_stock_1h_as_of: str | None = None
 
     model_config = ConfigDict(
         json_schema_extra={

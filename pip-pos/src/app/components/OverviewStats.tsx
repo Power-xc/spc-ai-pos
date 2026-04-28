@@ -12,6 +12,8 @@ import {
   getTodayOrderSummary,
   getTodaySalesSnapshot,
 } from "../../lib/api";
+import { subscribeDemoDateTime, getDemoDateTimeState } from "../../lib/demoDateTime";
+import { resolveProductDisplayName } from "../../lib/productNameResolver";
 import type {
   StatCardData,
   CalendarEvent,
@@ -20,11 +22,16 @@ import type {
   TodaySalesSnapshot,
 } from "../../types";
 
-// label, subLabel은 고정값 — API에서 받지 않음
-const STAT_CARD_META: Record<string, { label: string; subLabel: string }> = {
-  "stat-daily-sales": { label: "금일 매출", subLabel: "전일대비" },
-  "stat-ai-net-sales": { label: "AI 실매출", subLabel: "인건비·재료비 제외" },
-  "stat-opportunity-loss": { label: "기회손실 추정", subLabel: "오후 집중" },
+// label/subLabel는 isCumulative 여부에 따라 동적 선택 (OverviewStats render에서 처리)
+const STAT_CARD_META_FULL: Record<string, { label: string; subLabel: string }> = {
+  "stat-daily-sales": { label: "일마감 예상 매출", subLabel: "일 단위 Gold 데이터 기준" },
+  "stat-ai-net-sales": { label: "AI 추정 순매출", subLabel: "매출이익률 68% 적용" },
+  "stat-opportunity-loss": { label: "금일 예상 기회손실", subLabel: "일 기준 ETA 위험 품목 합산" },
+};
+const STAT_CARD_META_CUMULATIVE: Record<string, { label: string; subLabel: string }> = {
+  "stat-daily-sales": { label: "금일 예상 누적 매출", subLabel: "시간대 판매 패턴 기반 추정" },
+  "stat-ai-net-sales": { label: "AI 추정 순매출", subLabel: "매출이익률 68% 적용" },
+  "stat-opportunity-loss": { label: "금일 예상 기회손실", subLabel: "일 기준 ETA 위험 품목 합산" },
 };
 
 const formatKRW = (val: number) =>
@@ -40,6 +47,7 @@ export default function OverviewStats({
   cardWidth,
 }: OverviewStatsProps) {
   const [statCards, setStatCards] = useState<StatCardData[]>([]);
+  const [_demoDateTime, setDemoDateTime] = useState(getDemoDateTimeState());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [actions, setActions] = useState<RecommendedAction[]>([]);
   const [orderSummary, setOrderSummary] = useState<TodayOrderSummary | null>(
@@ -55,13 +63,19 @@ export default function OverviewStats({
     getRecommendedActions().then(setActions);
     getTodayOrderSummary().then(setOrderSummary);
     getTodaySalesSnapshot().then(setSalesSnapshot);
+    const unsub = subscribeDemoDateTime(() => {
+      setDemoDateTime(getDemoDateTimeState());
+      getStatCards().then(setStatCards);
+      getTodaySalesSnapshot().then(setSalesSnapshot);
+    });
+    return () => { unsub(); };
   }, []);
 
   return (
     <>
       {/* ── Stat cards row ── */}
       <div
-        className="absolute flex gap-[20px] top-[217.5px] transition-all duration-300 h-auto"
+        className="absolute flex gap-[20px] top-[240.5px] transition-all duration-300 h-auto"
         style={{ left: `${cardLeft}px`, width: `${cardWidth}px` }}
       >
         {statCards.length === 0 && (
@@ -71,68 +85,101 @@ export default function OverviewStats({
             <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] px-[20px] py-[10px] h-[80px] animate-pulse" />
           </>
         )}
-        {statCards.map((card) => (
+        {statCards.map((card) => {
+            const aiSubLabel = card.marginPct != null && card.marginPct > 0
+              ? `매출이익률 ${Math.round(card.marginPct * 100)}% 적용`
+              : "매출이익률 68% 적용";
+            const meta = card.isCumulative
+              ? STAT_CARD_META_CUMULATIVE[card.id]
+              : STAT_CARD_META_FULL[card.id];
+            return (
           <div
             key={card.id}
             className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] px-[20px] py-[10px] flex flex-col justify-between min-w-0 h-auto"
           >
-            <div className="flex items-center justify-between">
+            <div className="block justify-between">
               <p className="[font-weight:700] leading-[20px] not-italic text-[12px] text-[#333] whitespace-nowrap">
-                {STAT_CARD_META[card.id]?.label}
+                {meta?.label}
               </p>
-              <p className="leading-[20px] not-italic text-[#787878] text-[8px] whitespace-nowrap">
-                {STAT_CARD_META[card.id]?.subLabel}
+              <p className="leading-[20px] not-italic text-[#787878] text-[9px] whitespace-nowrap">
+                {card.id === "stat-ai-net-sales" ? aiSubLabel : meta?.subLabel}
               </p>
             </div>
             <div className="flex flex-col gap-[4px]">
-              <div className="flex items-end justify-between">
-                <p className="leading-[0] not-italic text-[#1e1b39] text-[0px] whitespace-nowrap">
-                  <span className="[font-weight:700] leading-[22px] text-[15px]">
-                    {card.value}
-                  </span>
-                  <span className="leading-[22px] text-[13px]">
-                    {card.unit}
-                  </span>
-                </p>
-                <div className="flex items-center gap-[4px]">
-                  <p
-                    className={`leading-[20px] not-italic text-[8px] whitespace-nowrap ${
-                      card.changeType === "up"
-                        ? "text-[#3faf60]"
-                        : "text-[#ff522c]"
-                    }`}
-                  >
+              {card.id === "stat-opportunity-loss" ? (
+                /* 기회손실 카드: 생산관리 기준 일치 */
+                <div className="flex flex-col gap-[3px]">
+                  <div className="flex items-end justify-between">
+                    <p className="leading-[0] not-italic text-[#1e1b39] text-[0px] whitespace-nowrap">
+                      <span className="[font-weight:700] leading-[22px] text-[15px]">
+                        {card.isLossEstimated ? card.value : "산정 중"}
+                      </span>
+                      <span className="leading-[22px] text-[13px]">
+                        {card.isLossEstimated ? card.unit : ""}
+                      </span>
+                    </p>
+                  </div>
+                  <p className="leading-[20px] not-italic text-[#ff522c] text-[8px] whitespace-nowrap">
                     {card.changeValue}
                   </p>
-                  {card.changeType === "up" ? (
-                    <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
-                      <path d="M3.5 0L6.5 5.5H0.5L3.5 0Z" fill="#3faf60" />
-                    </svg>
-                  ) : (
-                    <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
-                      <path d="M3.5 6L6.5 0.5H0.5L3.5 6Z" fill="#ff522c" />
-                    </svg>
-                  )}
+                  <p className="leading-[14px] not-italic text-[#787878] text-[7px] whitespace-nowrap">
+                    리드타임 1시간 기준
+                  </p>
                 </div>
-              </div>
-              {/* 스파크라인 */}
-              <SparklineChart
-                data={card.sparkData}
-                color={card.changeType === "up" ? "#3BB1E1" : "#ff522c"}
-                gradientId={`spark-${card.id}`}
-              />
+              ) : (
+                /* 일반 카드: 매출, AI 실매출 */
+                <>
+                  <div className="flex items-end justify-between">
+                    <p className="leading-[0] not-italic text-[#1e1b39] text-[0px] whitespace-nowrap">
+                      <span className="[font-weight:700] leading-[22px] text-[15px]">
+                        {card.value}
+                      </span>
+                      <span className="leading-[22px] text-[13px]">
+                        {card.unit}
+                      </span>
+                    </p>
+                    <div className="flex items-center gap-[4px]">
+                      <p
+                        className={`leading-[20px] not-italic text-[8px] whitespace-nowrap ${
+                          card.changeType === "up"
+                            ? "text-[#3faf60]"
+                            : "text-[#ff522c]"
+                        }`}
+                      >
+                        {card.changeValue}
+                      </p>
+                      {card.changeType === "up" ? (
+                        <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
+                          <path d="M3.5 0L6.5 5.5H0.5L3.5 0Z" fill="#3faf60" />
+                        </svg>
+                      ) : (
+                        <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
+                          <path d="M3.5 6L6.5 0.5H0.5L3.5 6Z" fill="#ff522c" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  {/* 스파크라인 */}
+                  <SparklineChart
+                    data={card.sparkData}
+                    color={card.changeType === "up" ? "#3BB1E1" : "#ff522c"}
+                    gradientId={`spark-${card.id}`}
+                  />
+                </>
+              )}
             </div>
           </div>
-        ))}
+            );
+          })}
       </div>
 
       {/* ── 추천액션 / 이벤트 캘린더 섹션 레이블 ── */}
       <div
-        className="absolute flex items-start gap-[20px] top-[330.54px] transition-all duration-300"
+        className="absolute flex items-start gap-[20px] top-[385px] transition-all duration-300"
         style={{ left: `${cardLeft}px`, width: `${cardWidth}px` }}
       >
         {/* ── 추천 액션 카드 ── */}
-        <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] relative pb-2">
+        <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] relative pb-2 min-h-[165px]">
           {/* 헤더 */}
           <div className="flex items-center justify-between px-[20px] pt-[12px] pb-[8px]">
             <div className="flex items-center gap-[8px]">
@@ -188,7 +235,7 @@ export default function OverviewStats({
         </div>
 
         {/* ── 이벤트 캘린더 카드 ── */}
-        <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] relative pb-2">
+        <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] relative pb-2 min-h-[165px]">
           {/* 헤더 */}
           <div className="flex items-center gap-[8px] px-[20px] pt-[12px] pb-[8px]">
             <img src={icoCalendarTitle} alt="" className="max-w-none" />
@@ -246,11 +293,11 @@ export default function OverviewStats({
 
       {/* ── 오늘의 발주 요약 / 매출 스냅샷 ── */}
       <div
-        className="absolute flex items-start gap-[20px] top-[511px] transition-all duration-300"
+        className="absolute flex items-start gap-[20px] top-[570px] transition-all duration-300"
         style={{ left: `${cardLeft}px`, width: `${cardWidth}px` }}
       >
         {/* ── 오늘의 발주 요약 ── */}
-        <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] overflow-hidden pb-[10px]">
+        <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] overflow-hidden min-h-[165px] pb-[10px]">
           {/* 헤더 */}
           <div className="flex items-center justify-between px-[16px] pt-[12px] pb-[8px]">
             <div className="flex items-center gap-[6px]">
@@ -285,7 +332,7 @@ export default function OverviewStats({
                   className="flex items-center gap-[6px] justify-between"
                 >
                   <p className="text-[8px] text-[#222] w-[auto] shrink-0 truncate font-bold">
-                    {item.name}
+                    {resolveProductDisplayName(item.name)}
                   </p>
                   <p className="text-[8px] font-[400] text-[#2A2A2A] w-[28px] shrink-0 text-right">
                     {item.quantity}
@@ -306,7 +353,7 @@ export default function OverviewStats({
         </div>
 
         {/* ── 오늘의 매출 스냅샷 ── */}
-        <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] overflow-hidden pb-[10px]">
+        <div className="flex-1 bg-white border border-[#ebebeb] border-solid rounded-[20px] overflow-hidden min-h-[165px] pb-[10px]">
           {/* 헤더 */}
           <div className="flex items-center justify-between px-[16px] pt-[12px] pb-[6px]">
             <div className="flex items-center gap-[6px]">
@@ -378,7 +425,7 @@ export default function OverviewStats({
                     className="flex items-center justify-between"
                   >
                     <p className="text-[8px] font-bold text-[#222] leading-[13px]">
-                      {item.name}
+                      {resolveProductDisplayName(item.name)}
                     </p>
                     <p className="text-[8px] text-[#2A2A2A] leading-[13px]">
                       {item.count}

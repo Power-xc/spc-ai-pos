@@ -31,6 +31,12 @@ class OrderOption(BaseModel):
     option_id: str
     label: str
     reference_date: str
+    expected_reference_date: str | None = None
+    actual_reference_date: str | None = None
+    reference_label: str | None = None
+    reference_reason: str | None = None
+    is_exact_same_weekday: bool | None = None
+    fallback: bool | None = None
     total_qty: int
     total_amount: float
     deviation_from_avg_pct: float
@@ -44,6 +50,12 @@ class OrderOption(BaseModel):
                 "option_id": "last_week",
                 "label": "전주 동요일",
                 "reference_date": "2026-03-27",
+                "expected_reference_date": "2026-03-27",
+                "actual_reference_date": "2026-03-27",
+                "reference_label": "전주 동요일",
+                "reference_reason": "전주 동요일 데이터 사용",
+                "is_exact_same_weekday": True,
+                "fallback": False,
                 "total_qty": 120,
                 "total_amount": 216000,
                 "deviation_from_avg_pct": 10.0,

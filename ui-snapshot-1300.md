@@ -1,0 +1,337 @@
+- generic [ref=e5]:
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e13]:
+        - img [ref=e15]
+        - generic [ref=e19]:
+          - img [ref=e21]
+          - img [ref=e26]
+          - img [ref=e31]
+      - generic [ref=e35]:
+        - paragraph [ref=e36]: 환영합니다.
+        - paragraph [ref=e37]: 강서구01 운영 화면
+        - paragraph [ref=e38]: 현재 기준 매장 분석 중
+      - img [ref=e40]
+      - generic [ref=e41]:
+        - paragraph [ref=e42]: MAIN
+        - generic [ref=e43]:
+          - button "종합 현황" [ref=e44] [cursor=pointer]:
+            - paragraph [ref=e47]: 종합 현황
+          - button "AI 실시간 현황" [ref=e49] [cursor=pointer]:
+            - paragraph [ref=e51]: AI 실시간 현황
+      - img [ref=e53]
+      - generic [ref=e54]:
+        - paragraph [ref=e55]: ACTION
+        - generic [ref=e56]:
+          - button "생산관리 1" [ref=e57] [cursor=pointer]:
+            - paragraph [ref=e60]: 생산관리
+            - generic [ref=e61]: "1"
+          - button "발주 관리 3" [ref=e62] [cursor=pointer]:
+            - paragraph [ref=e65]: 발주 관리
+            - generic [ref=e66]: "3"
+          - button "프로모션" [ref=e67] [cursor=pointer]:
+            - paragraph [ref=e70]: 프로모션
+      - img [ref=e72]
+      - generic [ref=e73]:
+        - paragraph [ref=e74]: SUB
+        - generic [ref=e75]:
+          - button "AI 기반 성과 분석" [ref=e76] [cursor=pointer]:
+            - paragraph [ref=e79]: AI 기반 성과 분석
+          - button "AI 검증" [ref=e80] [cursor=pointer]:
+            - paragraph [ref=e83]: AI 검증
+          - button "벤치마킹" [ref=e84] [cursor=pointer]:
+            - paragraph [ref=e87]: 벤치마킹
+          - button "알람 설정 2" [ref=e88] [cursor=pointer]:
+            - paragraph [ref=e91]: 알람 설정
+            - generic [ref=e92]: "2"
+      - button "기준 일자 및 시간 설정" [ref=e93] [cursor=pointer]:
+        - generic [ref=e94]:
+          - img [ref=e96]
+          - generic [ref=e98]:
+            - paragraph [ref=e99]: 2026-03-05
+            - paragraph [ref=e100]: 클릭 시연 기준값 변경
+    - button "사이드바 토글" [ref=e101] [cursor=pointer]
+    - generic [ref=e103]:
+      - paragraph [ref=e104]:
+        - generic [ref=e105]: pos
+        - generic [ref=e106]: system
+      - generic:
+        - generic:
+          - generic:
+            - img
+    - img [ref=e108]
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - button "HQ POS >" [ref=e111] [cursor=pointer]
+        - button "새로고침" [ref=e112] [cursor=pointer]:
+          - paragraph [ref=e115]: 새로고침
+        - button "AI 리포트 생성" [ref=e116] [cursor=pointer]:
+          - paragraph [ref=e117]: AI 리포트 생성
+      - img [ref=e119]
+      - button "PIP AI BOT" [ref=e120] [cursor=pointer]:
+        - img [ref=e121]
+        - paragraph [ref=e123]: PIP AI BOT
+    - generic [ref=e641]:
+      - generic [ref=e642]:
+        - generic [ref=e643]:
+          - img [ref=e644]
+          - generic [ref=e646]: PIP AI
+        - generic [ref=e647]:
+          - button [ref=e648] [cursor=pointer]
+          - button [ref=e649] [cursor=pointer]:
+            - img [ref=e650]
+      - generic [ref=e653]:
+        - generic [ref=e655]:
+          - button "Today's AI Insights" [ref=e656] [cursor=pointer]:
+            - generic [ref=e657]:
+              - img [ref=e658]
+              - generic [ref=e660]: Today's AI Insights
+            - img [ref=e661]
+          - generic [ref=e663]:
+            - paragraph [ref=e664]: 던킨의 생산·주문·매출을 한 번에!!
+            - paragraph [ref=e665]: 운영을 돕는 올인원 AI, PIP
+            - paragraph [ref=e666]: 생산관리 분석 중
+        - generic [ref=e669]:
+          - generic [ref=e671]:
+            - paragraph [ref=e672]: 2026-03-05 13:00 기준 생산관리 데이터입니다.
+            - paragraph [ref=e673]: 추천 질문을 눌러 확인해 주세요.
+          - generic [ref=e674]:
+            - button "긴급 생산 대상 확인" [ref=e675] [cursor=pointer]
+            - button "보충 후보 확인" [ref=e676] [cursor=pointer]
+            - button "미대응 예상 손실 확인" [ref=e677] [cursor=pointer]
+          - paragraph [ref=e678]: 13:00
+      - generic [ref=e680]:
+        - textbox "what's in your mind..?" [ref=e681]
+        - button [ref=e682] [cursor=pointer]
+    - generic [ref=e684]:
+      - generic [ref=e774]:
+        - generic [ref=e775]:
+          - paragraph [ref=e776]: 생산 등록
+          - button "✕" [ref=e777] [cursor=pointer]:
+            - generic [ref=e778]: ✕
+        - generic [ref=e779]:
+          - button "긴급 (12)" [ref=e780] [cursor=pointer]
+          - button "재고 주의 (0)" [ref=e781] [cursor=pointer]
+          - button "전체 (12)" [ref=e782] [cursor=pointer]
+        - textbox "품목명 또는 코드 검색" [ref=e784]
+        - generic [ref=e786]:
+          - generic [ref=e787]:
+            - generic [ref=e788]:
+              - paragraph [ref=e789]: 두바이ST쫀득먼치킨
+              - generic [ref=e790]: 긴급
+            - generic [ref=e791]:
+              - generic [ref=e792]: 재고 0개
+              - generic [ref=e793]: · 일일 권장 19개
+            - generic [ref=e794]:
+              - generic [ref=e795]: 생산 수량
+              - button "−" [ref=e796] [cursor=pointer]
+              - spinbutton [ref=e797]: "19"
+              - button "+" [ref=e798] [cursor=pointer]
+          - generic [ref=e799]:
+            - generic [ref=e800]:
+              - paragraph [ref=e801]: 소시지인치즈베이글
+              - generic [ref=e802]: 긴급
+            - generic [ref=e803]:
+              - generic [ref=e804]: 재고 0개
+              - generic [ref=e805]: · 일일 권장 6개
+            - generic [ref=e806]:
+              - generic [ref=e807]: 생산 수량
+              - button "−" [ref=e808] [cursor=pointer]
+              - spinbutton [ref=e809]: "6"
+              - button "+" [ref=e810] [cursor=pointer]
+          - generic [ref=e811]:
+            - generic [ref=e812]:
+              - paragraph [ref=e813]: 블루베리베이글
+              - generic [ref=e814]: 긴급
+            - generic [ref=e815]:
+              - generic [ref=e816]: 재고 0개
+              - generic [ref=e817]: · 일일 권장 8개
+            - generic [ref=e818]:
+              - generic [ref=e819]: 생산 수량
+              - button "−" [ref=e820] [cursor=pointer]
+              - spinbutton [ref=e821]: "8"
+              - button "+" [ref=e822] [cursor=pointer]
+          - generic [ref=e823]:
+            - generic [ref=e824]:
+              - paragraph [ref=e825]: 플레인베이글
+              - generic [ref=e826]: 긴급
+            - generic [ref=e827]:
+              - generic [ref=e828]: 재고 0개
+              - generic [ref=e829]: · 일일 권장 6개
+            - generic [ref=e830]:
+              - generic [ref=e831]: 생산 수량
+              - button "−" [ref=e832] [cursor=pointer]
+              - spinbutton [ref=e833]: "6"
+              - button "+" [ref=e834] [cursor=pointer]
+          - generic [ref=e835]:
+            - generic [ref=e836]:
+              - paragraph [ref=e837]: 바바리안 필드
+              - generic [ref=e838]: 긴급
+            - generic [ref=e839]:
+              - generic [ref=e840]: 재고 0개
+              - generic [ref=e841]: · 일일 권장 3개
+            - generic [ref=e842]:
+              - generic [ref=e843]: 생산 수량
+              - button "−" [ref=e844] [cursor=pointer]
+              - spinbutton [ref=e845]: "3"
+              - button "+" [ref=e846] [cursor=pointer]
+          - generic [ref=e847]:
+            - generic [ref=e848]:
+              - paragraph [ref=e849]: 스트로베리필드
+              - generic [ref=e850]: 긴급
+            - generic [ref=e851]:
+              - generic [ref=e852]: 재고 0개
+              - generic [ref=e853]: · 일일 권장 3개
+            - generic [ref=e854]:
+              - generic [ref=e855]: 생산 수량
+              - button "−" [ref=e856] [cursor=pointer]
+              - spinbutton [ref=e857]: "3"
+              - button "+" [ref=e858] [cursor=pointer]
+          - generic [ref=e859]:
+            - generic [ref=e860]:
+              - paragraph [ref=e861]: 올드훼션드 먼치킨
+              - generic [ref=e862]: 긴급
+            - generic [ref=e863]:
+              - generic [ref=e864]: 재고 0개
+              - generic [ref=e865]: · 일일 권장 3개
+            - generic [ref=e866]:
+              - generic [ref=e867]: 생산 수량
+              - button "−" [ref=e868] [cursor=pointer]
+              - spinbutton [ref=e869]: "3"
+              - button "+" [ref=e870] [cursor=pointer]
+          - generic [ref=e871]:
+            - generic [ref=e872]:
+              - paragraph [ref=e873]: 요거트 올드훼션드
+              - generic [ref=e874]: 긴급
+            - generic [ref=e875]:
+              - generic [ref=e876]: 재고 0개
+              - generic [ref=e877]: · 일일 권장 3개
+            - generic [ref=e878]:
+              - generic [ref=e879]: 생산 수량
+              - button "−" [ref=e880] [cursor=pointer]
+              - spinbutton [ref=e881]: "3"
+              - button "+" [ref=e882] [cursor=pointer]
+          - generic [ref=e883]:
+            - generic [ref=e884]:
+              - paragraph [ref=e885]: 미니초코링
+              - generic [ref=e886]: 긴급
+            - generic [ref=e887]:
+              - generic [ref=e888]: 재고 3개
+              - generic [ref=e889]: · 1시간 뒤 3개
+              - generic [ref=e890]: · 일일 권장 14개
+            - generic [ref=e891]:
+              - generic [ref=e892]: 생산 수량
+              - button "−" [ref=e893] [cursor=pointer]
+              - spinbutton [ref=e894]: "14"
+              - button "+" [ref=e895] [cursor=pointer]
+          - generic [ref=e896]:
+            - generic [ref=e897]:
+              - paragraph [ref=e898]: 미니글레이즈드
+              - generic [ref=e899]: 긴급
+            - generic [ref=e900]:
+              - generic [ref=e901]: 재고 3개
+              - generic [ref=e902]: · 1시간 뒤 3개
+              - generic [ref=e903]: · 일일 권장 14개
+            - generic [ref=e904]:
+              - generic [ref=e905]: 생산 수량
+              - button "−" [ref=e906] [cursor=pointer]
+              - spinbutton [ref=e907]: "14"
+              - button "+" [ref=e908] [cursor=pointer]
+          - generic [ref=e909]:
+            - generic [ref=e910]:
+              - paragraph [ref=e911]: 미니스트로베리필드
+              - generic [ref=e912]: 긴급
+            - generic [ref=e913]:
+              - generic [ref=e914]: 재고 3개
+              - generic [ref=e915]: · 1시간 뒤 3개
+              - generic [ref=e916]: · 일일 권장 14개
+            - generic [ref=e917]:
+              - generic [ref=e918]: 생산 수량
+              - button "−" [ref=e919] [cursor=pointer]
+              - spinbutton [ref=e920]: "14"
+              - button "+" [ref=e921] [cursor=pointer]
+          - generic [ref=e922]:
+            - generic [ref=e923]:
+              - paragraph [ref=e924]: 올리브츄이스티
+              - generic [ref=e925]: 긴급
+            - generic [ref=e926]:
+              - generic [ref=e927]: 재고 27개
+              - generic [ref=e928]: · 1시간 뒤 24개
+              - generic [ref=e929]: · 일일 권장 42개
+            - generic [ref=e930]:
+              - generic [ref=e931]: 생산 수량
+              - button "−" [ref=e932] [cursor=pointer]
+              - spinbutton [ref=e933]: "42"
+              - button "+" [ref=e934] [cursor=pointer]
+        - generic [ref=e935]:
+          - button "생산 등록" [ref=e936] [cursor=pointer]
+          - button "취소" [ref=e937] [cursor=pointer]
+      - generic [ref=e686]:
+        - paragraph [ref=e687]: 전체 판매 제품 40개 중 긴급 7개 · 재고 주의 8개
+        - generic [ref=e688]:
+          - paragraph [ref=e690]: 7개
+          - paragraph [ref=e691]: 리드타임 1시간 기준
+      - generic [ref=e692]:
+        - generic [ref=e693]:
+          - generic [ref=e694]:
+            - paragraph [ref=e697]: 생산관리 에이전트
+            - generic [ref=e698]:
+              - paragraph [ref=e699]:
+                - paragraph [ref=e700]:
+                  - text: 전체 판매 제품
+                  - generic [ref=e701]: 40개
+              - paragraph [ref=e702]: 13:00 기준 · 2차 생산 전 보충 확인 구간
+          - generic [ref=e703]:
+            - paragraph [ref=e705]: 예측 검증 제한적
+            - button "긴급 품목 일괄 생산" [ref=e706] [cursor=pointer]:
+              - paragraph [ref=e707]: 긴급 품목 일괄 생산
+            - button "+ 전체 제품" [active] [ref=e708] [cursor=pointer]
+            - paragraph [ref=e710]: 5분전 갱신
+        - paragraph [ref=e711]: 현재 재고 데이터가 0값 중심으로 수집되어 생산 필요 품목이 과다 감지될 수 있습니다. 판매 속도와 리드타임 기준으로 우선순위 상위 품목만 표시됩니다.
+        - generic [ref=e712]:
+          - generic [ref=e714]:
+            - img "두바이ST쫀득먼치킨" [ref=e715]
+            - generic [ref=e716]:
+              - generic [ref=e717]:
+                - paragraph [ref=e718]: 두바이ST쫀득먼치킨
+                - generic [ref=e719]:
+                  - paragraph [ref=e721]: 즉시 생산 필요
+                  - button "생산 등록" [ref=e722] [cursor=pointer]:
+                    - paragraph [ref=e723]: 생산 등록
+              - generic [ref=e724]:
+                - paragraph [ref=e725]: 13:00 기준 예상 재고 0개 · 1시간 뒤 부족 3개
+                - paragraph [ref=e726]: 최근 판매 속도 3.0개/시간 · 즉시 생산 필요 3개
+                - paragraph [ref=e727]: "생산 패턴: 1차 추천 11:00 등록 / 12:00 진열 · 22개 · 2차 추천 17:00 등록 / 18:00 진열 · 10개"
+                - paragraph [ref=e728]: · 일일 권장 생산 37개
+          - generic [ref=e733]:
+            - img "스트로베리필드" [ref=e734]
+            - generic [ref=e735]:
+              - generic [ref=e736]:
+                - paragraph [ref=e737]: 스트로베리필드
+                - paragraph [ref=e740]: 즉시 생산 필요
+              - generic [ref=e741]:
+                - paragraph [ref=e742]: 13:00 기준 예상 재고 26개 · 1시간 뒤 23개
+                - paragraph [ref=e743]: 최근 판매 속도 3.2개/시간
+                - paragraph [ref=e744]: ETA 484분 · 리드타임 1시간
+                - paragraph [ref=e745]: "생산 패턴: 1차 추천 11:00 등록 / 12:00 진열 · 25개 · 2차 추천 17:00 등록 / 18:00 진열 · 18개"
+                - paragraph [ref=e746]: · 일일 권장 생산 40개
+          - generic [ref=e751]:
+            - img "스트로베리먼치킨" [ref=e752]
+            - generic [ref=e753]:
+              - generic [ref=e754]:
+                - paragraph [ref=e755]: 스트로베리먼치킨
+                - paragraph [ref=e758]: 즉시 생산 필요
+              - generic [ref=e759]:
+                - paragraph [ref=e760]: 13:00 기준 예상 재고 22개 · 1시간 뒤 19개
+                - paragraph [ref=e761]: 최근 판매 속도 3.1개/시간
+                - paragraph [ref=e762]: ETA 420분 · 리드타임 1시간
+                - paragraph [ref=e763]: "생산 패턴: 1차 추천 11:00 등록 / 12:00 진열 · 26개 · 2차 추천 17:00 등록 / 18:00 진열 · 16개"
+                - paragraph [ref=e764]: · 일일 권장 생산 39개
+        - generic [ref=e768]:
+          - paragraph [ref=e769]: 1 / 1
+          - button "다음 페이지" [disabled] [ref=e770] [cursor=pointer]:
+            - img [ref=e771]
+  - generic [ref=e195]:
+    - generic [ref=e198]: ONLINE
+    - generic [ref=e201]: BR KOREA POS SYSTEM
+    - generic [ref=e204]: PWR

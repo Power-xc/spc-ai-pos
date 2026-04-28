@@ -181,3 +181,108 @@ class ProductionRegisterResponse(BaseModel):
             }
         }
     )
+
+
+class BatchRegisterItem(BaseModel):
+    """Single item in a batch production registration."""
+
+    product_id: str
+    product_name: str = ""
+    quantity: int
+    source: str = "manual"
+
+
+class BatchRegisterRequest(BaseModel):
+    """Batch production registration request."""
+
+    store_id: str
+    items: list[BatchRegisterItem]
+
+
+class BatchRegisterResultItem(BaseModel):
+    """Result of a single item in batch register."""
+
+    product_id: str
+    product_name: str
+    quantity: int
+    success: bool
+    production_id: str | None
+
+
+class BatchRegisterResponse(BaseModel):
+    """Response for batch production registration."""
+
+    registered_count: int
+    failed_count: int
+    results: list[BatchRegisterResultItem]
+
+
+class RegisterableProductItem(BaseModel):
+    """A product available for production registration."""
+
+    product_id: str
+    product_name: str
+    category: str = ""
+    current_stock: int
+    predicted_stock_1h: int | None = None
+    risk_level: str = "LOW"
+    is_urgent: bool = False
+    is_supplement: bool = False
+    recommended_production_qty: int = 0
+    daily_recommended_qty: int = 0
+    last_1h_sales_rate: float | None = None
+    unit_price: float | None = None
+
+
+class RegisterableProductSummary(BaseModel):
+    """Summary counts for registerable products."""
+
+    total_count: int
+    urgent_count: int
+    supplement_count: int
+    normal_count: int
+
+
+class RegisterableProductsResponse(BaseModel):
+    """Response for the registerable products list."""
+
+    items: list[RegisterableProductItem]
+    summary: RegisterableProductSummary
+
+
+class InventorySnapshotItem(BaseModel):
+    """A product in the inventory snapshot — estimated stock at a given time."""
+
+    product_id: str
+    product_name: str
+    category: str = ""
+    current_stock: int
+    predicted_stock_1h: int | None = None
+    risk_level: str = "LOW"
+    is_urgent: bool = False
+    is_supplement: bool = False
+    recommended_production_qty: int = 0
+    daily_recommended_qty: int = 0
+    last_1h_sales_rate: float | None = None
+    unit_price: float | None = None
+    stock_basis: str = "시간대 판매 패턴 기반 추정"
+    is_estimated: bool = True
+
+
+class InventorySnapshotSummary(BaseModel):
+    """Summary counts for inventory snapshot."""
+
+    total_count: int
+    urgent_count: int
+    supplement_count: int
+    normal_count: int
+
+
+class InventorySnapshotResponse(BaseModel):
+    """Response for the inventory snapshot endpoint."""
+
+    as_of: str
+    is_estimated: bool
+    basis: str = "시간대 판매 패턴 기반 추정"
+    summary: InventorySnapshotSummary
+    items: list[InventorySnapshotItem]

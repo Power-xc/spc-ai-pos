@@ -289,24 +289,26 @@ class SalesAnalysisAgent:
                 sql_result, role
             )
 
-        system_prompt = """당신은 던킨도너츠 매장 운영 컨설턴트입니다.
-아래 데이터를 분석하여 점주에게 실행 가능한 인사이트를 제공하세요.
+        system_prompt = """당신은 던킨도너츠 매장 운영을 돕는 PIP AI입니다.
+ 아래 데이터를 분석하여 점주에게 실행 가능한 인사이트를 제공하세요.
+
+## 출력 형식
+- JSON으로 답하지 마세요. {}나 []를 사용한 형식도 금지입니다.
+- 텍스트 답변만 작성하세요.
+- 최대 4줄로 작성하세요.
+- 첫 줄은 결론.
+- 둘째 줄은 이유.
+- 셋째 줄은 지금 할 일.
+- 필요하면 마지막 줄에 확인 포인트 1개만 추가하세요.
 
 ## 규칙
 1. 숫자 나열이 아니라 "의미"를 설명하세요
-2. 반드시 "왜 이런 결과가 나왔는지" 가설을 제시하세요
-3. 반드시 "구체적인 다음 행동"을 1~2개 제안하세요
-4. 응답은 반드시 아래 JSON 형식:
-
-{"analysis": "분석 내용 (2~3문장)",
- "root_causes": ["원인1", "원인2"],
- "actions": ["구체적 행동1", "구체적 행동2"],
- "highlight_metrics": [{"label": "...", "value": "...", "change_pct": 0, "color": "green|red|gray"}]}
-
-## 주의
-- 매출 절대 금액을 직접 언급하지 마세요 (비율/변화만 사용)
-- 한국어로 답변하세요
-- 확실하지 않은 분석은 "~로 추정됩니다"로 표현하세요"""
+2. 반드시 "왜 이런 결과가 나왔는지" 한 줄로 설명하세요
+3. 반드시 "구체적인 다음 행동"을 한 줄로 제안하세요
+4. 매출 절대 금액을 직접 언급하지 마세요 (비율/변화만 사용)
+5. 한국어로 답변하세요
+6. 확실하지 않은 분석은 "~로 추정됩니다"로 표현하세요
+7. markdown 표(table)를 절대 만들지 마세요"""
         user_prompt = f"""질의: {query}
 분석 유형: {intent}
 store_id: {store_id}
@@ -316,7 +318,7 @@ store_id: {store_id}
         local_openai_compat = bool(
             getattr(self.llm_gateway, "_is_local_openai_compat", False)
         )
-        response_format = None if local_openai_compat else {"type": "json_object"}
+        response_format = None
         max_tokens = 240 if local_openai_compat else 450
 
         try:
@@ -354,58 +356,56 @@ store_id: {store_id}
             "masked_fields": masked_fields,
         }
         raw_content = str(result.get("content") or "").strip()
+
+        # Try JSON parse (backward compat if LLM still outputs JSON)
         try:
             parsed = self._parse_json_payload(raw_content)
-            sections = [
-                InsightSection(
-                    type="metrics",
-                    title="핵심 지표",
-                    data=parsed.get("highlight_metrics", []),
-                ),
-                InsightSection(
-                    type="insight",
-                    title="분석",
-                    text=parsed.get("analysis"),
-                ),
-                InsightSection(
-                    type="action",
-                    title="권장 액션",
-                    items=parsed.get("actions", []),
-                ),
-            ]
-            if parsed.get("root_causes"):
-                sections.insert(
-                    2,
+            if isinstance(parsed, dict) and "analysis" in parsed:
+                sections = [
                     InsightSection(
-                        type="text",
-                        title="주요 원인",
-                        items=parsed.get("root_causes", []),
+                        type="metrics",
+                        title="핵심 지표",
+                        data=parsed.get("highlight_metrics", []),
                     ),
-                )
-            return sections, llm_meta
-        except Exception:
-            concise = raw_content[:360] if raw_content else ""
-            if not concise:
-                simple_sections = self._format_simple(intent, sql_result)
-                summary_texts = [
-                    s.text for s in simple_sections if hasattr(s, "text") and s.text
-                ]
-                concise = (
-                    summary_texts[0]
-                    if summary_texts
-                    else "데이터 기반 분석 결과입니다."
-                )
-            return (
-                [
                     InsightSection(
                         type="insight",
                         title="분석",
-                        text=concise,
+                        text=parsed.get("analysis"),
                     ),
-                    *self._format_simple(intent, sql_result),
-                ],
-                llm_meta,
-            )
+                    InsightSection(
+                        type="action",
+                        title="권장 액션",
+                        items=parsed.get("actions", []),
+                    ),
+                ]
+                if parsed.get("root_causes"):
+                    sections.insert(
+                        2,
+                        InsightSection(
+                            type="text",
+                            title="주요 원인",
+                            items=parsed.get("root_causes", []),
+                        ),
+                    )
+                return sections, llm_meta
+        except Exception:
+            pass
+
+        # Plain text path: treat each non-empty line as insight
+        lines = [l.strip() for l in raw_content.split("\n") if l.strip()]
+        if len(lines) >= 4:
+            lines = lines[:4]
+        return (
+            [
+                InsightSection(
+                    type="insight",
+                    title="분석",
+                    text=lines[0] if lines else "",
+                ),
+                *self._format_simple(intent, sql_result),
+            ],
+            llm_meta,
+        )
 
     @staticmethod
     def _parse_json_payload(content: str) -> dict:

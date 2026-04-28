@@ -32,6 +32,10 @@ settings = get_settings()
 def _extract_answer(result: ChatResponse) -> str:
     if result.response_type == "text" and isinstance(result.content, str):
         return result.content
+    # Use metadata.answer if explicitly set (covers alert_card/order_card with text summary)
+    metadata_answer = (result.metadata or {}).get("answer")
+    if metadata_answer and isinstance(metadata_answer, str) and len(metadata_answer) > 5:
+        return metadata_answer
     if result.response_type == "alert_card" and isinstance(result.content, list):
         count = len(result.content)
         return (
@@ -60,13 +64,13 @@ def _extract_answer(result: ChatResponse) -> str:
             deviation = first.get("deviation_label", "")
             label = first.get("label", "")
             return (
-                f"📋 {label}\n"
+                f" {label}\n"
                 f"  • 품목 {len(first.get('items') or [])}종, 총 {first.get('total_qty', 0)}개\n"
                 f"  • {deviation}\n"
-                f"📦 대표 품목:\n"
+                f" 대표 품목:\n"
                 + "\n".join(item_lines)
                 + extra_text
-                + f"\n📊 근거: 전주 동요일 주문 패턴 (실제 주문 데이터)"
+                + f"\n 근거: 최근 동요일 주문 패턴 (실제 주문 데이터)"
             )
         return f"{len(options)}개의 주문 추천 옵션을 준비했습니다."
     if result.response_type == "insight_card" and isinstance(result.content, dict):
@@ -148,6 +152,8 @@ def _to_legacy_chat_payload(
         if isinstance(result.metadata.get("suggested_questions"), list)
         else []
     )
+    used_llm = bool(result.metadata.get("used_llm"))
+    fallback = not used_llm
 
     # Build base metadata
     metadata: dict[str, Any] = {
@@ -159,6 +165,8 @@ def _to_legacy_chat_payload(
         "intent_confidence": result.metadata.get("classification_confidence"),
         "resolved_query": result.metadata.get("resolved_query"),
         "suggested_questions": suggested_questions,
+        "used_llm": used_llm,
+        "fallback": fallback,
         "settings": result.metadata.get("settings"),
         "settings_data_mode": result.metadata.get("settings_data_mode"),
         "settings_persisted": result.metadata.get("settings_persisted"),
@@ -183,6 +191,8 @@ def _to_legacy_chat_payload(
         "latency_ms": latency_ms,
         "token_usage": int(result.metadata.get("llm_tokens_used") or 0),
         "session_id": result.session_id,
+        "used_llm": used_llm,
+        "fallback": fallback,
         "settings": result.metadata.get("settings"),
         "settings_data_mode": result.metadata.get("settings_data_mode"),
         "settings_persisted": result.metadata.get("settings_persisted"),
@@ -262,6 +272,19 @@ async def _handle_chat(
             )
         except Exception:
             recent_messages = []
+    client_recent = (req.context or {}).get("recent_client_messages")
+    if isinstance(client_recent, list):
+        for item in client_recent[-6:]:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role") or "").strip().lower()
+            content = str(item.get("content") or "").strip()
+            if role == "ai":
+                role = "assistant"
+            if role not in {"user", "assistant"} or not content:
+                continue
+            recent_messages.append({"role": role, "content": content})
+        recent_messages = recent_messages[-8:]
 
     route_started_at = perf_counter()
     result = await agent_router.route(

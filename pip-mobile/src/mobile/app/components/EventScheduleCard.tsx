@@ -228,7 +228,7 @@ export default function EventScheduleCard({
 
       {/* AI 추천 배너 */}
       <div className="mx-[20px] mb-[10px] bg-[#f0f1f3] rounded-[20px] px-[12px] py-[6px]">
-        <span className="text-black text-[12px] font-bold">AI 추천 </span>
+        <span className="text-black text-[12px] font-bold">추천 </span>
         <span className="text-black text-[12px]">: </span>
         <span className="text-[#555] text-[12px]">{data.aiRecommendation}</span>
       </div>

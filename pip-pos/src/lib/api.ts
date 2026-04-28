@@ -23,6 +23,7 @@ import type {
   ProductionAgentData,
   ProductionSummary,
   ProductionBatchItem,
+  ProductionItem,
   ProductAnalysisData,
   OrderAgentData,
   AiOrderSummary,
@@ -31,6 +32,14 @@ import type {
   AiBriefing,
   BriefingIssue,
   SimulationData,
+  MonthlyCompareResponse,
+  DeliveryOrdersResponse,
+  CampaignEffectResponse,
+  ProductCompareResponse,
+  ChannelSalesResponse,
+  PeerCompareResponse,
+  OrderConfirmResponse,
+  OrderOptionSummary,
 } from "../types";
 import icoAction01 from "../assets/ico-action01.png";
 import icoAction02 from "../assets/ico-action02.png";
@@ -43,10 +52,16 @@ import {
 } from "./demoStoreConfig";
 import { getBenchmarkCompareStoreIds } from "./benchmarkCompareStores";
 import {
+  PRODUCT_CODE_NAME_MAP,
+  resolveProductDisplayName as resolveProductDisplayNameFromMap,
+  resolveProductNamesInText,
+} from "./productNameResolver";
+import {
   appendDemoQueryParams,
   getDemoDate,
   getDemoDateObject,
   getDemoDateTimeLabel,
+  getDemoTime,
 } from "./demoDateTime";
 
 const RAW_API_BASE =
@@ -80,7 +95,7 @@ const DEMO_BIZ_DATE_ENDPOINTS = [
   "/v1/benchmarking/promotion-comparison",
 ];
 
-const DEMO_DATETIME_ENDPOINTS = ["/order/deadlines", "/v1/dashboard/production"];
+const DEMO_DATETIME_ENDPOINTS = ["/order/deadlines", "/v1/dashboard/production", "/home/sales-summary"];
 
 function applyDemoPath(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
@@ -179,12 +194,6 @@ const formatShortDate = (value: string | null | undefined) =>
 const nowTimeLabel = () =>
   getDemoDateObject().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 
-const PRODUCT_CODE_NAME_MAP: Record<string, string> = {
-  "700721": "초코파우더(길라델리)",
-  "811902": "미니글레이즈드",
-  "811962": "미니스트로베리필드",
-  "811963": "미니초코링",
-};
 
 export type InventoryDisplayMetrics = {
   rawStock: number;
@@ -209,13 +218,13 @@ export function getInventoryDisplayMetrics(rawValue: number | null | undefined):
         : currentCount === 0
           ? "보충 필요"
           : `${formatNumber(currentCount)}개`,
-    currentLabel: `현재 보유 ${formatNumber(currentCount)}개`,
+    currentLabel: `${formatNumber(currentCount)}개`,
     detailLabel:
       shortage > 0
-        ? `현재 보유 ${formatNumber(currentCount)}개 · 부족 ${formatNumber(shortage)}개`
+        ? `${formatNumber(currentCount)}개 · 부족 ${formatNumber(shortage)}개`
         : currentCount === 0
-          ? `현재 보유 ${formatNumber(currentCount)}개 · 보충 필요`
-          : `현재 보유 ${formatNumber(currentCount)}개`,
+          ? `${formatNumber(currentCount)}개 · 보충 필요`
+          : `${formatNumber(currentCount)}개`,
   };
 }
 
@@ -347,6 +356,31 @@ function isMeaningfulLabel(value: string | null | undefined): boolean {
   return true;
 }
 
+function isProductionEligible(
+  product_id: string,
+  product_name: string | null | undefined,
+  category: string | null | undefined,
+): boolean {
+  const pid = String(product_id).trim();
+  if (pid.startsWith("7")) return false;
+  const name = String(product_name ?? "").trim();
+  const cat = String(category ?? "").trim();
+  if (cat === "냉동/냉장" || cat === "냉동" || cat === "냉장") return false;
+  if (cat === "용품/상품" || cat === "포장재" || cat === "원자재") return false;
+  if (name === "B" || name === "미분류") return true;
+  const keywords = [
+    "파우더", "시럽", "컵", "리드", "빨대", "스트로우", "소스", "원두",
+    "포장", "필링", "우유", "토핑", "베이컨", "체다", "치즈", "설탕",
+    "유산지", "봉투", "쇼핑백", "왁스티슈", "스푼", "포크", "용기",
+    "오링", "드롭", "사이드", "팩", "얼음", "페퍼", "밑지",
+    "꼬지", "베이스", "쿨라타", "완제", "패티", "필름",
+  ];
+  for (const kw of keywords) {
+    if (name.includes(kw)) return false;
+  }
+  return true;
+}
+
 function cleanProductName(name: string): string {
   let cleaned = name
     .replace(/\?쫀득\?/g, "쫀득")
@@ -358,8 +392,7 @@ function cleanProductName(name: string): string {
 }
 
 function resolveProductDisplayName(value: string | null | undefined): string {
-  const normalized = String(value ?? "").trim();
-  return cleanProductName(PRODUCT_CODE_NAME_MAP[normalized] ?? normalized);
+  return cleanProductName(resolveProductDisplayNameFromMap(value));
 }
 
 function joinCompact(parts: Array<string | null | undefined>) {
@@ -391,8 +424,8 @@ function sanitizeUserFacingReason(reason: string | null | undefined): string {
 }
 
 function formatBurnRate(value: number | null | undefined) {
-  const numeric = Number(value ?? 0);
-  if (!Number.isFinite(numeric) || numeric <= 0) return "0개/시간";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
   return `${numeric.toFixed(1)}개/시간`;
 }
 
@@ -415,6 +448,139 @@ async function safeGet<T>(path: string): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+async function safePost<T>(path: string, body?: unknown): Promise<T | null> {
+  try {
+    return await apiPost<T>(path, body);
+  } catch {
+    return null;
+  }
+}
+
+export interface ProductionRegisterResult {
+  production_id: string;
+  registered_at: string;
+  feedback?: { type: string; message: string; impact_pct: number; estimated_amount: number };
+}
+
+export async function registerProduction(
+  productId: string,
+  quantity: number,
+  alertId?: string,
+): Promise<ProductionRegisterResult | null> {
+  return safePost<ProductionRegisterResult>("/v1/production/register", {
+    store_id: STORE_ID,
+    product_id: productId,
+    quantity,
+    alert_id: alertId || undefined,
+  });
+}
+
+export interface RegisterableProductItem {
+  product_id: string;
+  product_name: string;
+  category: string;
+  current_stock: number;
+  predicted_stock_1h: number | null;
+  risk_level: string;
+  is_urgent: boolean;
+  is_supplement: boolean;
+  recommended_production_qty: number;
+  daily_recommended_qty: number;
+  last_1h_sales_rate: number | null;
+  unit_price: number | null;
+}
+
+export interface RegisterableProductsResult {
+  items: RegisterableProductItem[];
+  summary: {
+    total_count: number;
+    urgent_count: number;
+    supplement_count: number;
+    normal_count: number;
+  };
+}
+
+export interface BatchRegisterItemPayload {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  source: string;
+}
+
+export interface InventorySnapshotItemAPI {
+  product_id: string;
+  product_name: string;
+  category: string;
+  current_stock: number;
+  predicted_stock_1h: number | null;
+  risk_level: string;
+  is_urgent: boolean;
+  is_supplement: boolean;
+  recommended_production_qty: number;
+  daily_recommended_qty: number;
+  last_1h_sales_rate: number | null;
+  unit_price: number | null;
+  stock_basis: string;
+  is_estimated: boolean;
+}
+
+export interface InventorySnapshotResult {
+  as_of: string;
+  is_estimated: boolean;
+  basis: string;
+  summary: { total_count: number; urgent_count: number; supplement_count: number; normal_count: number };
+  items: InventorySnapshotItemAPI[];
+}
+
+export async function getRegisterableProducts(
+  q = "",
+  risk = "all",
+): Promise<RegisterableProductsResult | null> {
+  const params = new URLSearchParams({ q, risk });
+  return safeGet<RegisterableProductsResult>(`/v1/production/registerable-products?${params}`);
+}
+
+export async function getInventorySnapshot(
+  demoDate: string,
+  demoTime: string,
+  q = "",
+  risk = "all",
+): Promise<InventorySnapshotResult | null> {
+  const params = new URLSearchParams({ store_id: STORE_ID, demo_date: demoDate, demo_time: demoTime, q, risk });
+  return safeGet<InventorySnapshotResult>(`/v1/production/inventory-snapshot?${params}`);
+}
+
+export async function batchRegisterProduction(
+  items: BatchRegisterItemPayload[],
+): Promise<{ registered_count: number; failed_count: number; results: any[] } | null> {
+  return safePost<{ registered_count: number; failed_count: number; results: any[] }>(
+    "/v1/production/batch-register",
+    { store_id: STORE_ID, items },
+  );
+}
+
+export interface ValidationReportSummary {
+  avg_error_pct: number;
+  within_10pct_ratio: number;
+  total_products: number;
+  within_10pct: number;
+  high_error_products: number;
+}
+
+export interface ValidationReport {
+  summary: ValidationReportSummary;
+  backtest: {
+    avg_error_pct: number;
+    within_10pct_ratio: number;
+    total_products: number;
+    within_10pct: number;
+  } | null;
+}
+
+export async function getValidationReport(): Promise<ValidationReport | null> {
+  return safeGet<ValidationReport>(`/v1/production/${STORE_ID}/validation-report`);
 }
 
 function makeBriefingIssue(
@@ -484,16 +650,28 @@ function buildFallbackBriefing(selectedMenu: string): AiBriefing {
           makeBriefingIssue("fallback-analytics", "확인", "성과 분석 재확인 필요", "매출 분석 API 응답이 지연되고 있습니다.", "AI 기반 성과 분석", "다시 보기"),
         ],
       };
+    case "综合 현황":
+      return {
+        ...common,
+        summaryPoints: [
+          "현재 화면의 주요 이슈를 기준으로 임시 브리핑을 표시합니다.",
+          "생산/재고/발주 데이터 조회가 지연되어 상세 요약은 제한됩니다.",
+          "API 응답이 복구되면 자동 반영됩니다.",
+        ],
+        issues: [
+          makeBriefingIssue("fallback-overview", "확인", "임시 브리핑", "데이터가 복구되면 종합 브리핑을 다시 생성합니다. 현재 생산관리, 발주관리 메뉴에서 직접 확인해 주세요.", "종합 현황", "화면 보기"),
+        ],
+      };
     default:
       return {
         ...common,
         summaryPoints: [
-          "현재 화면 기반 브리핑 데이터를 불러오지 못했습니다.",
-          "실시간 API 응답이 복구되면 매출, 재고, 발주 상태를 다시 요약합니다.",
-          "잠시 후 다시 시도해 주세요.",
+          "현재 화면의 주요 이슈를 기준으로 임시 브리핑을 표시합니다.",
+          `${selectedMenu} 화면으로 이동하여 직접 확인해 주세요.`,
+          "API 응답이 복구되면 자동 반영됩니다.",
         ],
         issues: [
-          makeBriefingIssue("fallback-default", "확인", "브리핑 재확인 필요", "브리핑 생성에 필요한 데이터 조회가 지연되고 있습니다.", selectedMenu, "다시 보기"),
+          makeBriefingIssue("fallback-default", "확인", "임시 브리핑", `${selectedMenu} 데이터 조회가 지연되고 있습니다. 해당 메뉴에서 직접 확인해 주세요.`, selectedMenu, "화면 보기"),
         ],
       };
   }
@@ -510,7 +688,7 @@ const mockMenuIssueCounts: MenuIssueCount[] = [
   { menu: "AI 기반 성과 분석", count: 0 },
   { menu: "AI 검증", count: 0 },
   { menu: "벤치마킹", count: 0 },
-  { menu: "알람 설정", count: 2 },
+  { menu: "알람 설정", count: 0 },
 ];
 
 export function getMenuIssueCounts(): Promise<MenuIssueCount[]> {
@@ -523,55 +701,74 @@ export function getMenuIssueCounts(): Promise<MenuIssueCount[]> {
 
 export async function getStatCards(): Promise<StatCardData[]> {
   try {
-    const [data, inventoryItemsRaw] = await Promise.all([
+    const [data, prodSummary, invItems, snapData] = await Promise.all([
       apiGet<{
         today_revenue: number;
+        cumulative_revenue_until: number | null;
         today_qty: number;
         vs_yesterday_same_time_pct: number;
         vs_last_week_same_day_pct: number;
         hourly_trend: { hour: number; revenue: number }[];
+        profitability: { gross_profit_margin_pct: number | null } | null;
       }>("/home/sales-summary"),
-      safeGet<unknown[]>("/inventory/current"),
+      getProductionSummary(),
+      safeGet<InventoryCurrentItem[]>("/inventory/current"),
+      getInventorySnapshotSummary(),
     ]);
+    const snapSummary = snapData;
 
     const sparkData = (data.hourly_trend || []).map((h) => h.revenue);
     const yesterdayPct = data.vs_yesterday_same_time_pct ?? 0;
     const weekPct = data.vs_last_week_same_day_pct ?? 0;
+    const hasCumulative = data.cumulative_revenue_until != null && data.cumulative_revenue_until > 0;
+    const displayRevenue = hasCumulative ? data.cumulative_revenue_until! : data.today_revenue;
+    const profitability = data.profitability;
+    const marginPct = (profitability?.gross_profit_margin_pct != null && profitability?.gross_profit_margin_pct > 0)
+      ? Math.max(0.3, Math.min(0.8, profitability.gross_profit_margin_pct / 100))
+      : 0.68;
 
-    const inventoryItems = (inventoryItemsRaw ?? []) as Array<Record<string, unknown>>;
-    const totalChanceLoss = inventoryItems.reduce(
-      (sum, item) => sum + Number(item.estimated_chance_loss ?? 0),
-      0,
-    );
-    const riskCount = inventoryItems.filter((item) => {
-      const risk = String(item.stockout_risk ?? item.status ?? "").toUpperCase();
-      return risk === "HIGH" || risk === "WARNING" || risk === "CRITICAL" || item.reorder_triggered;
-    }).length;
+    // Use estimated_chance_loss from /inventory/current as primary loss source
+    const lossFromInventory = (invItems ?? [])
+      .reduce((sum, item) => sum + (Number(item.estimated_chance_loss ?? 0) || 0), 0);
+    const lossValue = Math.round(Math.max(lossFromInventory, prodSummary.totalEstimatedLoss));
+    const isLossEstimated = lossValue > 0;
+    // Use inventory-snapshot summary for consistent counts across all screens
+    const urgentCount = snapSummary?.urgentCount ?? prodSummary.urgentCount;
+    const restCount = snapSummary?.supplementCount ?? prodSummary.restCount;
+    const lossChangeValue = urgentCount > 0 || restCount > 0
+      ? `긴급 ${urgentCount}개 · 재고 주의 ${restCount}개`
+      : "적정 재고";
 
     return [
       {
         id: "stat-daily-sales",
-        value: fmtKRW(data.today_revenue),
-        unit: "원",
+        value: fmtKRW(displayRevenue),
+        unit: "",
         changeValue: `${yesterdayPct > 0 ? "+" : ""}${yesterdayPct}%`,
         changeType: yesterdayPct >= 0 ? "up" : "down",
         sparkData,
+        isCumulative: hasCumulative,
       },
       {
         id: "stat-ai-net-sales",
-        value: fmtKRW(Math.round(data.today_revenue * 0.68)),
-        unit: "원",
+        value: fmtKRW(Math.round(displayRevenue * marginPct)),
+        unit: "",
         changeValue: `${weekPct > 0 ? "+" : ""}${weekPct}%`,
         changeType: weekPct >= 0 ? "up" : "down",
-        sparkData: sparkData.map((v) => Math.round(v * 0.68)),
+        sparkData: sparkData.map((v) => Math.round(v * marginPct)),
+        isCumulative: hasCumulative,
+        marginPct,
       },
       {
         id: "stat-opportunity-loss",
-        value: fmtKRW(Math.round(totalChanceLoss || 150000)),
-        unit: "원",
-        changeValue: `품절 ${riskCount}건`,
-        changeType: "down",
-        sparkData: [1000, 750, 510, 1130, 2000, 1500, 170, 155, 150],
+        value: fmtKRW(lossValue),
+        unit: "",
+        changeValue: lossChangeValue,
+        changeType: lossValue > 0 ? "down" : "up",
+        sparkData: sparkData.slice(0, 9),
+        urgentCount,
+        restCount,
+        isLossEstimated: true,
       },
     ];
   } catch {
@@ -595,11 +792,14 @@ export async function getStatCards(): Promise<StatCardData[]> {
         },
         {
           id: "stat-opportunity-loss",
-          value: "₩150,000",
-          unit: "원",
-          changeValue: "품절 2건",
-          changeType: "down",
+          value: "₩0",
+          unit: "",
+          changeValue: "적정 재고",
+          changeType: "up",
           sparkData: [1000, 750, 510, 1130, 2000, 1500, 170, 155, 150],
+          urgentCount: 0,
+          restCount: 0,
+          isLossEstimated: true,
         },
       ])
     );
@@ -733,7 +933,7 @@ export async function getOrderDetailItems(): Promise<OrderDetailItem[]> {
 
     return items.map((item, idx) => ({
       id: `od-${item.product_id}`,
-      name: item.product_name,
+      name: resolveProductDisplayName(item.product_name),
       bgColor: categoryColors[idx % categoryColors.length],
       unitPrice: fmtKRW(Math.round(item.base_price)),
       stockInfo: `${item.weighted_qty?.toFixed(0) ?? item.quantity}개`,
@@ -758,41 +958,58 @@ export async function getOrderDetailItems(): Promise<OrderDetailItem[]> {
 
 const mockAiInsight: AiInsight = {
   message: "현재 기준 데이터로 볼 때 ",
-  boldPart: "생산·발주·성과 우선순위 점검이 필요",
+  boldPart: "생산·발주·성과 우선순위 점검이 필요합니다.",
+  suffix: "",
   agents: [{ id: "agent-001" }, { id: "agent-002" }, { id: "agent-003" }],
 };
 
 export async function getAiInsight(): Promise<AiInsight> {
   try {
-    const [production, orderSummary, salesSnapshot] = await Promise.all([
+    const [production, orderSummary, salesSnapshot, snapSummary] = await Promise.all([
       getProductionAgent(),
       getTodayOrderSummary(),
       getTodaySalesSnapshot(),
+      getInventorySnapshotSummary(),
     ]);
-    const riskItem = production.items.find((item) => item.isLow);
+    const lowItems = production.items.filter((item) => item.isLow);
     const topItem = salesSnapshot.topItems[0];
     const orderItem = orderSummary.items[0];
-    if (riskItem) {
+
+    if (lowItems.length > 0) {
+      const topRisk = lowItems[0];
+      const topName = resolveProductDisplayName(topRisk.name);
+      const shortageCount = topRisk.shortage && topRisk.shortage > 0
+        ? `${formatNumber(topRisk.shortage)}개`
+        : topRisk.badgeLabel ?? `${formatNumber(topRisk.quantity)}개`;
+      const totalCount = snapSummary?.totalCount ?? 0;
+      const urgentCount = snapSummary?.urgentCount ?? lowItems.length;
+      const supplementCount = snapSummary?.supplementCount ?? 0;
       return {
-        message: `${getDemoDateTimeLabel()} 기준으로 `,
-        boldPart: `${riskItem.name} ${riskItem.shortage && riskItem.shortage > 0 ? `부족 ${formatNumber(riskItem.shortage)}개` : riskItem.badgeLabel ?? `${formatNumber(riskItem.quantity)}개`}`,
+        message: `${getDemoDateTimeLabel()} 기준, 전체 판매 제품 ${formatNumber(totalCount || 40)}개 중 긴급 ${formatNumber(urgentCount)}개 · 재고 주의 ${formatNumber(supplementCount)}개입니다. `,
+        boldPart: topName + (urgentCount > 1 ? " 등" : ""),
+        suffix: `생산관리 에이전트에서 권장 수량을 확인하세요.`,
         agents: [{ id: "agent-001" }, { id: "agent-002" }, { id: "agent-003" }],
       };
     }
+
     if (orderItem) {
       return {
-        message: `${getDemoDateTimeLabel()} 기준 추천 발주 우선 품목은 `,
-        boldPart: `${orderItem.name} ${orderItem.quantity}`,
+        message: `${getDemoDateTimeLabel()} 기준, `,
+        boldPart: `${resolveProductDisplayName(orderItem.name)} ${orderItem.quantity}`,
+        suffix: "으로(로) 추천 발주를 우선 검토하세요.",
         agents: [{ id: "agent-001" }, { id: "agent-002" }, { id: "agent-003" }],
       };
     }
+
     if (topItem) {
       return {
-        message: `${getDemoDateTimeLabel()} 기준 상위 판매 품목은 `,
-        boldPart: `${topItem.name} ${topItem.count}`,
+        message: `${getDemoDateTimeLabel()} 기준, `,
+        boldPart: `${resolveProductDisplayName(topItem.name)} ${topItem.count}`,
+        suffix: "으로(로) 오늘 상위 판매입니다.",
         agents: [{ id: "agent-001" }, { id: "agent-002" }, { id: "agent-003" }],
       };
     }
+
     return mockDelay(mockAiInsight);
   } catch {
     return mockDelay(mockAiInsight);
@@ -927,7 +1144,8 @@ const mockPromotions: Promotion[] = mockPromotionData.map((p) => {
 export function getPromotions(): Promise<Promotion[]> {
   return cached("promotions", async () => {
     try {
-      const response = await apiGet<PromoPerformanceResponse>(`/v1/analytics/promo-performance?store_id=${STORE_ID}`);
+      const demo = getDemoDate();
+      const response = await apiGet<PromoPerformanceResponse>(`/v1/analytics/promo-performance?store_id=${STORE_ID}&demo_date=${encodeURIComponent(demo)}`);
       const promotions = (response.promotions ?? [])
         .slice()
         .sort((a, b) => Number(b.sales_amt ?? 0) - Number(a.sales_amt ?? 0));
@@ -1164,7 +1382,8 @@ function promoName(item: PromoPerfRaw): string {
 }
 
 function fetchPromoPerfItems(): Promise<PromoPerfRaw[]> {
-  return apiGet<PromoPerfResponse>(`/v1/analytics/promo-performance?store_id=${STORE_ID}`)
+  const demo = getDemoDate();
+  return apiGet<PromoPerfResponse>(`/v1/analytics/promo-performance?store_id=${STORE_ID}&demo_date=${encodeURIComponent(demo)}`)
     .then((res) => res.promotions ?? [])
     .catch(() => []);
 }
@@ -1550,7 +1769,17 @@ export async function getDeliveryCountComparison(): Promise<DeliveryCountCompari
 
 export async function getPromoPerformanceDetail(): Promise<PromoPerformanceDetailData | null> {
   try {
-    return await apiGet<PromoPerformanceDetailData>(`/v1/analytics/promo-performance-detail?store_id=${STORE_ID}`);
+    const demo = getDemoDate();
+    return await apiGet<PromoPerformanceDetailData>(`/v1/analytics/promo-performance-detail?store_id=${STORE_ID}&demo_date=${encodeURIComponent(demo)}`);
+  } catch {
+    return null;
+  }
+}
+
+export async function getCampaignDashboard(): Promise<import("../types").CampaignDashboardResponse | null> {
+  try {
+    const demo = getDemoDate();
+    return await apiGet<import("../types").CampaignDashboardResponse>(`/v1/promotions/dashboard?store_id=${STORE_ID}&demo_date=${encodeURIComponent(demo)}`);
   } catch {
     return null;
   }
@@ -1652,10 +1881,17 @@ type HourlySalesItem = {
   pct_of_daily?: number | null;
 };
 
+type HourlySalesItemWithHour = {
+  hour: string;
+  sales_estimated: number;
+  pct_of_daily?: number;
+};
+
 type HourlySalesResponse = {
   data_source?: string;
   note?: string;
-  today?: HourlySalesItem[];
+  today?: HourlySalesItemWithHour[];
+  last_week?: HourlySalesItemWithHour[];
 };
 
 type SalesSummaryResponse = {
@@ -1874,7 +2110,7 @@ async function buildAiValidationSnapshot(): Promise<AiValidationSnapshot> {
     safeGet<InventoryCurrentItem[]>("/inventory/current"),
     safeGet<OrderRecommendationResponse>("/order/recommendations"),
     safeGet<OrderDeadlineItem[]>("/order/deadlines"),
-    safeGet<PromoPerformanceResponse>(`/v1/analytics/promo-performance?store_id=${STORE_ID}`),
+    safeGet<PromoPerformanceResponse>(`/v1/analytics/promo-performance?store_id=${STORE_ID}&demo_date=${encodeURIComponent(getDemoDate())}`),
     safeGet<HourlySalesResponse>(`/v1/analytics/hourly-sales?store_id=${STORE_ID}`),
     safeGet<SalesSummaryResponse>("/home/sales-summary"),
   ]);
@@ -1981,14 +2217,14 @@ async function buildAiValidationSnapshot(): Promise<AiValidationSnapshot> {
       id: "validation-inventory-risk",
       tags: ["검증완료", "생산관리", "재고분석"],
       date: buildValidationDate(7),
-      title: `${topRiskItem.product_name} 재고 부족이 손실의 직접 원인으로 확인됩니다`,
+      title: `${resolveProductDisplayName(topRiskItem.product_name)} 재고 부족이 손실의 직접 원인으로 확인됩니다`,
       detail: `현재 재고 ${formatNumber(Math.round(Number(topRiskItem.on_hand_eod ?? 0)))}개, 판매 ${formatNumber(
         Math.round(Number(topRiskItem.sold_qty ?? 0)),
       )}개, 품절 ${formatNumber(Math.round(Number(topRiskItem.stockout_minutes ?? 0)))}분으로 ${
         lossAmt > 0 ? `${fmtKRW(Math.round(lossAmt))} 손실이 추정됩니다.` : "기회손실 추정치는 아직 없습니다."
       }`,
       subItem: {
-        label: `${topRiskItem.product_name}은 최소 ${formatNumber(recommendedQty)}개 수준까지 생산·보충 기준을 상향하는 것이 안전합니다.`,
+        label: `${resolveProductDisplayName(topRiskItem.product_name)}은 최소 ${formatNumber(recommendedQty)}개 수준까지 생산·보충 기준을 상향하는 것이 안전합니다.`,
       },
       confidence: clampScore(82 + Math.min(12, Math.round(lossAmt / 900)), 82, 96),
     });
@@ -2020,7 +2256,7 @@ async function buildAiValidationSnapshot(): Promise<AiValidationSnapshot> {
 
   if (topOption && topRecommendedItems.length > 0) {
     const topItemsLabel = topRecommendedItems
-      .map((item) => `${item.product_name} ${formatNumber(Math.round(Number(item.quantity ?? 0)))}개`)
+      .map((item) => `${resolveProductDisplayName(item.product_name)} ${formatNumber(Math.round(Number(item.quantity ?? 0)))}개`)
       .join(", ");
     cards.push({
       id: "validation-order-pattern",
@@ -2033,7 +2269,7 @@ async function buildAiValidationSnapshot(): Promise<AiValidationSnapshot> {
       subItem: {
         label:
           orderRecommendations?.explanation ||
-          `${topRecommendedItems[0]?.product_name ?? "상위 품목"} 중심으로 먼저 발주를 확정하고 나머지 품목은 재고 상황을 함께 보세요.`,
+          `${resolveProductDisplayName(topRecommendedItems[0]?.product_name) ?? "상위 품목"} 중심으로 먼저 발주를 확정하고 나머지 품목은 재고 상황을 함께 보세요.`,
       },
       confidence: clampScore(
         84 -
@@ -2345,6 +2581,7 @@ export type BenchmarkSimilarPeer = {
 export type BenchmarkSnapshot = {
   status: string;
   dataSource: string;
+  hourlyDataSource: string;
   note: string | null;
   period: { start: string; end: string };
   storeName: string;
@@ -2409,6 +2646,7 @@ function buildFallbackBenchmarkSnapshot(compareStoreIds?: string[]): BenchmarkSn
   return {
     status: "fallback",
     dataSource: "fallback",
+    hourlyDataSource: "none",
     note: "벤치마킹 실데이터를 불러오지 못해 기존 시연용 데이터로 표시합니다.",
     period: { start: startDate.toISOString().slice(0, 10), end: demoDate },
     storeName: DEMO_PRIMARY_STORE_NAME,
@@ -2611,10 +2849,11 @@ async function buildBenchmarkSnapshot(options?: { compareStoreIds?: string[] }):
       payments?.stores?.find((store) => store.store_id === peer.store_id)?.methods?.[0]?.payment_group ?? "결제 데이터 없음";
     const promotionFocus =
       normalizeCampaignYear(promotions?.stores?.find((store) => store.store_id === peer.store_id)?.promotions?.[0]?.campaign_name ?? "프로모션 데이터 없음");
+    const topProductDisplay = resolveProductDisplayName(peer.top_product);
     const recommendation =
       peer.sales_diff_pct != null && peer.sales_diff_pct > 0
         ? `${peerName}은 ${peer.peak_hour != null ? `${peer.peak_hour}시 피크` : "피크 운영"}와 ${promotionFocus} 반응이 강합니다.`
-        : `${peerName}은 ${paymentFocus} 비중과 ${peer.top_product ?? "상위 상품"} 구성이 비교 포인트입니다.`;
+        : `${peerName}은 ${paymentFocus} 비중과 ${topProductDisplay} 구성이 비교 포인트입니다.`;
     return {
       id: `benchmark-${peer.store_id}`,
       storeId: peer.store_id,
@@ -2622,9 +2861,9 @@ async function buildBenchmarkSnapshot(options?: { compareStoreIds?: string[] }):
       salesDiff: Number(peer.sales_diff_pct ?? 0),
       quantityDiff: Number(peer.qty_diff_pct ?? 0),
       wasteDiff: Number(peer.waste_diff_pct ?? 0),
-      mainProduct: cleanProductName(peer.top_product ?? "상위 상품 없음"),
+      mainProduct: topProductDisplay,
       peakHourLabel: peer.peak_hour != null ? `${peer.peak_hour}시` : "-",
-      recommendation,
+      recommendation: resolveProductNamesInText(recommendation),
       isRecommended: Boolean(peer.is_recommended),
     };
   });
@@ -2671,7 +2910,7 @@ async function buildBenchmarkSnapshot(options?: { compareStoreIds?: string[] }):
         ? `비교 매장 평균 대비 일평균 매출 격차는 ${formatPct(summary.sales_gap_pct)}입니다.`
         : "비교 매출 격차는 아직 계산되지 않았습니다.",
       strongestItem
-        ? `우리 매장의 대표 상품은 ${strongestItem.product_name}이고 판매수량은 ${formatNumber(Math.round(strongestItem.sold_qty))}개입니다.`
+        ? `우리 매장의 대표 상품은 ${resolveProductDisplayName(strongestItem.product_name)}이고 판매수량은 ${formatNumber(Math.round(strongestItem.sold_qty))}개입니다.`
         : "현재 대표 상품 데이터가 없습니다.",
     ],
     risk: [
@@ -2697,6 +2936,7 @@ async function buildBenchmarkSnapshot(options?: { compareStoreIds?: string[] }):
   return {
     status: summary.status ?? "active",
     dataSource: summary.data_source ?? "benchmarking",
+    hourlyDataSource: hourly?.data_source ?? (hourly?.status === "no_data" ? "fallback" : "real") ?? "fallback",
     note: summary.note ?? null,
     period:
       summary.period ??
@@ -2767,24 +3007,15 @@ const mockAlarmCards: AlarmCard[] = [
   { id: "ALT-003", code: "ALT-003", categories: ["재고"], datetime: "발생일시 발생 09:42", title: "배달앱 재고 품절시 감지", description: "POS 재고와 배달앱 노출 재고 간 오차 감지 후 자동 알림 발송", condition: "조건: 품절 감지 × 3개  Push", tags: ["Push"], enabled: false },
   { id: "ALT-004", code: "ALT-004", categories: ["배송"], datetime: "발생일시 발생 14:12", title: "시간대별 매출 이상 감지", description: "특정 시간 구간 내 매출이 예상치 기준에서 이탈 시 알림", condition: "조건: 전주 대비 × 40%  카테고리팀  Push  이메일", tags: ["카테고리팀", "Push", "이메일"], enabled: true },
   { id: "ALT-005", code: "ALT-005", categories: ["배송"], datetime: "발생일시 발생 11:30", title: "일 목표 달성률 경보", description: "오후 특정 시간 기준 일 목표 달성률이 낮아질 때 알림", condition: "조건: 일 기간 목표 달성률 × 70%  카테고리팀", tags: ["카테고리팀"], enabled: true },
-  { id: "ALT-006", code: "ALT-006", categories: ["Agent"], datetime: "발생일시 발생 16:35", title: "Agent A 긴급 감지", description: "Agent A가 긴급 이벤트를 감지하여 해당 내용을 즉시 알림", condition: "조건: 신뢰도 × 80%", tags: ["Push"], enabled: true },
-  { id: "ALT-007", code: "ALT-007", categories: ["Agent"], datetime: "발생일시 발생 13:10", title: "Agent B 주문 미급 추천", description: "최근 20분 간 Agent 분석 후 추가 주문 추천이 발생했을 경우 알림", condition: "조건: 재고 20개 한  Push", tags: ["Push"], enabled: true },
-  { id: "ALT-008", code: "ALT-008", categories: ["Agent"], datetime: "발생일시 발생 10:55", title: "AI 신뢰도 부족 추천 감수 요청", description: "신뢰도 70% 미만의 AI 추천 사항에 대해 사람이 검토하도록 요청", condition: "조건: 신뢰도 × 70%  이메일", tags: ["이메일"], enabled: false },
-  { id: "ALT-009", code: "ALT-009", categories: ["배달"], datetime: "발생일시 발생 15:48", title: "배달 냄비 지연 감지", description: "배달앱 평균 배달 시간보다 기준치 이상 지연 시 즉시 알림", condition: "조건: 평균 시간 × 100ms  Push", tags: ["Push"], enabled: true },
-  { id: "ALT-010", code: "ALT-010", categories: ["고객"], datetime: "발생일시 발생 08:20", title: "VIP 고객 미방문 알림", description: "일정 기간 동안 재방문 이력이 없는 VIP 고객에 대한 알림 발송", condition: "조건: 미방문 기간 × 21일  카테고리팀", tags: ["카테고리팀"], enabled: false },
+  { id: "ALT-006", code: "ALT-006", categories: ["Agent"], datetime: "발생일시 발생 16:35", title: "생산관리 에이전트 긴급 감지", description: "생산관리 에이전트가 긴급 이벤트를 감지하여 해당 내용을 즉시 알림", condition: "조건: 신뢰도 × 80%", tags: ["Push"], enabled: true },
+  { id: "ALT-007", code: "ALT-007", categories: ["Agent"], datetime: "발생일시 발생 13:10", title: "주문관리 에이전트 주문 추천", description: "최근 20분 간 주문 분석 후 추가 주문 추천이 발생했을 경우 알림", condition: "조건: 재고 20개 한  Push", tags: ["Push"], enabled: true },
 ];
 
 export function getAlarmCards(): Promise<AlarmCard[]> {
   return cached("alarmCards", () => mockDelay(mockAlarmCards));
 }
 
-const mockAlarmHistory: AlarmHistoryItem[] = [
-  { id: "hist-001", time: "16:15", description: "카테고리별 재고 임계치 도달" },
-  { id: "hist-002", time: "15:33", description: "오후 매출 하락 -12.4% 감지" },
-  { id: "hist-003", time: "14:08", description: "시그니처라떼 소진 1시간 전" },
-  { id: "hist-004", time: "12:51", description: "쿠팡이츠 평균 딜리버리 270ms" },
-  { id: "hist-005", time: "11:04", description: "오전 목표 달성률 82%" },
-];
+const mockAlarmHistory: AlarmHistoryItem[] = [];
 
 export function getAlarmHistory(): Promise<AlarmHistoryItem[]> {
   return cached("alarmHistory", () => mockDelay(mockAlarmHistory));
@@ -2816,7 +3047,7 @@ export async function getRecommendedActions(): Promise<RecommendedAction[]> {
       .filter((item) => item.stockout_risk === "HIGH" || item.reorder_triggered)
       .slice(0, 3)
       .map((item) => ({
-        product_name: item.product_name,
+        product_name: resolveProductDisplayName(item.product_name),
         recommended_qty: Math.max(
           Math.round(Number(item.sold_qty ?? 0) + Math.abs(Math.min(0, Number(item.on_hand_eod ?? 0)))),
           8,
@@ -2824,8 +3055,8 @@ export async function getRecommendedActions(): Promise<RecommendedAction[]> {
         urgency: item.stockout_risk === "HIGH" ? "high" : "medium",
         reason:
           Number(item.estimated_chance_loss ?? 0) > 0
-            ? `${item.product_name} 기회손실 ${fmtKRW(Math.round(Number(item.estimated_chance_loss ?? 0)))} 추정`
-            : `${item.product_name} ${getInventoryDisplayMetrics(Number(item.on_hand_eod ?? 0)).detailLabel}`,
+            ? `${resolveProductDisplayName(item.product_name)} 기회손실 ${fmtKRW(Math.round(Number(item.estimated_chance_loss ?? 0)))} 추정`
+            : `${resolveProductDisplayName(item.product_name)} ${getInventoryDisplayMetrics(Number(item.on_hand_eod ?? 0)).detailLabel}`,
       }));
     const actions: RecommendedAction[] = [];
 
@@ -2843,7 +3074,7 @@ export async function getRecommendedActions(): Promise<RecommendedAction[]> {
       actions.push({
         id: "action-002",
         title: "부족 자재",
-        subtitle: recs.length > 1 ? `${recs[1].product_name} 외 ${Math.max(0, recs.length - 2)}건` : "확인 필요",
+        subtitle: recs.length > 1 ? `${resolveProductDisplayName(recs[1].product_name)} 외 ${Math.max(0, recs.length - 2)}건` : "확인 필요",
         badgeType: "긴급",
         avatarInitial: icoAction02,
       });
@@ -2878,7 +3109,7 @@ export async function getTodayOrderSummary(): Promise<TodayOrderSummary> {
     ]);
 
     const items = (recData.options?.[0]?.items ?? []).slice(0, 6).map((it) => ({
-      name: it.product_name,
+      name: resolveProductDisplayName(it.product_name),
       quantity: `${it.quantity}개`,
     }));
 
@@ -2941,7 +3172,7 @@ export async function getTodaySalesSnapshot(): Promise<TodaySalesSnapshot> {
       .slice(0, 5)
       .map((item, index) => ({
       rank: index + 1,
-      name: item.product_name,
+      name: resolveProductDisplayName(item.product_name),
       count: `${Math.round(Number(item.sold_qty ?? 0))}개`,
     }));
 
@@ -2992,8 +3223,17 @@ export function getRealtimeMetrics(): Promise<RealtimeMetric[]> {
 //  생산관리 에이전트 — API: /inventory/current
 // ══════════════════════════════════════════════════════════════════
 
+// 매장 영업 시간별 판매 분포 (8시~21시, 합=1.0)
+const HOURLY_PROFILE = {
+  8: 0.03, 9: 0.04, 10: 0.06, 11: 0.08,
+  12: 0.1, 13: 0.09, 14: 0.08, 15: 0.07,
+  16: 0.08, 17: 0.1, 18: 0.11, 19: 0.09,
+  20: 0.04, 21: 0.03,
+};
+
 export async function getProductionAgent(): Promise<ProductionAgentData> {
   try {
+    const demoHour = getDemoDateObject().getHours();
     const [inventoryRaw, cockpitRaw] = await Promise.all([
       safeGet<InventoryCurrentItem[]>("/inventory/current"),
       safeGet<{
@@ -3045,9 +3285,20 @@ export async function getProductionAgent(): Promise<ProductionAgentData> {
       const stockoutRisk = String(
         inventoryItem?.stockout_risk ?? ("risk_level" in item ? item.risk_level : "LOW") ?? "LOW",
       ).toUpperCase();
-      const hourlyBurnRate = Number(
-        ("hourly_burn_rate" in item ? item.hourly_burn_rate : null) ?? 0,
-      );
+       // hourly_burn_rate: cockpit API에서 제공되거나, 없으면 sold_qty * HOURLY_PROFILE로 계산
+       const rawBurnFromCockpit = "hourly_burn_rate" in item ? item.hourly_burn_rate : null;
+       const computedBurn = (inventoryItem?.sold_qty ?? 0) > 0
+         ? (inventoryItem?.sold_qty ?? 0) * (HOURLY_PROFILE[demoHour as keyof typeof HOURLY_PROFILE] ?? 1 / 14)
+         : null;
+       const hourlyBurnRate = Number(
+         rawBurnFromCockpit ?? computedBurn ?? 0,
+       );
+       const burnRateSource: "actual" | "estimated" | "none" =
+         rawBurnFromCockpit != null && rawBurnFromCockpit > 0
+           ? "actual"
+           : computedBurn != null && computedBurn > 0
+             ? "estimated"
+             : "none";
       const recommendedProductionQty = Math.max(
         0,
         Math.round(
@@ -3061,9 +3312,60 @@ export async function getProductionAgent(): Promise<ProductionAgentData> {
         "first_production" in item ? item.first_production ?? null : null;
       const secondProduction =
         "second_production" in item ? item.second_production ?? null : null;
-      const why = Array.isArray("why" in item ? item.why : null)
-        ? (item.why ?? []).filter(Boolean)
-        : [];
+      /* ── 패턴 기반 1차/2차 추천 (backend 이력 데이터 없을 때 HOURLY_PROFILE 기반 계산) ── */
+      const dailyDemand = recommendedProductionQty + Math.max(0, rawCurrentStock);
+      const SAFETY_STOCK = 3;
+      const profileKeys = Object.keys(HOURLY_PROFILE).map(Number).sort((a, b) => a - b);
+      const totalProfileShare = profileKeys.reduce((s, h) => s + HOURLY_PROFILE[h as keyof typeof HOURLY_PROFILE], 0);
+      /* hour → expected hourly demand */
+      const hourlyDemand = (h: number) => {
+        const share = totalProfileShare > 0 ? HOURLY_PROFILE[h as keyof typeof HOURLY_PROFILE] / totalProfileShare : 1 / profileKeys.length;
+        return dailyDemand > 0 ? dailyDemand * share : 0;
+      };
+      /* cumulative demand from hour `from` to hour `to` (inclusive) */
+      const demandBetween = (from: number, to: number) => {
+        let sum = 0;
+        for (const h of profileKeys) {
+          if (h >= from && h <= to) sum += hourlyDemand(h);
+        }
+        return sum;
+      };
+       /* 1차 available(진열 가능) 시각: 오전 피크 시간 (12:00) → production 시점 */
+      const morningHours = profileKeys.filter((h) => h <= 12);
+      const morningPeakH = morningHours.length > 0 ? morningHours.reduce((best, h) => {
+        const s = HOURLY_PROFILE[h as keyof typeof HOURLY_PROFILE];
+        return s > HOURLY_PROFILE[best as keyof typeof HOURLY_PROFILE] ? h : best;
+      }, morningHours[0]) : 12;
+      const firstAvailableHour = Math.max(8, morningPeakH);
+      const firstRegisterHour = Math.max(8, firstAvailableHour - 1);
+      /* 2차 available 시각: 오후 피크 시간 (18:00) → production 시점 */
+      const afternoonHours = profileKeys.filter((h) => h > 12);
+      let maxAfternoonShare = 0, afternoonPeakH = 18;
+      for (const h of afternoonHours) {
+        const s = HOURLY_PROFILE[h as keyof typeof HOURLY_PROFILE];
+        if (s > maxAfternoonShare) { maxAfternoonShare = s; afternoonPeakH = h; }
+      }
+      const secondAvailableHour = afternoonPeakH;
+      const secondRegisterHour = Math.max(8, secondAvailableHour - 1);
+      const fmtH = (h: number) => `${h.toString().padStart(2, "0")}:00`;
+      const firstRegisterTime = fmtH(firstRegisterHour);
+      const firstAvailableTime = fmtH(firstAvailableHour);
+      const secondRegisterTime = fmtH(secondRegisterHour);
+      const secondAvailableTime = fmtH(secondAvailableHour);
+       /* 1차 수량: 1차 available~2차 available까지 예상 판매량 + 안전재고 - 1차 시점 잔여 재고
+        * 1차 생산분은 firstAvailableHour 진열 이후부터 대응 가능하므로
+        * 8:00~firstAvailableHour 수요는 즉시 생산 필요 수량 또는 현재 재고로 대응
+        */
+       const demandMorning = demandBetween(8, firstAvailableHour - 1);
+       const stockAtFirst = Math.max(0, rawCurrentStock - demandMorning);
+       const demandForFirst = demandBetween(firstAvailableHour, secondAvailableHour - 1);
+       const firstPatternQty = dailyDemand > 0 ? Math.max(1, Math.round(demandForFirst - stockAtFirst + SAFETY_STOCK)) : null;
+       /* 2차 수량: 2차 available~마감까지 예상 판매량 + 안전재고 - 2차 시점 잔여 재고 */
+       const demandForSecond = demandBetween(secondAvailableHour, 21);
+       const stockAtSecond = Math.max(0, stockAtFirst + (firstPatternQty ?? 0) - demandForFirst);
+       const secondPatternQty = dailyDemand > 0 ? Math.max(1, Math.round(demandForSecond - stockAtSecond + SAFETY_STOCK)) : null;
+     const rawWhy = "why" in item ? (item as any).why : null;
+       const why = Array.isArray(rawWhy) ? (rawWhy ?? []).filter(Boolean) : [];
       const shortage = Math.max(current.shortage, predicted.shortage);
       const status = deriveProductionStatus({
         current,
@@ -3076,18 +3378,25 @@ export async function getProductionAgent(): Promise<ProductionAgentData> {
       });
       const currentPhrase = current.currentLabel;
       const predictedPhrase = getPredictedStockLabel(predicted);
-      const groundingLabel = joinCompact([
-        `근거: 최근 1시간 판매 속도 ${formatBurnRate(hourlyBurnRate)}`,
+       const burnRateText = formatBurnRate(hourlyBurnRate);
+       const burnLabelPrefix =
+         burnRateSource === "actual"
+           ? "근거: 최근 1시간 판매 속도"
+           : burnRateSource === "estimated"
+             ? "근거: 시간대 판매 패턴"
+             : null;
+       const groundingLabel = joinCompact([
+         burnLabelPrefix && burnRateText ? `${burnLabelPrefix} ${burnRateText}` : null,
         firstProduction?.avg_time
-          ? `최근 4주 1차 ${firstProduction.avg_time} / ${formatNumber(
+           ? `최근 생산 이력 1차 ${firstProduction.avg_time} / ${formatNumber(
               Number(firstProduction.avg_qty ?? 0),
             )}개`
-          : "최근 4주 1차 생산 패턴 부족",
+           : "최근 생산 이력 기반 1차 생산 패턴 부족",
         secondProduction?.avg_time
           ? `2차 ${secondProduction.avg_time} / ${formatNumber(
               Number(secondProduction.avg_qty ?? 0),
             )}개`
-          : "2차 생산 패턴 부족",
+           : "2차 생산 패턴 부족 — 생산 이력 부족 시 판매 패턴 기준",
         "리드타임 1시간 반영",
         why[0] ? `실적 기반 추정 (${why[0]})` : "실적 기반 추정",
       ]);
@@ -3096,12 +3405,46 @@ export async function getProductionAgent(): Promise<ProductionAgentData> {
           ? `${productName}은 현재 모니터링 유지 대상입니다.`
           : `${productName} ${status.actionText}`;
 
-      return {
+       const oneHourShortfall = Math.max(
+         0,
+         Math.ceil(hourlyBurnRate * 1 - rawCurrentStock),
+       );
+        /* ── ETA 기반 찬스로스 계산 (리드타임 1시간) ──
+         * 품절 예상 시각 = 현재 시각 + ETA
+         * 진열 가능 시각 = 현재 시각 + 생산 리드타임 60분
+         * 품절 위험 구간 = 품절 예상 시각 ~ 진열 가능 시각
+         * 예상 손실 수량 = hourlyBurnRate × max(60 - ETA, 0) / 60
+         * inventory/current의 estimated_chance_loss는 일일 기준이므로, ETA 기반 계산과 비교 후 큰 값 사용
+         */
+        const invItemForPrice = inventoryMap.get(productId);
+        const unitPrice = estimateUnitPrice(productId, productName, invItemForPrice);
+        const inventoryLoss = Number(inventoryItem?.estimated_chance_loss ?? 0);
+        let etaMinutes: number | null = null;
+        let estLossQty: number | null = null;
+        let estLossAmount: number | null = null;
+        if (hourlyBurnRate > 0 && rawCurrentStock >= 0) {
+          etaMinutes = (rawCurrentStock / hourlyBurnRate) * 60;
+          const leadTimeMin = 60;
+          if (etaMinutes < leadTimeMin) {
+            const riskMinutes = leadTimeMin - etaMinutes;
+            estLossQty = Math.max(0, Math.round(hourlyBurnRate * riskMinutes / 60));
+            estLossAmount = unitPrice != null && unitPrice > 0 ? estLossQty * unitPrice : null;
+          } else {
+            estLossQty = 0;
+            estLossAmount = null;
+          }
+        }
+        // ETA 기반 손실보다 inventory/current 추정 손실이 크면 큰 값 사용
+        if (inventoryLoss > 0) {
+          estLossAmount = estLossAmount != null ? Math.max(estLossAmount, inventoryLoss) : inventoryLoss;
+        }
+       return {
         id: `prod-${productId}`,
         name: productName,
         quantity: current.currentCount,
         isLow: status.statusLabel !== "재고 적정",
         shortage,
+        oneHourShortfall,
         badgeLabel:
           shortage > 0
             ? `부족 ${formatNumber(shortage)}개`
@@ -3115,23 +3458,42 @@ export async function getProductionAgent(): Promise<ProductionAgentData> {
         predictedStock1h: predicted.currentCount,
         predictedLabel: predictedPhrase,
         recommendedProductionQty,
-        hourlyBurnRate,
+        dailyRecommendedQty: recommendedProductionQty,
+         hourlyBurnRate,
+         burnRateSource,
         riskLevel: stockoutRisk,
         stockoutProbability: Number(
           ("stockout_probability" in item ? item.stockout_probability : null) ?? 0,
         ),
         groundingLabel,
         actionLabel: `지금 할 일: ${actionLabel}`,
-        firstProductionTime: firstProduction?.avg_time ?? null,
-        firstProductionQty: Number(firstProduction?.avg_qty ?? 0) || null,
-        secondProductionTime: secondProduction?.avg_time ?? null,
-        secondProductionQty: Number(secondProduction?.avg_qty ?? 0) || null,
-        leadTimeLabel: "리드타임 1시간 반영",
-      };
-    }).sort((a, b) => {
+        firstProductionTime: firstProduction?.avg_time ?? (firstPatternQty ? firstRegisterTime : null),
+        firstProductionQty: Number(firstProduction?.avg_qty ?? 0) || firstPatternQty || null,
+        firstRegisterTime: (firstProduction || firstPatternQty) ? firstRegisterTime : null,
+        firstAvailableTime: (firstProduction || firstPatternQty) ? firstAvailableTime : null,
+        secondProductionTime: secondProduction?.avg_time ?? (secondPatternQty ? secondRegisterTime : null),
+        secondProductionQty: Number(secondProduction?.avg_qty ?? 0) || secondPatternQty || null,
+        secondRegisterTime: (secondProduction || secondPatternQty) ? secondRegisterTime : null,
+        secondAvailableTime: (secondProduction || secondPatternQty) ? secondAvailableTime : null,
+         productionSource: (firstProduction || secondProduction) ? ("history" as const) : ("pattern" as const),
+         leadTimeLabel: "리드타임 1시간 반영",
+         etaMinutes,
+         estimatedLossQty: estLossQty,
+         estimatedLossAmount: estLossAmount,
+         unitPrice,
+       };
+    })
+    .filter((item) => {
+      const invItem = inventoryMap.get(item.id.replace(/^prod-/, ""));
+      return isProductionEligible(item.id, item.name, invItem?.category ?? undefined);
+    })
+    .sort((a, b) => {
       const rank = (label?: string) =>
         label === "즉시 생산 필요" ? 0 : label === "보충 필요" ? 1 : label === "주의" ? 2 : 3;
+      const aHasPattern = (a.firstProductionTime || a.secondProductionTime) ? 1 : 0;
+      const bHasPattern = (b.firstProductionTime || b.secondProductionTime) ? 1 : 0;
       return (
+        bHasPattern - aHasPattern ||
         rank(a.statusLabel) - rank(b.statusLabel) ||
         Number(b.recommendedProductionQty ?? 0) - Number(a.recommendedProductionQty ?? 0) ||
         Number(b.shortage ?? 0) - Number(a.shortage ?? 0)
@@ -3174,35 +3536,118 @@ export async function getProductionAgent(): Promise<ProductionAgentData> {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  생산관리 예상 추가 매출 배너 — API: /inventory/production-guide
+//  생산관리 예상 추가 매출 배너 — production agent 기준 TOP_N으로 계산
 // ══════════════════════════════════════════════════════════════════
+
+const PRODUCTION_TOP_N = 8;
+
+function urgencyScoreItem(item: ProductionItem): number {
+  let score = 0;
+  const shortage = item.shortage ?? 0;
+  if (item.statusLabel === "즉시 생산 필요") score += 1000;
+  else if (item.statusLabel === "보충 필요") score += 500;
+  score += shortage * 50;
+  score += (item.hourlyBurnRate ?? 0) * 20;
+  const ps1h = item.predictedStock1h ?? 0;
+  if (ps1h < 0) score += 200;
+  else if (ps1h === 0) score += 100;
+  return score;
+}
+
+export async function getInventorySnapshotSummary(): Promise<{
+  totalCount: number;
+  urgentCount: number;
+  supplementCount: number;
+  normalCount: number;
+} | null> {
+  try {
+    const demoDate = getDemoDate();
+    const demoTime = getDemoTime();
+    if (!demoDate || !demoTime) return null;
+    const snap = await getInventorySnapshot(demoDate, demoTime, "", "all");
+    if (!snap?.summary) return null;
+    return {
+      totalCount: snap.summary.total_count,
+      urgentCount: snap.summary.urgent_count,
+      supplementCount: snap.summary.supplement_count,
+      normalCount: snap.summary.normal_count,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getInventoryChanceLoss(): Promise<number> {
+  try {
+    const url = applyDemoQueryParams("/inventory/current");
+    const raw = await apiGet<any[]>(url);
+    return raw.reduce((s, i) => s + (Number(i.estimated_chance_loss ?? 0) || 0), 0);
+  } catch {
+    return 0;
+  }
+}
 
 export async function getProductionSummary(): Promise<ProductionSummary> {
   try {
-    const rawData = await apiGet<unknown[]>("/inventory/current");
-    const data = (rawData ?? []) as Array<Record<string, unknown>>;
-    const riskyItems = data.filter((item) => {
-      const statusVal = String(item.status ?? item.stockout_risk ?? "ok").toLowerCase();
-      return statusVal === "warning" || statusVal === "critical" || statusVal === "high";
-    });
-    const urgentCount = riskyItems.length;
-    const revenue = riskyItems.reduce(
-      (sum, item) => sum + Math.round(Number(item.estimated_chance_loss ?? 0)),
-      0,
+    const production = await getProductionAgent();
+    const items = production.items;
+    const actionable = items.filter(
+      (it) => (it.statusLabel === "즉시 생산 필요" || it.statusLabel === "보충 필요")
+        && ((it.shortage ?? 0) > 0 || (it.recommendedProductionQty ?? 0) > 0 || it.quantity === 0),
     );
+    const sorted = [...actionable].sort((a, b) => urgencyScoreItem(b) - urgencyScoreItem(a));
+    const topCount = Math.min(sorted.length, PRODUCTION_TOP_N);
+    const restCount = sorted.length - topCount;
+
+    /* ETA 기반 찬스로스 합계 (actionable 품목만, unitPrice > 0) */
+    const lossItems = sorted
+      .filter((it) => (it.estimatedLossAmount ?? 0) > 0)
+      .map((it) => ({
+        id: it.id,
+        name: it.name,
+        estimatedLossQty: it.estimatedLossQty ?? 0,
+        estimatedLossAmount: it.estimatedLossAmount ?? 0,
+        etaMinutes: it.etaMinutes ?? 0,
+        hourlyBurnRate: it.hourlyBurnRate ?? 0,
+      }));
+    const totalEstimatedLoss = lossItems.reduce((s, it) => s + it.estimatedLossAmount, 0);
+
+    const urgentLabel = topCount > 0
+      ? `${topCount}개 선별`
+      : "적정 재고 수준 유지 중";
+
+    const bannerLabel = topCount > 0
+      ? `긴급 생산 대상 ${topCount}개 선별 · 리드타임 1시간 기준`
+      : "적정 재고 수준 유지 중";
 
     return {
-      expectedRevenue: fmtKRW(Math.round(revenue)),
-      urgentCount,
-      urgentLabel: urgentCount > 0 ? `${urgentCount}건 긴급 생산 필요!` : "적정 재고 수준 유지 중",
+      bannerLabel,
+      urgentCount: topCount,
+      urgentLabel,
+      restCount,
+      totalEstimatedLoss,
+      lossItems,
     };
   } catch {
     return mockDelay({
-      expectedRevenue: "1,085,000원",
-      urgentCount: 2,
-      urgentLabel: "1시간 뒤 품절 예상 즉시 생산 필요!",
+      bannerLabel: "적정 재고 수준 유지 중",
+      urgentCount: 0,
+      urgentLabel: "적정 재고 수준 유지 중",
+      restCount: 0,
+      totalEstimatedLoss: 0,
+      lossItems: [],
     });
   }
+}
+
+function estimateUnitPrice(
+  productId: string,
+  productName: string,
+  inventoryItem: InventoryCurrentItem | undefined,
+): number | null {
+  const basePrice = inventoryItem?.base_price ?? null;
+  if (basePrice != null && basePrice > 0) return basePrice;
+  return null;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -3226,33 +3671,56 @@ export async function getProductionBatchItems(): Promise<ProductionBatchItem[]> 
         8,
         Math.min(100, Math.round((item.quantity / targetBase) * 100)),
       );
-
       return {
         id: `batch-${item.id}`,
         name: item.name,
+        product_id: item.id.replace(/^prod-/, ""),
         bgColor: BATCH_COLORS[idx % BATCH_COLORS.length],
         status: item.statusLabel ?? null,
         aiWarning: [item.statusDescription, item.actionLabel].filter(Boolean).join(" · ") || null,
         lossAmount:
-          item.recommendedProductionQty && item.recommendedProductionQty > 0
-            ? `권장 ${formatNumber(item.recommendedProductionQty)}개`
-            : item.shortage && item.shortage > 0
-              ? `부족 ${formatNumber(item.shortage)}개`
-              : null,
+          item.dailyRecommendedQty && item.dailyRecommendedQty > 0
+            ? `일일 권장 ${formatNumber(item.dailyRecommendedQty ?? 0)}개`
+            : null,
         currentCount: item.quantity,
-        targetShortfall: item.recommendedProductionQty ?? item.shortage ?? null,
+        targetShortfall: item.oneHourShortfall ?? item.shortage ?? null,
         progressPercent,
         currentStockLabel: item.currentLabel,
         shortageLabel: item.predictedLabel ?? null,
         detailLabel: item.detailLabel,
         shortageCount: item.shortage,
+        predictedStock1h: item.predictedStock1h ?? null,
+        hourlyBurnRate: item.hourlyBurnRate ?? null,
+        burnRateSource: item.burnRateSource ?? null,
+        firstProductionTime: item.firstProductionTime ?? null,
+        firstProductionQty: item.firstProductionQty ?? null,
+        firstRegisterTime: item.firstRegisterTime ?? null,
+        firstAvailableTime: item.firstAvailableTime ?? null,
+        secondProductionTime: item.secondProductionTime ?? null,
+        secondProductionQty: item.secondProductionQty ?? null,
+        secondRegisterTime: item.secondRegisterTime ?? null,
+        secondAvailableTime: item.secondAvailableTime ?? null,
+        productionSource: item.productionSource ?? null,
+        oneHourShortfall: item.oneHourShortfall ?? null,
+        dailyRecommendedQty: item.dailyRecommendedQty ?? null,
+        recommendedProductionQty: item.recommendedProductionQty ?? null,
+        predictedLabel: item.predictedLabel ?? null,
+        statusLabel: item.statusLabel ?? null,
+        statusDescription: item.statusDescription ?? null,
+        groundingLabel: item.groundingLabel ?? null,
+        actionLabel: item.actionLabel ?? null,
+        shortage: item.shortage ?? null,
+        etaMinutes: item.etaMinutes ?? null,
+        estimatedLossQty: item.estimatedLossQty ?? null,
+        estimatedLossAmount: item.estimatedLossAmount ?? null,
+        unitPrice: item.unitPrice ?? null,
       };
     });
   } catch {
     return mockDelay([
-      { id: "batch-001", name: "초코링", bgColor: "#f9e4c8", status: "즉시 생산 필요" as const, aiWarning: "현재 보유가 낮아 즉시 생산 검토가 필요합니다. · 지금 할 일: 우선 생산 수량을 확인하세요.", lossAmount: "권장 28개", currentCount: 4, targetShortfall: 28, progressPercent: 14, currentStockLabel: "현재 보유 4개", shortageLabel: "1시간 뒤 예상 0개 · 부족 24개" },
-      { id: "batch-002", name: "아메리카노 원두", bgColor: "#d4b896", status: "보충 필요" as const, aiWarning: "현재 보유가 낮아 보충 계획을 확인해야 합니다. · 지금 할 일: 보충 또는 생산 가능 여부를 확인하세요.", lossAmount: "권장 12개", currentCount: 4, targetShortfall: 12, progressPercent: 18, currentStockLabel: "현재 보유 4개", shortageLabel: "1시간 뒤 예상 1개" },
-      { id: "batch-003", name: "달고나 츄이스티 약과", bgColor: "#e8d5b0", status: "재고 적정" as const, aiWarning: "다음 1시간 예상 판매량 기준으로 즉시 생산 필요는 없습니다. · 지금 할 일: 현재 재고를 유지하면서 모니터링하세요.", lossAmount: null, currentCount: 4, targetShortfall: null, progressPercent: 40, currentStockLabel: "현재 보유 4개", shortageLabel: "1시간 뒤 예상 3개" },
+       { id: "batch-001", name: "초코링", product_id: "1001", bgColor: "#f9e4c8", status: "즉시 생산 필요" as const, aiWarning: "현재 보유가 낮아 즉시 생산 검토가 필요합니다. · 지금 할 일: 우선 생산 수량을 확인하세요.", lossAmount: "권장 28개", currentCount: 4, targetShortfall: 28, progressPercent: 14, currentStockLabel: "4개", shortageLabel: "1시간 뒤 예상 0개 · 부족 24개" },
+       { id: "batch-002", name: "아메리카노 원두", product_id: "1002", bgColor: "#d4b896", status: "보충 필요" as const, aiWarning: "현재 보유가 낮아 보충 계획을 확인해야 합니다. · 지금 할 일: 보충 또는 생산 가능 여부를 확인하세요.", lossAmount: "권장 12개", currentCount: 4, targetShortfall: 12, progressPercent: 18, currentStockLabel: "4개", shortageLabel: "1시간 뒤 예상 1개" },
+       { id: "batch-003", name: "달고나 츄이스티 약과", product_id: "1003", bgColor: "#e8d5b0", status: "재고 적정" as const, aiWarning: "다음 1시간 예상 판매량 기준으로 즉시 생산 필요는 없습니다. · 지금 할 일: 현재 재고를 유지하면서 모니터링하세요.", lossAmount: null, currentCount: 4, targetShortfall: null, progressPercent: 40, currentStockLabel: "4개", shortageLabel: "1시간 뒤 예상 3개" },
     ]);
   }
 }
@@ -3278,14 +3746,25 @@ export async function getOrderAgent(): Promise<OrderAgentData> {
       safeGet<InventoryCurrentItem[]>(inventoryPath),
     ]);
 
-    const demoHour = getDemoDateObject().getHours();
+    /* "시각까지의 누적" 규칙: 8~(H-1)시 전체 + H시×(M/60) */
+    const demoDateObj = getDemoDateObject();
+    const demoAsOfHour = demoDateObj.getHours() + demoDateObj.getMinutes() / 60;
+    const demoHour = demoDateObj.getHours();
     const hourlyRows = (summaryData?.hourly_trend ?? [])
-      .filter((row) => Number(row.hour) <= demoHour)
+      .filter((row) => Number(row.hour) < demoAsOfHour)
       .sort((a, b) => Number(a.hour) - Number(b.hour));
     const cumulativeSales = hourlyRows.reduce(
       (sum, row) => sum + Number(row.revenue ?? 0),
       0,
     );
+    if (demoAsOfHour - demoHour > 0) {
+      const partialRow = (summaryData?.hourly_trend ?? []).find(
+        (row) => Number(row.hour) === demoHour
+      );
+      if (partialRow) {
+        cumulativeSales += Number(partialRow.revenue ?? 0) * (demoAsOfHour - demoHour);
+      }
+    }
     const chartData =
       hourlyRows.length > 0
         ? hourlyRows.map((row) => ({
@@ -3305,13 +3784,24 @@ export async function getOrderAgent(): Promise<OrderAgentData> {
       })
       .slice(0, 6);
 
-    const currentHourLabel =
-      hourlyRows.length > 0
-        ? `${String(hourlyRows[hourlyRows.length - 1]?.hour ?? demoHour).padStart(2, "0")}:00`
-        : `${String(demoHour).padStart(2, "0")}:00`;
+    const currentHourLabel = `${String(demoHour).padStart(2, "0")}:00`;
+
+    /* HOURLY_PROFILE 기반 cumulative ratio 계산 (시각까지의 누적 규칙) */
+    const profileKeys = Object.keys(HOURLY_PROFILE).map(Number).sort((a, b) => a - b);
+    const totalProfile = profileKeys.reduce((s, h) => s + HOURLY_PROFILE[h as keyof typeof HOURLY_PROFILE], 0);
+    let cumulativeRatio = 0;
+    if (demoHour >= 8) {
+      let ratio = profileKeys.filter(h => h < demoHour).reduce((s, h) => s + HOURLY_PROFILE[h as keyof typeof HOURLY_PROFILE], 0) / totalProfile;
+      const frac = demoAsOfHour - demoHour;
+      if (frac > 0 && frac < 1 && demoHour <= 21) {
+        ratio += (HOURLY_PROFILE[demoHour as keyof typeof HOURLY_PROFILE] ?? 0) * frac / totalProfile;
+      }
+      cumulativeRatio = ratio;
+    }
 
     const items = rankedItems.map((item, index) => {
       const soldQty = Math.max(Math.round(Number(item.sold_qty ?? 0)), 0);
+      const currentEst = soldQty > 0 ? Math.max(1, Math.round(soldQty * cumulativeRatio)) : 0;
       const risk = String(item.stockout_risk ?? "").toLowerCase();
       const status =
         risk === "high" || risk === "critical"
@@ -3321,10 +3811,12 @@ export async function getOrderAgent(): Promise<OrderAgentData> {
             : "안정";
       return {
         id: `sales-${item.product_id}`,
-        orderId: `${currentHourLabel} 판매`,
+        orderId: `${currentHourLabel} 기준 추정`,
         status,
         productName: resolveProductDisplayName(item.product_name),
         type: `금일 ${formatNumber(soldQty)}개 판매`,
+        currentQty: currentEst,
+        endOfDayQty: soldQty,
       };
     });
 
@@ -3359,7 +3851,7 @@ export async function getOrderAgent(): Promise<OrderAgentData> {
 // ══════════════════════════════════════════════════════════════════
 
 const mockProductAnalysis: ProductAnalysisData = {
-  tabs: ["도넛", "커피원두", "냉동/냉장", "용품/상품"],
+  tabs: ["도넛", "커피원두", "냉동/냉장", "기타 상품"],
   itemsByTab: {
     도넛: [
       { id: "pa-001", name: "도넛1", quantity: 284, revenue: 200230, salesContribution: 67, promotionEffect: 81, trend: "up" },
@@ -3376,13 +3868,11 @@ const mockProductAnalysis: ProductAnalysisData = {
       { id: "pa-008", name: "말차 파우더", quantity: 56, revenue: 84000, salesContribution: 38, promotionEffect: 52, trend: "down" },
       { id: "pa-009", name: "망고 퓨레", quantity: 44, revenue: 66000, salesContribution: 29, promotionEffect: 40, trend: "up" },
     ],
-    "용품/상품": [
+    "기타 상품": [
       { id: "pa-010", name: "던킨 텀블러", quantity: 38, revenue: 190000, salesContribution: 72, promotionEffect: 85, trend: "up" },
-      { id: "pa-011", name: "종이컵 500개", quantity: 20, revenue: 30000, salesContribution: 18, promotionEffect: 22, trend: "down" },
-      { id: "pa-012", name: "빨대 묶음", quantity: 15, revenue: 9000, salesContribution: 10, promotionEffect: 14, trend: "down" },
     ],
   },
-  aiStatus: "실시간 데이터 7개씩 당시 ±12% 에러 / 기록 -15% / 잔이 에러 없음",
+  aiStatus: "실시간 판매 데이터를 기준으로 상품별 매출 비중과 프로모션 효과를 분석합니다",
 };
 
 export function getProductAnalysis(): Promise<ProductAnalysisData> {
@@ -3396,6 +3886,8 @@ export function getProductAnalysis(): Promise<ProductAnalysisData> {
 let _orderRecCache: Promise<unknown> | null = null;
 function getOrderRecommendationsOnce(): Promise<unknown> {
   if (!_orderRecCache) {
+    const demoDate = getDemoDateObject().toISOString().slice(0, 10);
+    const demoTime = getDemoDateObject().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
     _orderRecCache = apiGet<{
       target_date: string;
       options: {
@@ -3405,7 +3897,7 @@ function getOrderRecommendationsOnce(): Promise<unknown> {
         flags?: string[];
         items: { product_id: string; product_name: string; quantity: number; base_price: number }[];
       }[];
-    }>("/order/recommendations").catch(() => null);
+    }>(`/order/recommendations?demo_date=${demoDate}&demo_time=${demoTime}`).catch(() => null);
   }
   return _orderRecCache;
 }
@@ -3455,7 +3947,7 @@ export async function getAiOrderItems(): Promise<AiOrderItem[]> {
 
     return items.map((item, idx) => ({
       id: `ai-${item.product_id}`,
-      name: item.product_name,
+      name: resolveProductDisplayName(item.product_name),
       bgColor: defaultColors[idx % defaultColors.length],
       unitPrice: fmtKRW(Math.round(item.base_price)),
       stockInfo: `${item.quantity}개`,
@@ -3508,7 +4000,7 @@ export async function getManualOrderItems(): Promise<AiOrderItem[]> {
 
     return (data.items ?? []).map((item, idx) => ({
       id: `manual-${item.product_id}`,
-      name: item.product_name,
+      name: resolveProductDisplayName(item.product_name),
       bgColor: defaultColors[idx % defaultColors.length],
       unitPrice: fmtKRW(Math.round(Number(item.base_price ?? 0))),
       stockInfo: item.stock_note || "재고 정보 없음",
@@ -3528,6 +4020,129 @@ export async function getManualOrderItems(): Promise<AiOrderItem[]> {
       { id: "manual-fallback-001", name: "페이머스글레이즈드", bgColor: "#f9e4c8", unitPrice: "₩1,700", stockInfo: "재고 정보 없음", stockWarning: false, category: "도넛" as const, orderDate: "-", aiRecommendedQty: "0개", aiReason: "카탈로그 연동 실패", status: null },
       { id: "manual-fallback-002", name: "아메리카노", bgColor: "#d4b896", unitPrice: "₩2,500", stockInfo: "재고 정보 없음", stockWarning: false, category: "음료" as const, orderDate: "-", aiRecommendedQty: "0개", aiReason: "카탈로그 연동 실패", status: null },
     ]);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  발주 확정 — POST /api/v1/orders/confirm
+// ══════════════════════════════════════════════════════════════════
+
+export async function confirmOrder(
+  optionId: string,
+  items: Array<{ product_id: string; quantity: number }>,
+): Promise<OrderConfirmResponse> {
+  try {
+    const raw = await apiPost<{
+      order_id: string;
+      confirmed_at: string;
+      status: string;
+      total_qty: number;
+      total_amount: number;
+      message: string;
+    }>(`/v1/orders/confirm`, {
+      store_id: STORE_ID,
+      option_id: optionId,
+      items,
+    });
+    return raw;
+  } catch (err) {
+    throw err;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  발주 옵션 요약 — /order/recommendations에서 3옵션 summary 추출
+// ══════════════════════════════════════════════════════════════════
+
+export async function getOrderOptions(): Promise<OrderOptionSummary[]> {
+  try {
+    const data = await getOrderRecommendationsOnce() as {
+      options: {
+        option_id?: string;
+        label: string;
+        reference_date?: string;
+        deviation_label?: string;
+        flags?: string[];
+        total_qty?: number;
+        total_amount?: number;
+        items?: { quantity: number; base_price: number }[];
+      }[];
+    } | null;
+    if (!data?.options?.length) return [];
+    return data.options.map((opt, idx) => ({
+      option_id: opt.option_id ?? `option-${idx}`,
+      label: opt.label,
+      reference_date: opt.reference_date,
+      deviation_label: opt.deviation_label,
+      flags: opt.flags,
+      total_qty: opt.total_qty ?? (opt.items ?? []).reduce((s, i) => s + Number(i.quantity ?? 0), 0),
+      total_amount:
+        opt.total_amount ??
+        (opt.items ?? []).reduce((s, i) => s + Number(i.base_price ?? 0) * Number(i.quantity ?? 0), 0),
+      itemCount: (opt.items ?? []).length,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// 옵션별 전체 item 목록 (AiOrderItem[]) — 옵션 변경 시 list 갱신용
+export async function getAllOrderItems(): Promise<AiOrderItem[][]> {
+  try {
+    const data = await getOrderRecommendationsOnce() as {
+      target_date?: string;
+      options: {
+        option_id?: string;
+        label: string;
+        reference_date?: string;
+        deviation_label?: string;
+        flags?: string[];
+        items: {
+          product_id: string;
+          product_name: string;
+          quantity: number;
+          base_price: number;
+          category?: string | null;
+          rationale?: string | null;
+        }[];
+      }[];
+    } | null;
+    if (!data?.options?.length) return [[]];
+    const defaultColors = [
+      "#f9e4c8", "#c8dcc0", "#d4b896", "#f5e0c8",
+      "#e8d5b0", "#f0c8c8", "#c8b8a0", "#c8e0f0",
+      "#b8a080", "#e0e8f0", "#f5c9a0", "#d0d0d0",
+    ];
+    const orderDate = formatShortDate(data?.target_date ?? null);
+    return data.options.map((opt, _optIdx) =>
+      opt.items.map((item, idx) => ({
+        id: `ai-${item.product_id}`,
+        name: resolveProductDisplayName(item.product_name),
+        bgColor: defaultColors[idx % defaultColors.length],
+        unitPrice: fmtKRW(Math.round(item.base_price)),
+        stockInfo: `${item.quantity}개`,
+        stockWarning: item.quantity > 30,
+        category: inferOrderCategory(item.product_name, item.category),
+        orderDate,
+        aiRecommendedQty: `${item.quantity}개`,
+        aiReason: sanitizeUserFacingReason(
+          item.rationale ??
+            [
+              opt.label ?? "추천 옵션",
+              formatShortDate(opt.reference_date ?? null),
+              opt.deviation_label ?? "실적 기반 추정",
+              ...(opt.flags ?? [])
+                .map((flag) => humanizeInternalReasonFlag(String(flag)))
+                .filter((flag): flag is string => Boolean(flag)),
+            ]
+              .filter(Boolean)
+              .join(" · "),
+        ),
+        status: null,
+      })),
+    );
+  } catch {
+    return [[]];
   }
 }
 
@@ -3585,14 +4200,32 @@ export async function getAiPerformanceData(tab: "일별" | "주별" | "월별"):
           pct_of_total: number;
         }[];
       }>(`/v1/analytics/payment-methods?store_id=${STORE_ID}&biz_date=${encodeURIComponent(previousDate)}`),
-      safeGet<PromoPerformanceResponse>(`/v1/analytics/promo-performance?store_id=${STORE_ID}`),
+    safeGet<PromoPerformanceResponse>(`/v1/analytics/promo-performance?store_id=${STORE_ID}&demo_date=${encodeURIComponent(getDemoDate())}`),
     ]);
+
+    const hourlyTodayData = await safeGet<{
+      today?: { hour: string; sales_estimated?: number }[];
+    }>(
+      `/v1/analytics/hourly-sales?store_id=${STORE_ID}&biz_date=${encodeURIComponent(currentDate)}`,
+    );
+    const hourlyPrevData = await safeGet<{
+      today?: { hour: string; sales_estimated?: number }[];
+    }>(
+      `/v1/analytics/hourly-sales?store_id=${STORE_ID}&biz_date=${encodeURIComponent(previousDate)}`,
+    );
+
+    const prevHourlyMap: Map<number, number> = new Map(
+      (hourlyPrevData?.today ?? []).map((h) => {
+        const hourNum = parseInt(h.hour.split(":")[0], 10);
+        return [hourNum, Math.round(Number(h.sales_estimated ?? 0))];
+      }),
+    );
 
     const hourlySales = (summaryData.hourly_trend ?? []).map((h) => ({
       time: `${h.hour}시`,
       pos: Math.round(h.revenue * 0.7),
       delivery: Math.round(h.revenue * 0.3),
-      prevAvg: Math.round(h.revenue * 0.95),
+      prevAvg: prevHourlyMap.get(h.hour) ?? 0,
     }));
 
     const totalRev = summaryData.today_revenue ?? 0;
@@ -3602,7 +4235,7 @@ export async function getAiPerformanceData(tab: "일별" | "주별" | "월별"):
       .sort((a, b) => Number((b.base_price ?? 0) * (b.sold_qty ?? 0)) - Number((a.base_price ?? 0) * (a.sold_qty ?? 0)));
     const categorySales = rankedItems.slice(0, 4).map((r, i) => ({
       id: `c${i + 1}`,
-      name: r.product_name,
+      name: resolveProductDisplayName(r.product_name),
       today: Math.round(Number(r.base_price ?? 0) * Number(r.sold_qty ?? 0)),
       goal: Math.round(Number(r.base_price ?? 0) * Number(r.sold_qty ?? 0) * 1.15),
       color: i === 0 ? "#3aaedd" : i === 1 ? "#3faf60" : "#888",
@@ -3633,53 +4266,64 @@ export async function getAiPerformanceData(tab: "일별" | "주별" | "월별"):
     const currentAvgTicket = currentOrderCount > 0 ? Math.round(totalRev / currentOrderCount) : 0;
     const previousAvgTicket = previousOrderCount > 0 ? Math.round(previousRev / previousOrderCount) : 0;
 
-    const promoRows = (promoPerformance?.promotions ?? [])
-      .slice()
-      .sort((a, b) => Number(b.sales_amt ?? 0) - Number(a.sales_amt ?? 0))
+    // Aggregate by promo_name (campaign) to avoid duplicate x-axis labels
+    const allPromoRows = promoPerformance?.promotions ?? [];
+    const aggregated = new Map<string, { billCnt: number; salesAmt: number }>();
+    for (const row of allPromoRows) {
+      const name = row.promo_name ?? row.campaign_name ?? "기타";
+      const existing = aggregated.get(name);
+      if (existing) {
+        existing.billCnt += Number(row.bill_cnt ?? 0);
+        existing.salesAmt += Number(row.sales_amt ?? 0);
+      } else {
+        aggregated.set(name, {
+          billCnt: Number(row.bill_cnt ?? 0),
+          salesAmt: Number(row.sales_amt ?? 0),
+        });
+      }
+    }
+    const promoRows = [...aggregated.entries()]
+      .map(([name, vals]) => ({ name, billCnt: vals.billCnt, salesAmt: vals.salesAmt }))
+      .sort((a, b) => b.salesAmt - a.salesAmt)
       .slice(0, 4);
-    const totalPromoSales = promoRows.reduce((sum, row) => sum + Number(row.sales_amt ?? 0), 0);
-    const totalPromoBills = promoRows.reduce((sum, row) => sum + Number(row.bill_cnt ?? 0), 0);
+    const totalPromoSales = promoRows.reduce((sum, row) => sum + row.salesAmt, 0);
+    const totalPromoBills = promoRows.reduce((sum, row) => sum + row.billCnt, 0);
     const promotionWeekly =
       promoRows.length > 0
-        ? promoRows.map((row, index) => ({
-            week:
-               (row.campaign_name ?? row.promo_name ?? `프로모션 ${index + 1}`)
-                 .replace(/\s+/g, " ")
-                 .slice(0, 10),
-            responseRate: Math.min(99, Math.round(((Number(row.bill_cnt ?? 0) / Math.max(totalPromoBills, 1)) * 100) || 0)),
-            conversionRate: Math.min(99, Math.round(((Number(row.sales_amt ?? 0) / Math.max(totalPromoSales, 1)) * 100) || 0)),
-            salesContribution: Math.min(99, Math.round(((Number(row.sales_amt ?? 0) / Math.max(totalRev, 1)) * 100) || 0)),
-          }))
+        ? promoRows.map((row) => {
+            const displayName = normalizeCampaignYear(row.name)
+              .replace(/\s+/g, " ")
+              .slice(0, 16);
+            return {
+              week: displayName,
+              billShare: Math.min(99, Math.round(((row.billCnt / Math.max(totalPromoBills, 1)) * 100) || 0)),
+              salesShare: Math.min(99, Math.round(((row.salesAmt / Math.max(totalPromoSales, 1)) * 100) || 0)),
+              salesContribution: Math.min(99, Math.round(((row.salesAmt / Math.max(totalRev, 1)) * 100) || 0)),
+            };
+          })
         : [
-            { week: "1주차", responseRate: 38, conversionRate: 22, salesContribution: 18 },
-            { week: "2주차", responseRate: 42, conversionRate: 28, salesContribution: 22 },
-            { week: "3주차", responseRate: 55, conversionRate: 32, salesContribution: 26 },
-            { week: "4주차", responseRate: 70, conversionRate: 38, salesContribution: 30 },
+             { week: "1주차", billShare: 38, salesShare: 22, salesContribution: 18 },
+            { week: "2주차", billShare: 42, salesShare: 28, salesContribution: 22 },
+            { week: "3주차", billShare: 55, salesShare: 32, salesContribution: 26 },
+            { week: "4주차", billShare: 70, salesShare: 38, salesContribution: 30 },
           ];
 
     const kpis: PerformanceKpiItem[] = [
-      {
-        id: "k1",
-        label: "총매출",
-        value: fmtKRW(totalRev),
-        change: formatChangePct(totalRev, previousRev),
-        changeType: changeTypeFor(totalRev, previousRev),
-      },
-      {
-        id: "k2",
-        label: "평균 객단가",
-        value: fmtKRW(currentAvgTicket),
-        change: formatChangePct(currentAvgTicket, previousAvgTicket),
-        changeType: changeTypeFor(currentAvgTicket, previousAvgTicket),
-      },
-      {
-        id: "k3",
-        label: "총 주문 수",
-        value: `${formatNumber(currentOrderCount)}건`,
-        change: formatChangePct(currentOrderCount, previousOrderCount),
-        changeType: changeTypeFor(currentOrderCount, previousOrderCount),
-      },
-    ];
+       {
+         id: "k1",
+         label: "총매출",
+         value: fmtKRW(totalRev),
+         change: formatChangePct(totalRev, previousRev),
+         changeType: changeTypeFor(totalRev, previousRev),
+       },
+        {
+          id: "k2",
+          label: "매출 전일비",
+          value: `${previousRev > 0 ? formatChangePct(totalRev, previousRev) : "—"}`,
+          change: formatChangePct(totalRev, previousRev),
+          changeType: changeTypeFor(totalRev, previousRev),
+        },
+     ];
 
     return {
       tab,
@@ -3703,10 +4347,9 @@ export async function getAiPerformanceData(tab: "일별" | "주별" | "월별"):
       hourlySales: [{ time: "09시", pos: 320, delivery: 180, prevAvg: 480 }],
       categorySales: [{ id: "c1", name: "음료", today: 5200000, goal: 6000000, color: "#3aaedd" }],
       promotionWeekly: [
-        { week: "1주차", responseRate: 38, conversionRate: 22, salesContribution: 18 },
-        { week: "2주차", responseRate: 42, conversionRate: 28, salesContribution: 22 },
-        { week: "3주차", responseRate: 55, conversionRate: 32, salesContribution: 26 },
-        { week: "4주차", responseRate: 70, conversionRate: 38, salesContribution: 30 },
+        { week: "오후 글레이즈드 번들", billShare: 45, salesShare: 42, salesContribution: 18 },
+        { week: "아이스아메리카노 2천원", billShare: 35, salesShare: 28, salesContribution: 14 },
+        { week: "던킨런치세트 할인", billShare: 20, salesShare: 30, salesContribution: 22 },
       ],
       paymentTypes: [
         { id: "p1", label: "카드 일반 결제", count: 824, percent: 64, color: "#3aaedd" },
@@ -3716,8 +4359,7 @@ export async function getAiPerformanceData(tab: "일별" | "주별" | "월별"):
       ],
       kpis: [
         { id: "k1", label: "총매출", value: "₩12,800,000원", change: "+8.2%", changeType: "up" },
-        { id: "k2", label: "평균 객단가", value: "₩9,970원", change: "-1.8%", changeType: "down" },
-        { id: "k3", label: "총 주문 수", value: "1,284건", change: "+4.1%", changeType: "up" },
+        { id: "k2", label: "매출 전일비", value: "+8.2%", change: "+8.2%", changeType: "up" },
       ],
     };
     return mockDelay(fallback);
@@ -3770,7 +4412,7 @@ export async function getAiBriefing(
           makeBriefingIssue(
             `prod-${idx}`,
             item.shortage && item.shortage > 0 ? "긴급" : "주의",
-            `${item.name} 재고 대응 우선`,
+            `${resolveProductDisplayName(item.name)} 재고 대응 우선`,
             `${item.detailLabel ?? item.badgeLabel ?? `${formatNumber(item.quantity)}개`} 기준으로 추가 생산/보충 검토가 필요합니다.`,
             "생산관리",
             "생산 바로가기",
@@ -3784,8 +4426,8 @@ export async function getAiBriefing(
           makeBriefingIssue(
             "inv-risk",
             Number(firstRisk.on_hand_eod ?? 0) <= 0 ? "긴급" : "주의",
-            `${firstRisk.product_name} 재고 부족 감지`,
-            `${firstRisk.product_name} ${stock.detailLabel}, 금일 판매 ${formatNumber(Math.round(Number(firstRisk.sold_qty ?? 0)))}개입니다.`,
+            `${resolveProductDisplayName(firstRisk.product_name)} 재고 부족 감지`,
+            `${resolveProductDisplayName(firstRisk.product_name)} ${stock.detailLabel}, 금일 판매 ${formatNumber(Math.round(Number(firstRisk.sold_qty ?? 0)))}개입니다.`,
             "생산관리",
             "재고 확인",
           ),
@@ -3800,7 +4442,7 @@ export async function getAiBriefing(
             ? `${firstProduction.name}은 ${firstProduction.detailLabel ?? firstProduction.badgeLabel ?? `${formatNumber(firstProduction.quantity)}개`} 상태입니다.`
             : "현재 추가 생산 추천 품목이 없습니다.",
           firstRisk
-            ? `재고 부족 우선 품목은 ${firstRisk.product_name}이며 ${getInventoryDisplayMetrics(Number(firstRisk.on_hand_eod ?? 0)).detailLabel}, 품절 위험 시간은 ${formatNumber(Math.round(Number(firstRisk.stockout_minutes ?? 0)))}분입니다.`
+            ? `재고 부족 우선 품목은 ${resolveProductDisplayName(firstRisk.product_name)}이며 ${getInventoryDisplayMetrics(Number(firstRisk.on_hand_eod ?? 0)).detailLabel}, 품절 위험 시간은 ${formatNumber(Math.round(Number(firstRisk.stockout_minutes ?? 0)))}분입니다.`
             : "현재 재고 부족 품목은 확인되지 않았습니다.",
           `생산 추천 품목 ${formatNumber(productionItems.length)}개와 재고 모니터링 품목 ${formatNumber(inventoryItems.length)}개를 기준으로 현재 화면을 요약했습니다.`,
         ],
@@ -3847,7 +4489,7 @@ export async function getAiBriefing(
           makeBriefingIssue(
             `order-item-${idx}`,
             Number(item.quantity ?? 0) >= 30 ? "주의" : "확인",
-            `${item.product_name} 권장 발주 ${formatNumber(Math.round(Number(item.quantity ?? 0)))}개`,
+            `${resolveProductDisplayName(item.product_name)} 권장 발주 ${formatNumber(Math.round(Number(item.quantity ?? 0)))}개`,
             `${primaryOption?.label ?? "추천 옵션"} 기준 검토 우선 품목입니다.`,
             "발주 관리",
             "발주 보기",
@@ -3877,7 +4519,7 @@ export async function getAiBriefing(
             : "현재 발주 추천 옵션을 불러오지 못했습니다.",
           topItems.length > 0
             ? `우선 검토 품목은 ${topItems
-                .map((item) => `${item.product_name} ${formatNumber(Math.round(Number(item.quantity ?? 0)))}개`)
+                .map((item) => `${resolveProductDisplayName(item.product_name)} ${formatNumber(Math.round(Number(item.quantity ?? 0)))}개`)
                 .join(", ")}입니다.`
             : "우선 검토 품목 데이터가 없습니다.",
           urgentDeadline
@@ -3943,14 +4585,15 @@ export async function getAiBriefing(
         );
       }
 
+      const topProductName = topProduct ? resolveProductDisplayName(topProduct.product_name) : null;
       if (topProduct && issues.length < 5) {
         const stock = getInventoryDisplayMetrics(Number(topProduct.on_hand_eod ?? 0));
         issues.push(
           makeBriefingIssue(
             "analytics-top",
             "주의",
-            `${topProduct.product_name} 상위 판매`,
-            `${topProduct.product_name} 금일 판매량은 ${formatNumber(Math.round(Number(topProduct.sold_qty ?? 0)))}개이고 ${stock.detailLabel}입니다.`,
+            `${topProductName} 상위 판매`,
+            `${topProductName} 금일 판매량은 ${formatNumber(Math.round(Number(topProduct.sold_qty ?? 0)))}개이고 ${stock.detailLabel}입니다.`,
             "AI 기반 성과 분석",
             "상품 보기",
           ),
@@ -3966,7 +4609,7 @@ export async function getAiBriefing(
             ? `${String(peakHour.hour ?? "-")}가 매출 피크 구간이며 ${fmtKRW(Math.round(Number(peakHour.sales_estimated ?? 0)))}를 기록했습니다.`
             : "시간대별 매출 피크 데이터는 아직 없습니다.",
           topProduct
-            ? `상위 판매 상품은 ${topProduct.product_name}이며 현재 판매량은 ${formatNumber(Math.round(Number(topProduct.sold_qty ?? 0)))}개입니다.`
+            ? `상위 판매 상품은 ${topProductName}이며 현재 판매량은 ${formatNumber(Math.round(Number(topProduct.sold_qty ?? 0)))}개입니다.`
             : "상위 판매 상품 데이터는 정리 중입니다.",
         ],
         issues:
@@ -3986,7 +4629,7 @@ export async function getAiBriefing(
           sales_amt?: number;
           bill_cnt?: number;
         }[]
-      >(`/v1/analytics/promo-performance?store_id=${STORE_ID}`);
+      >(`/v1/analytics/promo-performance?store_id=${STORE_ID}&demo_date=${encodeURIComponent(getDemoDate())}`);
       const promoItems = promotions ?? [];
       const topPromo = [...promoItems].sort(
         (a, b) => Number(b.sales_amt ?? 0) - Number(a.sales_amt ?? 0),
@@ -4180,7 +4823,7 @@ export async function getAiBriefing(
           `dashboard-alert-${idx}`,
           alert.severity === "critical" || alert.severity === "high" ? "긴급" : "주의",
           alert.product_name
-            ? `${alert.product_name} ${alert.alert_type ?? "알림"}`
+            ? `${resolveProductDisplayName(alert.product_name)} ${alert.alert_type ?? "알림"}`
             : alert.alert_type ?? "알림",
           alert.message,
           "종합 현황",
@@ -4202,18 +4845,19 @@ export async function getAiBriefing(
       );
     }
 
-    if (analytics?.products_with_stockout != null && issues.length < 5) {
+     if (analytics?.products_with_stockout != null && issues.length < 5) {
       issues.push(
         makeBriefingIssue(
           "dashboard-stockout",
           Number(analytics.products_with_stockout) > 0 ? "주의" : "확인",
-          `품절 위험 상품 ${formatNumber(Math.round(Number(analytics.products_with_stockout ?? 0)))}개`,
-          `추정 기회손실은 ${fmtKRW(Math.round(Number(analytics.chance_loss_est ?? 0)))}입니다.`,
+          `재고 리스크 ${formatNumber(Math.round(Number(analytics.products_with_stockout ?? 0)))}개`,
+          `전체 재고 리스크 항목입니다. 생산 대응 대상은 생산관리 화면에서 확인하세요.`,
           "종합 현황",
           "지표 보기",
         ),
       );
     }
+
 
     return {
       date: dateLabel,
@@ -4222,11 +4866,11 @@ export async function getAiBriefing(
         timeAwareRevenue != null
           ? `현재 시각 기준 추정 매출은 ${fmtKRW(timeAwareRevenue)}이고 전일 동시간 대비 ${formatPct(salesSummary?.vs_yesterday_same_time_pct)}입니다.`
           : `현재 시각 기준 매출은 시간대 집계 재계산 중이며 전일 동시간 대비 ${formatPct(salesSummary?.vs_yesterday_same_time_pct)}입니다.`,
-        `현재 추정 기회손실은 ${fmtKRW(Math.round(Number(analytics?.chance_loss_est ?? 0)))}이며 품절 위험 상품은 ${formatNumber(Math.round(Number(analytics?.products_with_stockout ?? 0)))}개입니다.`,
+        `전체 재고 리스크 ${formatNumber(Math.round(Number(analytics?.products_with_stockout ?? 0)))}개입니다. 생산 대응 대상은 생산관리 화면에서 확인하세요.`,
         urgentDeadline
           ? `${urgentDeadline.product_group} 발주 마감은 ${urgentDeadline.deadline}이며 현재 상태는 ${humanizeDeadlineStatus(urgentDeadline.status)}입니다.`
           : topSelling
-            ? `현재 상위 판매 상품은 ${topSelling.product_name}입니다.`
+            ? `현재 상위 판매 상품은 ${resolveProductDisplayName(topSelling.product_name)}입니다.`
             : "현재 화면에서 즉시 대응할 주요 이슈는 없습니다.",
       ],
       issues:
@@ -4239,4 +4883,67 @@ export async function getAiBriefing(
   } catch {
     return mockDelay(buildFallbackBriefing(selectedMenu));
   }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  POC 매출 분석 6 개 질문 API (Gold View 기반)
+// ══════════════════════════════════════════════════════════════════
+
+export async function getMonthlyCompare(
+  storeId: string = DEMO_PRIMARY_STORE_ID,
+  currentMonth: string = "2026-02",
+  compareMonth: string = "2025-02",
+): Promise<MonthlyCompareResponse | null> {
+  return safeGet<MonthlyCompareResponse>(
+    `/api/v1/analytics/monthly-compare?store_id=${storeId}&current_month=${currentMonth}&compare_month=${compareMonth}`,
+  );
+}
+
+export async function getDeliveryOrders(
+  storeId: string = DEMO_PRIMARY_STORE_ID,
+  currentMonth: string = "2026-02",
+  compareMonth: string = "2026-01",
+): Promise<DeliveryOrdersResponse | null> {
+  return safeGet<DeliveryOrdersResponse>(
+    `/api/v1/analytics/delivery-orders?store_id=${storeId}&current_month=${currentMonth}&compare_month=${compareMonth}`,
+  );
+}
+
+export async function getCampaignEffect(
+  storeId: string = DEMO_PRIMARY_STORE_ID,
+  campaignKeyword: string = "",
+): Promise<CampaignEffectResponse | null> {
+  const keywordParam = campaignKeyword ? `&campaign_keyword=${encodeURIComponent(campaignKeyword)}` : "";
+  return safeGet<CampaignEffectResponse>(
+    `/api/v1/analytics/campaign-effect?store_id=${storeId}${keywordParam}`,
+  );
+}
+
+export async function getProductCompare(
+  storeId: string = DEMO_PRIMARY_STORE_ID,
+  productKeyword: string = "글레이즈드",
+  currentMonth: string = "2026-02",
+  compareMonth: string = "2026-01",
+): Promise<ProductCompareResponse | null> {
+  return safeGet<ProductCompareResponse>(
+    `/api/v1/analytics/product-compare?store_id=${storeId}&product_keyword=${encodeURIComponent(productKeyword)}&current_month=${currentMonth}&compare_month=${compareMonth}`,
+  );
+}
+
+export async function getChannelSales(
+  storeId: string = DEMO_PRIMARY_STORE_ID,
+  month: string = "2026-02",
+): Promise<ChannelSalesResponse | null> {
+  return safeGet<ChannelSalesResponse>(
+    `/api/v1/analytics/channel-sales?store_id=${storeId}&month=${month}`,
+  );
+}
+
+export async function getPeerCompare(
+  storeId: string = DEMO_PRIMARY_STORE_ID,
+  month: string = "2026-02",
+): Promise<PeerCompareResponse | null> {
+  return safeGet<PeerCompareResponse>(
+    `/api/v1/analytics/peer-compare?store_id=${storeId}&month=${month}`,
+  );
 }

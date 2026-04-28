@@ -31,8 +31,8 @@ start_pip_pos() {
 }
 
 start_mobile() {
-    echo "Starting Mobile on port 5186..."
-    cd "$PROJECT_ROOT/pip-pos"
+    echo "Starting PIP Mobile (pip-mobile) on port 5186..."
+    cd "$PROJECT_ROOT/pip-mobile"
     if [ ! -d "node_modules" ]; then
         echo "Installing dependencies..."
         npm install
@@ -77,7 +77,7 @@ case "${1:-all}" in
         echo "=== All services started ==="
         echo "Backend:    http://localhost:8100"
         echo "PIP POS:    http://localhost:5181"
-        echo "Mobile:     http://localhost:5186/index.mobile.html"
+        echo "Mobile:     http://localhost:5186/"
         echo "HQ POS:     http://localhost:5173/mockup/pos-shell.html"
         ;;
     *)

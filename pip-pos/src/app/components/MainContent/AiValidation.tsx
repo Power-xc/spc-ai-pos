@@ -265,14 +265,15 @@ export default function AiValidation({
                 <span className="w-[7px] h-[4px] bg-[#3faf60] rounded-[30px]"></span>
                 AI 분석 품질 지표
               </p>
-              <p className="text-[9px] text-[#888] leading-[14px]">
+              <p className="text-[9px] text-[#888] leading-[14px] tracking-tight">
                 실데이터 지표와 파생 점수를 함께 사용한 오늘 기준 품질 상태
               </p>
             </div>
             <ResponsiveContainer width="100%" height={180}>
               <RadarChart
                 data={quality}
-                margin={{ top: 10, right: 20, left: 20, bottom: 10 }}
+                margin={{ top: 10, right: 20, left: 60, bottom: 10 }}
+                style={{marginTop: "15px"}}
               >
                 <PolarGrid stroke="#f0f1f3" />
                 <PolarAngleAxis

@@ -23,16 +23,12 @@ const FILTER_TABS: AlarmFilterTab[] = [
   "재고",
   "배송",
   "Agent",
-  "배달",
-  "고객",
 ];
 
 const CATEGORY_STYLE: Record<AlarmCategory, { bg: string; color: string }> = {
   재고: { bg: "#fff3e0", color: "#e07820" },
   배송: { bg: "#eaf6ff", color: "#3aaedd" },
   Agent: { bg: "#f3eafe", color: "#7c3cbf" },
-  배달: { bg: "#fde8f0", color: "#d0327a" },
-  고객: { bg: "#e6f8ee", color: "#2a9a5a" },
 };
 
 function Toggle({
@@ -128,13 +124,12 @@ export default function AlarmSettings({
   const totalCount = cards.length;
   const activeCount = cards.filter((c) => c.enabled).length;
   const inactiveCount = cards.filter((c) => !c.enabled).length;
-  const todayCount = 12;
 
   const STATS = [
-    { label: "전체 알림", value: totalCount },
-    { label: "활성 알림", value: activeCount },
-    { label: "비활성화", value: inactiveCount },
-    { label: "오늘 발생", value: todayCount },
+    { label: "전체 알림 규칙", value: totalCount },
+    { label: "활성 규칙", value: activeCount },
+    { label: "비활성 규칙", value: inactiveCount },
+    { label: "오늘 발생 알림", value: history.length },
   ];
 
   const FORM_FIELDS: {
@@ -384,24 +379,29 @@ export default function AlarmSettings({
                     오늘 발생한 알람 이력
                   </p>
                 </div>
-                <div className="flex flex-col gap-[8px]">
-                  {history.map((item) => (
-                    <div key={item.id} className="flex gap-[8px] items-start">
-                      {/* 타임라인 점 */}
-                      <div className="flex flex-col items-center gap-[2px] shrink-0 pt-[3px]">
-                        <div className="w-[6px] h-[6px] rounded-full bg-[#3aaedd]" />
+                {history.length > 0 ? (
+                  <div className="flex flex-col gap-[8px]">
+                    {history.map((item) => (
+                      <div key={item.id} className="flex gap-[8px] items-start">
+                        <div className="flex flex-col items-center gap-[2px] shrink-0 pt-[3px]">
+                          <div className="w-[6px] h-[6px] rounded-full bg-[#3aaedd]" />
+                        </div>
+                        <div className="flex flex-col gap-[1px]">
+                          <p className="text-[8px] text-[#aaa] leading-none">
+                            {item.time}
+                          </p>
+                          <p className="text-[9px] text-[#444] leading-[13px]">
+                            {item.description}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-[1px]">
-                        <p className="text-[8px] text-[#aaa] leading-none">
-                          {item.time}
-                        </p>
-                        <p className="text-[9px] text-[#444] leading-[13px]">
-                          {item.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[8px] text-[#aaa] leading-[12px]">
+                    최근 발동 이력 데이터 미적재
+                  </p>
+                )}
               </div>
 
               {/* 카카오톡 알림 설정 */}
@@ -453,16 +453,16 @@ export default function AlarmSettings({
                     ))}
                   </div>
 
-                  {/* 테스트 알림 발송 버튼 */}
+                  {/* 테스트 알림 발송 — 연동 대기 */}
                   <button
-                    className="w-full h-[32px] rounded-[20px] flex items-center justify-center gap-[6px] cursor-pointer mt-[2px]"
+                    disabled
+                    className="w-full h-[32px] rounded-[20px] flex items-center justify-center gap-[6px] cursor-not-allowed mt-[2px]"
                     style={{
-                      backgroundImage:
-                        "linear-gradient(121deg, #3faf60 50.65%, #3aaedd 121.87%)",
+                      backgroundColor: "#d1d5db",
                     }}
                   >
-                    <p className="font-bold text-[10px] text-white">
-                      테스트 알림 발송
+                    <p className="font-bold text-[10px] text-[#666]">
+                      연동 대기
                     </p>
                   </button>
                 </div>

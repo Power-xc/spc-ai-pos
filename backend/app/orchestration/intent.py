@@ -151,6 +151,8 @@ class IntentClassifier:
         (r"(왜|어째서|무슨).*(알림|경보|알림이\s*뜬|알림이\s*떴)", "PRODUCTION"),
         (r"(재고|품절|stockout|생산|만들)", "PRODUCTION"),
         (r"(주문|발주|order)", "ORDER"),
+        (r"(미대응|찬스\s*로스|기회\s*손실|예상\s*손실|손실\s*확인|손실\s*예상).*(생산|재고|품절|부족)?", "PRODUCTION"),
+        (r"(손실|찬스\s*로스|기회\s*손실|미대응).*(확인|알려|보여|어려|분석|계산)", "PRODUCTION"),
         (r"(폐기|waste|버린|로스)", "WASTE"),
         (
             r"(이번\s*달|이번\s*월|이번\s*기간).*(일평균|일\s*평균).*(타\s*점포|다른\s*매장|다른\s*점포|평균|벤치마크).*(비교|대비|차이|어떻|어때)",
@@ -354,6 +356,11 @@ class IntentClassifier:
         return len(compact) <= 8
 
     @staticmethod
+    def _looks_like_opaque_token(query: str) -> bool:
+        compact = re.sub(r"\s+", "", query.strip())
+        return bool(re.fullmatch(r"[A-Za-z0-9_-]{2,16}", compact))
+
+    @staticmethod
     def _normalize_history_intent(raw_intent: str | None) -> str | None:
         if not raw_intent:
             return None
@@ -390,7 +397,7 @@ class IntentClassifier:
             "BENCHMARK",
             "RANKING",
         }:
-            return "SALES_COMPARISON"
+            return "SALES_COMPARISON" if upper == "SALES" else upper
         # order_like_reference, order_exclude_item, order_compare_special
         if upper.startswith("ORDER_"):
             return "ORDER"
@@ -875,6 +882,18 @@ class IntentClassifier:
                 break
 
         if anchor_user:
+            if not anchor_intent:
+                for pattern, intent in self.RULES:
+                    if re.search(pattern, anchor_user, re.IGNORECASE):
+                        anchor_intent = self._normalize_history_intent(intent) or intent
+                        break
+            compact_query = re.sub(r"\s+", "", query.strip().lower())
+            if compact_query.startswith("왜"):
+                return anchor_user, anchor_intent
+            if "근거" in compact_query:
+                return f"{anchor_user} 근거를 보여줘", anchor_intent
+            if "자세히" in compact_query or "설명" in compact_query:
+                return f"{anchor_user} 자세히 설명해줘", anchor_intent
             return f"{anchor_user} (후속 질문: {query})", anchor_intent
         return query, anchor_intent
 
@@ -894,6 +913,25 @@ class IntentClassifier:
             resolved_query, anchor_intent = self._resolve_followup_query(
                 query, recent_messages
             )
+            if self._is_followup_query(query) and anchor_intent:
+                payload = {
+                    "intent": anchor_intent,
+                    "confidence": "SESSION",
+                    "params": {},
+                    "llm_tokens_used": 0,
+                    "resolved_query": resolved_query,
+                }
+                if anchor_intent == "ORDER":
+                    payload["sub_intent"] = self._order_sub_intent(
+                        resolved_query, is_followup=True
+                    )
+                if anchor_intent == "PRODUCTION":
+                    payload["sub_intent"] = self._production_sub_intent(
+                        resolved_query
+                    )
+                if anchor_intent == "ACTIONS_TODO":
+                    payload["sub_intent"] = self._actions_sub_intent(resolved_query)
+                return payload
             for pattern, intent in self.RULES:
                 if re.search(pattern, resolved_query, re.IGNORECASE):
                     payload = {
@@ -994,12 +1032,11 @@ class IntentClassifier:
                     "llm_tokens_used": 0,
                     "resolved_query": resolved_query,
                 }
-            elif context_hint and self._is_ambiguous_query(query):
-                # Only use context hint for truly ambiguous short queries
+            elif context_hint and self._is_followup_query(query):
+                # Only use context hint for true follow-up phrases.
                 # that are NOT explicit new topics.
-                # CRITICAL: Short queries like "너는 누구야", "날씨 알려줘"
-                # may pass the _is_ambiguous_query length check but are
-                # explicit new topics — they must NOT be hijacked by context.
+                # CRITICAL: Short arbitrary inputs like "DKSS" must not be
+                # hijacked by page context.
                 # Also, NOTICE context must only be used for notice-like queries.
                 if self._is_explicit_new_topic(query):
                     pass  # fall through to LLM classification
@@ -1027,6 +1064,15 @@ class IntentClassifier:
                     if context_hint == "ACTIONS_TODO":
                         payload["sub_intent"] = self._actions_sub_intent(resolved_query)
                     return payload
+
+            if self._looks_like_opaque_token(query):
+                return {
+                    "intent": "FAQ",
+                    "confidence": "RULE",
+                    "params": {},
+                    "llm_tokens_used": 0,
+                    "resolved_query": resolved_query,
+                }
 
             llm_result = await self._classify_with_llm(
                 resolved_query,
@@ -1212,7 +1258,7 @@ class IntentClassifier:
                 "params": nparams,
                 "llm_tokens_used": llm_tokens_used,
             }
-        if context_hint:
+        if context_hint and self._is_followup_query(query):
             # NOTICE context must only be used for notice-like queries;
             # non-notice queries on a notice page should fall through to FAQ.
             if context_hint == "NOTICE_SUMMARY" and not self._looks_like_notice_query(

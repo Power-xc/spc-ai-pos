@@ -116,7 +116,7 @@ def _build_recommendation_rationale(
 
     return {
         "summary": (
-            f"전일 대비 {vs_yesterday:+.1f}% / 전주 동요일 대비 {vs_last_week:+.1f}%"
+            f"전일 대비 {vs_yesterday:+.1f}% / 최근 기준일 대비 {vs_last_week:+.1f}%"
             if isinstance(vs_yesterday, (int, float))
             and isinstance(vs_last_week, (int, float))
             else "일부 근거 데이터만 확보되어 요약을 제한적으로 제공합니다."
@@ -222,14 +222,18 @@ async def get_order_options(
     store_id: str,
     request: Request,
     category: str | None = None,
+    demo_date: date | None = Query(None),
+    demo_time: str | None = Query(None),
     role: str = Depends(get_current_user_role),
     order_agent=Depends(get_order_agent),
 ):
     """3개 주문 옵션."""
     user = get_current_user_context(request, role)
+    reference_date = demo_date
     options = await order_agent.generate_order_options(
         store_id,
         category,
+        reference_date=reference_date,
         user_id=user["user_id"],
         role=user["role"],
     )
@@ -369,6 +373,11 @@ async def confirm_order(
         if req.option_id
         else None
     )
+    if option is not None:
+        price_map = {it.product_id: it.base_price for it in option.items}
+        for it in items:
+            if it.get("base_price", 0) <= 0 and it.get("product_id") in price_map:
+                it["base_price"] = price_map[it.get("product_id")]
     draft_state = order_agent._draft_orders.get(req.draft_order_id or "")
     resolved_category = getattr(option_response, "category", None) or (
         draft_state or {}
@@ -439,10 +448,64 @@ async def confirm_order(
     return APIResponse(data=payload)
 
 
+@router.get("/{store_id}/campaign-impact", response_model=APIResponse)
+async def get_campaign_impact(
+    store_id: str,
+    request: Request,
+    demo_date: date | None = Query(None),
+    demo_time: str | None = Query(None),
+    role: str = Depends(get_current_user_role),
+    db=Depends(get_postgres_db),
+    order_agent=Depends(get_order_agent),
+):
+    """Get campaign impact on order quantities for a store.
+
+    Computes adjustment quantities based on campaign period sales vs baseline.
+    """
+    normalized = normalize_store_id(store_id)
+    if is_hidden_store_id(normalized):
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    from app.tools import sql_queries
+
+    latest = await sql_queries.get_latest_biz_date(db, normalized)
+    target_date = demo_date or (latest or date.today())
+
+    # Get base order options items from the best option
+    options_resp = order_agent.get_cached_options(store_id=normalized)
+    base_items = None
+    if not options_resp:
+        user = get_current_user_context(request, role)
+        options_resp = await order_agent.generate_order_options(
+            normalized,
+            user_id=user["user_id"],
+            role=user["role"],
+        )
+
+    if options_resp and options_resp.options:
+        best = next(
+            (o for o in options_resp.options if o.option_id == "option_last_week"),
+            options_resp.options[0],
+        )
+        base_items = [
+            {"product_id": item.product_id, "quantity": item.quantity}
+            for item in best.items
+        ]
+
+    # Compute impact
+    from app.routers.promotions import _compute_campaign_impact
+
+    impact = await _compute_campaign_impact(db, normalized, target_date, base_items)
+
+    return APIResponse(data=impact)
+
+
 async def get_order_recommendations_legacy(
     request: Request,
     category: str | None = None,
     biz_date: date | None = Query(None),
+    demo_date: date | None = Query(None),
+    demo_time: str | None = Query(None),
     role: str = Depends(get_current_user_role),
     db=Depends(get_postgres_db),
     order_agent=Depends(get_order_agent),
@@ -451,16 +514,17 @@ async def get_order_recommendations_legacy(
 
     user = get_current_user_context(request, role)
     store_id = get_request_store_id(request, None)
+    effective_reference_date = biz_date or demo_date
     options = await order_agent.generate_order_options(
         store_id=store_id,
         category=category,
         include_explanation=True,
-        reference_date=biz_date,
+        reference_date=effective_reference_date,
         user_id=user["user_id"],
         role=user["role"],
     )
     payload = options.model_dump(mode="json")
-    kpis = await sql_queries.get_daily_kpis(db, store_id, biz_date)
+    kpis = await sql_queries.get_daily_kpis(db, store_id, effective_reference_date)
     payload["rationale"] = _build_recommendation_rationale(kpis, payload)
     payload["data_source"] = (
         "estimated_from_sales "

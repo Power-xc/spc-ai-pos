@@ -199,7 +199,7 @@ class InventoryPredictor:
             db,
             store_id,
             product_id,
-            days=max(weeks * 7 + 7, 35),
+            days=max(weeks * 7 + 7, 92),
         )
         if not history:
             return {"first_production": None, "second_production": None}

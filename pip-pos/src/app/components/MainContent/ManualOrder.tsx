@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getManualOrderItems } from "../../../lib/api";
 import { getProductImageByName } from "../../../lib/productImages";
+import { resolveProductDisplayName } from "../../../lib/productNameResolver";
 import activeStep1 from "../../../assets/active-step.png";
 import type { AiOrderItem, OrderDetailCategory } from "../../../types";
 
@@ -288,8 +289,8 @@ export default function ManualOrder({ onClose, onOrderComplete }: Props) {
         <div key={item.id} className="flex items-center justify-between">
            <div className="flex items-center gap-[6px]">
              <img
-               src={getProductImageByName(item.name)}
-               alt={item.name}
+                src={getProductImageByName(item.name)}
+                alt={resolveProductDisplayName(item.name)}
                className="w-[37px] h-[37px] rounded-[20px] shrink-0 object-cover"
                onError={(e) => {
                  (e.target as HTMLImageElement).src = "/images/products/coming-soon.png";
@@ -297,7 +298,7 @@ export default function ManualOrder({ onClose, onOrderComplete }: Props) {
              />
             <div className="flex flex-col justify-center">
               <p className="font-bold text-[11px] text-[#222] leading-[20px]">
-                {item.name}
+                {resolveProductDisplayName(item.name)}
               </p>
               <p className="text-[10px] leading-[20px]">
                 <span className="text-[#888]">{item.unitPrice}</span>
@@ -770,10 +771,10 @@ export default function ManualOrder({ onClose, onOrderComplete }: Props) {
             <div key={item.id} className="flex items-center justify-between">
               {/* 상품명 */}
              <div className="flex items-center gap-[6px] flex-1 min-w-0">
-                 <img
-                   src={getProductImageByName(item.name)}
-                   alt={item.name}
-                   className="w-[37px] h-[37px] rounded-[20px] shrink-0 object-cover"
+                  <img
+                    src={getProductImageByName(item.name)}
+                    alt={resolveProductDisplayName(item.name)}
+                    className="w-[37px] h-[37px] rounded-[20px] shrink-0 object-cover"
                    style={{ opacity: isDone ? 0.4 : 1 }}
                    onError={(e) => {
                      (e.target as HTMLImageElement).src = "/images/products/coming-soon.png";
@@ -781,7 +782,7 @@ export default function ManualOrder({ onClose, onOrderComplete }: Props) {
                 />
                 <div className="flex flex-col justify-center min-w-0">
                   <p className="font-bold text-[11px] text-[#222] leading-[20px] truncate">
-                    {item.name}
+                    {resolveProductDisplayName(item.name)}
                   </p>
                   <p
                     className={`text-[10px] leading-[20px] ${item.stockWarning ? "text-[#ff522c]" : "text-[#888]"}`}

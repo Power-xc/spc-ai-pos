@@ -1,0 +1,32 @@
+- generic [ref=e5]:
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e13]
+      - generic [ref=e35]
+      - img [ref=e40]
+      - generic [ref=e41]
+      - img [ref=e53]
+      - generic [ref=e54]
+      - img [ref=e72]
+      - generic [ref=e73]
+      - button "기준 일자 및 시간 설정" [ref=e93] [cursor=pointer]
+    - button "사이드바 토글" [ref=e101] [cursor=pointer]
+    - generic [ref=e103]:
+      - paragraph [ref=e104]
+      - generic
+    - img [ref=e108]
+    - generic [ref=e109]:
+      - generic [ref=e110]
+      - img [ref=e119]
+      - button "PIP AI BOT" [ref=e120] [cursor=pointer]
+    - generic [ref=e124]:
+      - generic [ref=e125]
+      - generic [ref=e136]
+      - generic [ref=e163]
+    - generic [ref=e167]:
+      - generic [ref=e205]
+      - generic [ref=e168]
+  - generic [ref=e185]:
+    - generic [ref=e188]: ONLINE
+    - generic [ref=e191]: BR KOREA POS SYSTEM
+    - generic [ref=e194]: PWR

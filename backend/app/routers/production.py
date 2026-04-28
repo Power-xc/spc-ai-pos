@@ -18,7 +18,17 @@ from app.dependencies import (
 )
 from app.demo_store_config import is_hidden_store_id, normalize_store_id
 from app.schemas.common import APIResponse
-from app.schemas.production import ProductionRegisterRequest
+from app.schemas.production import (
+    BatchRegisterRequest,
+    BatchRegisterResponse,
+    InventorySnapshotItem,
+    InventorySnapshotResponse,
+    InventorySnapshotSummary,
+    ProductionRegisterRequest,
+    RegisterableProductItem,
+    RegisterableProductSummary,
+    RegisterableProductsResponse,
+)
 from app.tools import sql_queries
 
 router = APIRouter(prefix="/api/v1/production", tags=["production"])
@@ -141,7 +151,7 @@ def _compute_alert_trigger_reason(
         return f"{minutes_to_depletion:.0f}분 후 품절 예상. 아직 여유가 있지만 판매 속도를 모니터링하세요."
 
     if stockout_probability >= 70:
-        return f"품절 확률이 {stockout_probability:.0f}%로 높습니다. 1시간 내 생산을 검토하세요."
+        return f"동일 요일 품절 빈도가 {stockout_probability:.0f}%로 높습니다. 1시간 내 생산을 검토하세요."
 
     return "현재 재고는 있지만 판매 속도를 지속 모니터링합니다."
 
@@ -221,6 +231,541 @@ async def register_production(
         role=user["role"],
     )
     return APIResponse(data=response)
+
+
+RAW_MATERIAL_KEYWORDS = {
+    "원료", "파우더", "시럽", "소스", "컵", "뚜껑", "리드", " 빨대", "봉투",
+    "박스", "포장", "스티커", "냅킨", "장갑", "세제", "필름", "트레이",
+}
+RAW_MATERIAL_CATEGORIES = {
+    "냉동/냉장", "냉장/냉동", "냉동", "냉장", "용품/상품", "포장재",
+    "원자재", "도구", "기타/용품",
+}
+
+
+def _is_raw_material_local(product_id: str, product_name: str | None, category: str | None) -> bool:
+    """Check if product is a raw material / packaging / tool — same logic as dashboard.py."""
+    product_id = str(product_id).strip()
+    if product_id.startswith("7"):
+        return True
+    if category and category in RAW_MATERIAL_CATEGORIES:
+        return True
+    if product_name:
+        name_lower = product_name.lower()
+        for kw in RAW_MATERIAL_KEYWORDS:
+            if kw.strip().lower() in name_lower:
+                return True
+    return False
+
+
+DEFAULT_HOURLY_PROFILE = {
+    8: 0.03, 9: 0.04, 10: 0.05, 11: 0.07, 12: 0.09,
+    13: 0.08, 14: 0.08, 15: 0.09, 16: 0.10, 17: 0.11,
+    18: 0.11, 19: 0.08, 20: 0.05, 21: 0.03,
+}
+
+
+def _cumulative_hourly_ratio(demo_time_str: str) -> float:
+    """Cumulative ratio from 8:00 up to demo_time using hourly profile."""
+    demo_time_str = demo_time_str.strip().lower()
+    if not demo_time_str or demo_time_str in ("00:00", "00:00:00"):
+        return 0.0
+    parts = demo_time_str.replace("T", " ").split(" ")[-1] if "T" in demo_time_str else demo_time_str
+    parts = parts.split(":")
+    h = int(parts[0])
+    m = int(parts[1]) if len(parts) > 1 else 0
+    if h < BUSINESS_START:
+        return 0.0
+    cumulative = 0.0
+    for hr in range(BUSINESS_START, h):
+        cumulative += DEFAULT_HOURLY_PROFILE.get(hr, 0)
+    cumulative += DEFAULT_HOURLY_PROFILE.get(h, 0) * (m / 60)
+    return cumulative
+
+
+def _estimate_stock_at_time(
+    on_hand_eod: int,
+    daily_sold: float,
+    daily_production: float,
+    cumulative_ratio: float,
+) -> int:
+    """Estimate stock at a given time using simplified formula.
+
+    estimated_start_stock = on_hand_eod + daily_sold - daily_production
+    current_stock = max(0, estimated_start_stock - daily_sold * cumulative_ratio + daily_production * cumulative_ratio)
+    """
+    daily_net = daily_sold - daily_production
+    estimated_start = max(0, on_hand_eod + daily_sold - daily_production)
+    sold_until = daily_sold * cumulative_ratio
+    produced_until = daily_production * cumulative_ratio
+    est = max(0, estimated_start - sold_until + produced_until)
+    return int(round(est))
+
+
+def _compute_recommended_qty_simple(
+    current_est: int, daily_sold: float, cumulative_ratio: float
+) -> int:
+    """Simple recommended qty: need enough to cover remaining day's demand."""
+    remaining_ratio = 1.0 - cumulative_ratio
+    remaining_demand = daily_sold * remaining_ratio
+    needed = max(0, remaining_demand - current_est + max(3, daily_sold * 0.1))
+    return int(round(needed))
+
+
+def _row_to_registerable(
+    row: dict, risk: str, q: str
+) -> RegisterableProductItem | None:
+    """Convert a dashboard item row to RegisterableProductItem, applying filters."""
+    pid = str(row.get("product_id") or "")
+    pn = row.get("product_name") or str(pid)
+    pcat = row.get("category") or ""
+
+    # Exclude raw materials
+    if _is_raw_material_local(pid, pn, pcat):
+        return None
+
+    # Search filter
+    if q and q.lower() not in (pn or "").lower() and q not in pid:
+        return None
+
+    current = int(row.get("current_stock") or row.get("on_hand_eod") or 0)
+    predicted_1h = int(row.get("predicted_stock_1h") or 0)
+    risk_level = str(row.get("risk_level", "LOW"))
+    status_label = str(row.get("status_label", ""))
+
+    is_urgent = status_label in ("즉시 생산 필요", "부족 위험") or risk_level in ("HIGH", "CRITICAL")
+    is_supplement = (not is_urgent) and (status_label in ("보충 필요", "주의") or risk_level == "MEDIUM")
+
+    if risk == "urgent" and not is_urgent:
+        return None
+    if risk == "supplement" and not is_supplement:
+        return None
+    if risk == "normal" and (is_urgent or is_supplement):
+        return None
+
+    return RegisterableProductItem(
+        product_id=pid,
+        product_name=pn,
+        category=str(pcat or ""),
+        current_stock=current,
+        predicted_stock_1h=predicted_1h if predicted_1h else None,
+        risk_level=risk_level,
+        is_urgent=is_urgent,
+        is_supplement=is_supplement,
+        recommended_production_qty=int(row.get("recommended_production_qty") or 0),
+        daily_recommended_qty=int(row.get("recommended_production_qty") or 0),
+        last_1h_sales_rate=float(row.get("hourly_burn_rate") or 0) if row.get("hourly_burn_rate") else None,
+        unit_price=float(row.get("unit_price") or row.get("base_price") or 0),
+    )
+
+
+@router.get("/registerable-products", response_model=APIResponse)
+async def get_registerable_products(
+    request: Request,
+    role: str = Depends(get_current_user_role),
+    db: AsyncSession = Depends(get_postgres_db),
+    q: str = Query("", description="Search by product name"),
+    risk: str = Query("all", regex="^(all|urgent|supplement|normal)$"),
+):
+    """Get registerable products — dashboard items + all store inventory (risk=all)."""
+    user = get_current_user_context(request, role)
+    store_id = normalize_store_id(get_request_store_id(request, ""))
+    # 1) Fetch dashboard production data (curated, predicted items)
+    demo_date = request.query_params.get("demo_date", "")
+    demo_time = request.query_params.get("demo_time", "")
+    dash_url = f"http://127.0.0.1:8100/api/v1/dashboard/production?store_id={store_id}"
+    if demo_date:
+        dash_url += f"&demo_date={demo_date}"
+    if demo_time:
+        dash_url += f"&demo_time={demo_time}"
+
+    import httpx as _httpx
+    dash_items_raw: list[dict] = []
+    try:
+        async with _httpx.AsyncClient(timeout=15) as _client:
+            dash_resp = await _client.get(
+                dash_url,
+                headers={"X-User-Role": user.get("role", ""), "X-Store-Id": store_id},
+            )
+            if dash_resp.status_code == 200:
+                dash_items_raw = dash_resp.json().get("data", {}).get("items", [])
+    except Exception:
+        logger.exception("Failed to fetch dashboard production data for %s", store_id)
+
+    existing_pids: set[str] = set()
+    items: list[RegisterableProductItem] = []
+    q_lower = (q or "").lower()
+
+    # 2) Convert dashboard items (they have risk predictions, status labels)
+    for row in dash_items_raw:
+        pid = str(row.get("product_id") or "")
+        pn = (row.get("product_name") or pid).lower()
+        if q_lower and q_lower not in pn and q_lower not in pid.lower():
+            continue
+        item = _row_to_registerable(row, risk, "")
+        if item:
+            items.append(item)
+            existing_pids.add(item.product_id)
+
+    # 3) For risk=all, also fetch ALL store inventory products (enrich list beyond dashboard)
+    if risk == "all":
+        try:
+            inv_rows = await sql_queries.get_store_inventory_today(db, store_id) or []
+            for row in inv_rows:
+                pid = str(row.get("product_id") or "")
+                if pid in existing_pids:
+                    continue
+                if _is_raw_material_local(pid, row.get("product_name"), row.get("category")):
+                    continue
+                inv_name = (row.get("product_name") or "").lower()
+                if q_lower and q_lower not in inv_name and q_lower not in pid:
+                    continue
+                on_hand = int(row.get("on_hand_eod") or 0)
+                sold = float(row.get("sold_qty") or 0)
+                items.append(RegisterableProductItem(
+                    product_id=pid,
+                    product_name=row.get("product_name") or pid,
+                    category=str(row.get("category") or ""),
+                    current_stock=on_hand,
+                    predicted_stock_1h=None,
+                    risk_level="LOW",
+                    is_urgent=False,
+                    is_supplement=False,
+                    recommended_production_qty=max(0, round(sold * 0.15 + 3)),
+                    daily_recommended_qty=max(0, round(sold + 3)),
+                    last_1h_sales_rate=round(sold / 14, 1) if sold > 0 else None,
+                    unit_price=None,
+                ))
+                existing_pids.add(pid)
+        except Exception:
+            logger.exception("Failed to fetch inventory for %s", store_id)
+
+    items.sort(key=lambda x: (not x.is_urgent, not x.is_supplement, x.current_stock))
+
+    urgent_count = sum(1 for i in items if i.is_urgent)
+    supplement_count = sum(1 for i in items if i.is_supplement)
+
+    resp_data = RegisterableProductsResponse(
+        items=items,
+        summary=RegisterableProductSummary(
+            total_count=len(items),
+            urgent_count=urgent_count,
+            supplement_count=supplement_count,
+            normal_count=len(items) - urgent_count - supplement_count,
+        ),
+    )
+    return APIResponse(data=resp_data.model_dump(mode="json"))
+
+
+@router.post("/batch-register", response_model=APIResponse)
+async def batch_register_production(
+    req: BatchRegisterRequest,
+    request: Request,
+    role: str = Depends(get_current_user_role),
+    production_agent=Depends(get_production_agent),
+):
+    """Register multiple items for production in one call."""
+    user = get_current_user_context(request, role)
+    results: list[dict] = []
+    registered = 0
+    failed = 0
+
+    for item in req.items:
+        if item.quantity <= 0:
+            continue
+        try:
+            res = await production_agent.register_production(
+                store_id=req.store_id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                alert_id=None,
+                user_id=user["user_id"],
+                role=user["role"],
+            )
+            results.append({
+                "product_id": item.product_id,
+                "product_name": item.product_name,
+                "quantity": item.quantity,
+                "success": True,
+                "production_id": getattr(res, "production_id", None),
+            })
+            registered += 1
+        except Exception as exc:
+            logger.warning("Batch register failed for %s: %s", item.product_id, exc)
+            results.append({
+                "product_id": item.product_id,
+                "product_name": item.product_name,
+                "quantity": item.quantity,
+                "success": False,
+                "production_id": None,
+            })
+            failed += 1
+
+    return APIResponse(data={
+        "registered_count": registered,
+        "failed_count": failed,
+        "results": results,
+    })
+
+
+@router.get("/inventory-snapshot", response_model=APIResponse)
+async def get_inventory_snapshot(
+    request: Request,
+    store_id: str = Query(...),
+    db: AsyncSession = Depends(get_postgres_db),
+    demo_date: date | None = Query(default=None),
+    demo_time: str = Query("13:00", description="Time to estimate stock for, e.g. 13:00"),
+    q: str = Query("", description="Search by product name"),
+    risk: str = Query("all", regex="^(all|urgent|supplement|normal)$"),
+):
+    """Full product inventory snapshot with estimated stock at demo_time.
+
+    Two sources merged:
+    1) Dashboard production data (curated, with predictions, risk classification)
+    2) All inventory items (time-based stock estimation)
+
+    Returns ALL sellable products, sorted by risk priority.
+    """
+    store_id = _validate_store_id(store_id)
+
+    # 1) Fetch dashboard production items (already classified with predictions)
+    # 0) Fetch inventory FIRST to build price map and estimated stock map
+    inv_rows = await sql_queries.get_store_inventory_today(db, store_id, demo_date) or []
+    inv_map: dict[str, dict] = {str(r.get("product_id") or ""): r for r in inv_rows}
+
+    # Fetch production data
+    demo_date_str = str(demo_date) if demo_date else ""
+    daily_prod_map: dict[str, float] = {}
+    try:
+        prod_rows = await sql_queries._fetch_gold_all(
+            db,
+            f"""
+            SELECT item_cd, SUM(prod_qty) AS total_prod_qty
+            FROM {sql_queries.GOLD_SCHEMA}.new_production
+            WHERE masked_stor_cd = :store_id AND prod_dt = :biz_date
+            GROUP BY item_cd
+            """,
+            {"store_id": store_id, "biz_date": demo_date_str if demo_date_str else ""},
+        )
+        daily_prod_map = {str(r["item_cd"]): float(r["total_prod_qty"] or 0) for r in (prod_rows or [])}
+    except Exception:
+        pass
+
+    # Also grab production-only products not in inventory
+    try:
+        prod_product_rows = await sql_queries._fetch_gold_all(
+            db,
+            f"""
+            SELECT DISTINCT item_cd AS product_id, max(item_nm) AS product_name, max(category_nm) AS category
+            FROM {sql_queries.GOLD_SCHEMA}.new_production
+            WHERE masked_stor_cd = :store_id
+            GROUP BY item_cd
+            """,
+            {"store_id": store_id},
+        )
+        for row in (prod_product_rows or []):
+            pid = str(row.get("product_id") or "")
+            if pid not in inv_map:
+                inv_map[pid] = {
+                    "product_id": pid,
+                    "product_name": row.get("product_name", pid),
+                    "category": row.get("category", "미분류"),
+                    "on_hand_eod": 0,
+                    "sold_qty": 0,
+                    "base_price": 0,
+                }
+    except Exception:
+        pass
+
+    # Build estimated stock map and price map for ALL products in inventory
+    cum_ratio = _cumulative_hourly_ratio(demo_time)
+    next_cum_ratio = _cumulative_hourly_ratio(_add_one_hour(demo_time))
+    est_stock_map: dict[str, dict] = {}
+    price_map: dict[str, float] = {}
+    for pid, row in inv_map.items():
+        pname = str(row.get("product_name") or "")
+        pcat = str(row.get("category") or "미분류")
+        if _is_raw_material_local(pid, pname, pcat):
+            continue
+        on_hand_eod = int(row.get("on_hand_eod") or 0)
+        daily_sold = float(row.get("sold_qty") or 0)
+        daily_prod = daily_prod_map.get(pid, 0)
+        curr = _estimate_stock_at_time(on_hand_eod, daily_sold, daily_prod, cum_ratio)
+        pred = _estimate_stock_at_time(on_hand_eod, daily_sold, daily_prod, next_cum_ratio)
+        est_stock_map[pid] = {"current_stock": curr, "predicted_stock_1h": pred, "daily_sold": daily_sold}
+        bp = float(row.get("base_price") or 0)
+        if bp > 0:
+            price_map[pid] = bp
+
+    # Also lookup base_price from dim_product for products missing price in inventory
+    try:
+        dim_rows = await sql_queries._fetch_gold_all(
+            db,
+            f"SELECT product_id, base_price FROM {sql_queries.GOLD_SCHEMA}.dim_product WHERE base_price > 0",
+            {},
+        )
+        for dr in (dim_rows or []):
+            did = str(dr.get("product_id") or "")
+            dbp = float(dr.get("base_price") or 0)
+            if dbp > 0 and did not in price_map:
+                price_map[did] = dbp
+    except Exception:
+        pass
+
+    # 1) Fetch dashboard for risk classification and burn rates
+    import httpx as _httpx
+    dash_items_raw: list[dict] = []
+    demo_dt_str = ""
+    if demo_date_str and demo_time:
+        demo_dt_str = f"{demo_date_str}T{demo_time.replace(':', '%3A')}:00"
+    dash_url = f"http://127.0.0.1:8100/api/v1/dashboard/production?store_id={store_id}"
+    if demo_date_str:
+        dash_url += f"&demo_date={demo_date_str}"
+    if demo_time:
+        dash_url += f"&demo_time={demo_time}"
+    if demo_dt_str:
+        dash_url += f"&demo_datetime={demo_dt_str}"
+    try:
+        async with _httpx.AsyncClient(timeout=15) as _client:
+            dash_resp = await _client.get(dash_url, headers={"X-User-Role": "store_owner", "X-Store-Id": store_id})
+            if dash_resp.status_code == 200:
+                dash_items_raw = dash_resp.json().get("data", {}).get("items", [])
+    except Exception:
+        logger.exception("Failed to fetch dashboard for inventory snapshot %s", store_id)
+
+    existing_pids: set[str] = set()
+    q_lower = (q or "").lower()
+    items: list[InventorySnapshotItem] = []
+
+    # Build dashboard items with estimated stock from inventory + price enrichment
+    for row in dash_items_raw:
+        pid = str(row.get("product_id") or "")
+        pname = str(row.get("product_name") or pid)
+        if _is_raw_material_local(pid, pname, row.get("category")):
+            continue
+        existing_pids.add(pid)
+
+        # Use estimated stock from inventory instead of dashboard stock
+        est = est_stock_map.get(pid, {})
+        current_est = est.get("current_stock", int(row.get("current_stock") or 0))
+        pred_est = est.get("predicted_stock_1h", int(row.get("predicted_stock_1h") or 0))
+        daily_sold_inv = est.get("daily_sold", 0)
+
+        # Price from inventory
+        unit_price = price_map.get(pid)
+        if unit_price is None or unit_price <= 0:
+            # No price for this product — skip (not a sellable product)
+            continue
+
+        if q_lower and q_lower not in pname.lower() and q_lower not in pid.lower():
+            continue
+
+        burn_rate = float(row.get("hourly_burn_rate") or 0)
+        is_urgent = burn_rate >= 1.5
+        is_supplement = (not is_urgent)
+        risk_level = "HIGH" if is_urgent else "MEDIUM"
+
+        if risk == "urgent" and not is_urgent:
+            continue
+        if risk == "supplement" and not is_supplement:
+            continue
+        if risk == "normal" and (is_urgent or is_supplement):
+            continue
+
+        items.append(InventorySnapshotItem(
+            product_id=pid,
+            product_name=pname,
+            category=str(row.get("category") or "미분류"),
+            current_stock=current_est,
+            predicted_stock_1h=pred_est,
+            risk_level=risk_level,
+            is_urgent=is_urgent,
+            is_supplement=is_supplement,
+            recommended_production_qty=int(row.get("recommended_production_qty") or 0),
+            daily_recommended_qty=int(row.get("recommended_production_qty") or 0),
+            last_1h_sales_rate=float(row.get("hourly_burn_rate") or 0) if row.get("hourly_burn_rate") else None,
+            unit_price=unit_price,
+            stock_basis="시간대 판매 패턴 기반 추정",
+            is_estimated=True,
+        ))
+
+    # 3) Inventory items (non-dashboard)
+    for row in inv_rows:
+        pid = str(row.get("product_id") or "")
+        if pid in existing_pids:
+            continue
+        pname = str(row.get("product_name") or pid)
+        pcat = str(row.get("category") or "미분류")
+        if _is_raw_material_local(pid, pname, pcat):
+            continue
+        base_price = float(row.get("base_price") or 0)
+        # Exclude products with no base price — not a sellable product
+        if base_price <= 0:
+            continue
+        if q_lower and q_lower not in pname.lower() and q_lower not in pid:
+            continue
+        is_urgent = False
+        curr_est = est_stock_map.get(pid, {}).get("current_stock", 0)
+        pred_est = est_stock_map.get(pid, {}).get("predicted_stock_1h", 0)
+        is_supplement = curr_est <= 3 or pred_est <= 3
+        risk_level = "MEDIUM" if is_supplement else "LOW"
+        if risk == "urgent" and not is_urgent:
+            continue
+        if risk == "supplement" and not is_supplement:
+            continue
+        if risk == "normal" and (is_urgent or is_supplement):
+            continue
+        daily_sold_for_rec = est_stock_map.get(pid, {}).get("daily_sold", 0)
+        recommended_qty = _compute_recommended_qty_simple(curr_est, daily_sold_for_rec, cum_ratio) if daily_sold_for_rec > 0 else 0
+        items.append(InventorySnapshotItem(
+            product_id=pid,
+            product_name=pname,
+            category=pcat,
+            current_stock=curr_est,
+            predicted_stock_1h=pred_est,
+            risk_level=risk_level,
+            is_urgent=is_urgent,
+            is_supplement=is_supplement,
+            recommended_production_qty=recommended_qty,
+            daily_recommended_qty=int(daily_sold_for_rec) if daily_sold_for_rec > 0 else 0,
+            last_1h_sales_rate=round(daily_sold_for_rec / 14, 1) if daily_sold_for_rec > 0 else None,
+            unit_price=base_price,
+            stock_basis="시간대 판매 패턴 기반 추정",
+            is_estimated=True,
+        ))
+        existing_pids.add(pid)
+
+    items.sort(key=lambda x: (0 if x.is_urgent else (1 if x.is_supplement else 2), x.current_stock, -x.daily_recommended_qty))
+
+    urgent_count = sum(1 for i in items if i.is_urgent)
+    supplement_count = sum(1 for i in items if i.is_supplement)
+
+    as_of_str = f"{demo_date_str or ''} {demo_time}".strip()
+
+    resp = InventorySnapshotResponse(
+        as_of=as_of_str,
+        is_estimated=True,
+        basis="시간대 판매 패턴 기반 추정",
+        summary=InventorySnapshotSummary(
+            total_count=len(items),
+            urgent_count=urgent_count,
+            supplement_count=supplement_count,
+            normal_count=len(items) - urgent_count - supplement_count,
+        ),
+        items=items,
+    )
+    return APIResponse(data=resp.model_dump(mode="json"))
+
+
+def _add_one_hour(time_str: str) -> str:
+    """Add 1 hour to a time string like '13:00' → '14:00'."""
+    parts = time_str.strip().split(":")
+    h = int(parts[0])
+    m = int(parts[1]) if len(parts) > 1 else 0
+    h += 1
+    if h >= 22:
+        return "21:59"
+    return f"{h:02d}:{m:02d}"
 
 
 async def get_inventory_current_legacy(
@@ -446,11 +991,11 @@ async def get_prediction_validation_report(
             grounding_parts.append(f"동일 요일 품절 빈도 {stockout_probability:.0f}%")
         if first_prod:
             grounding_parts.append(
-                f"4주 1차 생산 평균 {first_prod.get('avg_time', '-')} / {first_prod.get('avg_qty', 0)}개"
+                f"최근 생산 이력 평균 {first_prod.get('avg_time', '-')} / {first_prod.get('avg_qty', 0)}개"
             )
         if second_prod:
             grounding_parts.append(
-                f"4주 2차 생산 평균 {second_prod.get('avg_time', '-')} / {second_prod.get('avg_qty', 0)}개"
+                f"최근 생산 이력 평균 {second_prod.get('avg_time', '-')} / {second_prod.get('avg_qty', 0)}개"
             )
         grounding_parts.append(f"리드타임 {LEAD_TIME_HOURS}시간 반영")
 

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import ContentWrapper from "./ContentWrapper";
 import { getAiPerformanceData } from "../../../lib/api";
+import { resolveProductDisplayName } from "../../../lib/productNameResolver";
+import { getDemoDate } from "../../../lib/demoDateTime";
 import type { AiPerformanceData, PerformanceTab } from "../../../types";
 import {
   ComposedChart,
@@ -152,9 +154,9 @@ export default function AiPerformance({
                 {/* 범례 */}
                 <div className="flex items-center gap-[10px] justify-center">
                   {[
-                    { color: "#3aaedd", label: "POS" },
-                    { color: "#3faf60", label: "배달" },
-                    { color: "#333", label: "전주평균", line: true },
+                    { color: "#3aaedd", label: "POS 추정" },
+                    { color: "#3faf60", label: "배달 추정" },
+                    { color: "#333", label: "비교 기준선", line: true },
                   ].map(({ color, label, line }) => (
                     <div key={label} className="flex items-center gap-[3px]">
                       {line ? (
@@ -168,37 +170,42 @@ export default function AiPerformance({
                           style={{ backgroundColor: color }}
                         />
                       )}
-                      <p className="text-[8px] text-[#888]">{label}</p>
-                    </div>
+                  <p className="text-[8px] text-[#888]">{label}</p>
+                  </div>
                   ))}
                 </div>
+                <p className="text-[7px] text-[#aaa] text-center leading-[10px]">
+                  채널별 금액은 총매출 기준 추정값이며, 기준선은 전일 동시간 수익 프로필입니다.
+                </p>
               </div>
 
-              {/* 카테고리별 매출 */}
-              <div className="w-[220px] shrink-0 bg-white rounded-[20px] px-[14px] pt-[14px] pb-[14px] flex flex-col gap-[7px]">
+              {/* 상품별 목표 달성률 */}
+                <div className="w-[220px] shrink-0 bg-white rounded-[20px] px-[14px] pt-[14px] pb-[14px] flex flex-col gap-[7px]">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-[12px] text-[#222] leading-[18px] flex items-center gap-[4px]">
                     <span className="w-[7px] h-[4px] bg-[#888] rounded-[30px]"></span>
-                    카테고리별 매출
+                    상품별 매출 기준선
                   </p>
                   <p className="text-[9px] text-[#888] leading-[14px]">
-                    오늘 vs 목표
+                    오늘 매출 / 기준선
                   </p>
                 </div>
                 <div className="flex flex-col gap-[10px]">
                   {data.categorySales.map((cat) => {
                     const pct = Math.round((cat.today / cat.goal) * 100);
+                    const color =
+                      pct >= 90 ? "#3faf60" : pct >= 70 ? "#f0ad4e" : "#ff522c";
                     return (
                       <div key={cat.id} className="flex flex-col gap-[4px]">
                         <div className="flex items-center justify-between">
                           <p className="font-bold text-[10px] text-[#222]">
-                            {cat.name}
+                            {resolveProductDisplayName(cat.name)}
                           </p>
                           <p
                             className="font-bold text-[9px]"
-                            style={{ color: cat.color }}
+                            style={{ color }}
                           >
-                            {pct}%
+                            기준선 대비 {pct}%
                           </p>
                         </div>
                         <p className="text-[8px] text-[#888] leading-none">
@@ -209,7 +216,7 @@ export default function AiPerformance({
                             className="h-full rounded-full transition-all duration-500"
                             style={{
                               width: `${Math.min(pct, 100)}%`,
-                              backgroundColor: cat.color,
+                              backgroundColor: color,
                             }}
                           />
                         </div>
@@ -228,7 +235,7 @@ export default function AiPerformance({
                   프로모션 성과 분석
                 </p>
                 <p className="text-[9px] text-[#888] leading-[14px]">
-                  주차별 반응률·전환율·매출 기여도
+                  캠페인별 결제건수/매출 점유율 · 매출 기여도
                 </p>
               </div>
               <ResponsiveContainer width="100%" height={110}>
@@ -256,11 +263,11 @@ export default function AiPerformance({
                   <Tooltip
                     formatter={(v: number, name: string) => [
                       v + "%",
-                      name === "responseRate"
-                        ? "반응률"
-                        : name === "conversionRate"
-                          ? "전환율"
-                          : "매출기여",
+                      name === "billShare"
+                        ? "결제건수 점유율"
+                        : name === "salesShare"
+                          ? "매출 점유율"
+                          : "매출 기여도",
                     ]}
                     contentStyle={{
                       fontSize: 9,
@@ -270,14 +277,14 @@ export default function AiPerformance({
                   />
                   <Line
                     type="monotone"
-                    dataKey="responseRate"
+                    dataKey="billShare"
                     stroke="#333"
                     strokeWidth={2}
                     dot={{ r: 3, fill: "#333" }}
                   />
                   <Line
                     type="monotone"
-                    dataKey="conversionRate"
+                    dataKey="salesShare"
                     stroke="#3aaedd"
                     strokeWidth={2}
                     dot={{ r: 3, fill: "#3aaedd" }}
@@ -294,10 +301,10 @@ export default function AiPerformance({
               {/* 범례 */}
               <div className="flex items-center gap-[10px] justify-center">
                 {[
-                  { color: "#333", label: "반응률" },
-                  { color: "#3aaedd", label: "전환율" },
-                  { color: "#3faf60", label: "매출기여" },
-                ].map(({ color, label }) => (
+                    { color: "#333", label: "결제건수 점유율" },
+                    { color: "#3aaedd", label: "매출 점유율" },
+                    { color: "#3faf60", label: "매출 기여도" },
+                  ].map(({ color, label }) => (
                   <div key={label} className="flex items-center gap-[3px]">
                     <div
                       className="w-[14px] h-[2px] rounded-full"
@@ -307,6 +314,9 @@ export default function AiPerformance({
                   </div>
                 ))}
               </div>
+              <p className="text-[7px] text-[#aaa] leading-[10px] text-center">
+                캠페인별 결제건수와 매출의 상대적 점유율입니다. (집계 기준: {getDemoDate()}까지)
+              </p>
             </div>
 
             {/* ── Row 3: 결제 유형 + KPI ── */}
@@ -316,10 +326,10 @@ export default function AiPerformance({
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-[12px] text-[#222] leading-[18px] flex items-center gap-[4px]">
                     <span className="w-[7px] h-[4px] bg-[#888] rounded-[30px]"></span>
-                    결제 유형 분석
+                    결제수단별 매출 비중
                   </p>
                   <p className="text-[9px] text-[#888] leading-[14px]">
-                    분할결제 포함 결제 방법별 현황
+                    매출 비중 기준
                   </p>
                 </div>
                 <div className="flex flex-col gap-[10px]">
@@ -329,17 +339,12 @@ export default function AiPerformance({
                         <p className="text-[10px] text-[#222] font-bold">
                           {pt.label}
                         </p>
-                        <div className="flex items-center gap-[6px]">
-                          <p className="text-[9px] text-[#888]">
-                            {pt.count.toLocaleString("ko-KR")}건
-                          </p>
-                          <p
-                            className="font-bold text-[9px]"
-                            style={{ color: pt.color }}
-                          >
-                            {pt.percent}%
-                          </p>
-                        </div>
+                        <p
+                          className="font-bold text-[9px]"
+                          style={{ color: pt.color }}
+                        >
+                          매출 비중 {pt.percent}%
+                        </p>
                       </div>
                       <div className="w-full h-[6px] bg-[#f0f1f3] rounded-full overflow-hidden">
                         <div
@@ -355,15 +360,15 @@ export default function AiPerformance({
                 </div>
               </div>
 
-              {/* 우리 매장 목표달성률 */}
+              {/* 우리 매장 핵심 지표 */}
               <div className="flex-1 bg-white rounded-[20px] px-[16px] pt-[14px] pb-[15px] flex flex-col gap-[10px]">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-[12px] text-[#222] leading-[18px] flex items-center gap-[4px]">
                     <span className="w-[7px] h-[4px] bg-[#3faf60] rounded-[30px]"></span>
-                    우리 매장 목표달성률
+                    우리 매장 핵심 지표
                   </p>
                   <p className="text-[9px] text-[#888] leading-[14px]">
-                    오늘 기준 핵심 지표 한눈에 보기
+                    총매출 및 전일비
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-[10px]">
@@ -404,6 +409,9 @@ export default function AiPerformance({
                     </div>
                   ))}
                 </div>
+                <p className="text-[7px] text-[#aaa] leading-[10px] text-center">
+                  주문 수와 객단가는 실제 주문 기준 데이터 연결 후 표시됩니다.
+                </p>
               </div>
             </div>
           </>

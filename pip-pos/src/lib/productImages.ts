@@ -85,45 +85,98 @@ export function getProductImage(key: string): string {
 }
 
 const KO_NAME_MAP: Record<string, string> = {
+  // ── 허니/글레이즈드 계열 ──────────────────────────────────────
   "페이머스글레이즈드": "honeyOldFashioned",
   "글레이즈드 도넛":    "honeyOldFashioned",
   "글레이즈드":        "honeyOldFashioned",
   "허니 올드훼션드":   "honeyOldFashioned",
   "올드패션":          "honeyOldFashioned",
   "올드패션드":        "honeyOldFashioned",
+  "허니올드패션드":    "honeyOldFashioned",
+  "허니올드패션":      "honeyOldFashioned",
+  
+  // ── 광안리/소금우유 계열 ──────────────────────────────────────
   "소금우유도넛":      "gwanjalliSaltMilkCream",
   "광안리소금우유":     "gwanjalliSaltMilkCream",
+  "광안리 소금 우유":   "gwanjalliSaltMilkCream",
+  "광안리":            "gwanjalliSaltMilkCream",
+  
+  // ── 딸기/스트로베리 계열 ─────────────────────────────────────
   "스트로베리필드":    "strawberryCreamSmile",
   "딸기도넛":          "strawberryCreamSmile",
   "스트로베리 크림 스마일": "strawberryCreamSmile",
+  "딸기 크림 스마일":   "strawberryCreamSmile",
+  "딸기초코프레쉬":    "strawberryChocoFresh",
+  "딸기 초코 프레쉬":  "strawberryChocoFresh",
+  "딸기 초코":         "strawberryChocoFresh",
+  
+  // ── 카카오/초코 계열 ─────────────────────────────────────────
   "카카오하니딥":      "cacaoHoneyDip",
+  "카카오 허니 딥":    "cacaoHoneyDip",
   "카카오후로스티드":  "cacaoPoundCake",
+  "카카오 파운드 케이크": "cacaoPoundCake",
   "카카오 프라프치노":  "cappuccinoTwist",
-  "허니후리터":        "honeyFritter",
-  "허니 프리터":       "honeyFritter",
-  "보스턴크림":        "bavarianField",
-  "바바리안필드":      "bavarianField",
+  "카푸치노 트위스트":  "cappuccinoTwist",
   "초코링":            "chocoCrush",
   "초코 크러쉬":       "chocoCrush",
+  "초코크러쉬":        "chocoCrush",
+  "초코":              "chocoCrush",
+  
+  // ── 로투스/두바이 계열 ───────────────────────────────────────
   "두바이 도넛":       "lotusBiscoff",
   "두바이떠먹케":      "lotusBiscoff",
   "로투스 비스코프":   "lotusBiscoff",
+  "로투스비스코프":    "lotusBiscoff",
+  "두바이":            "lotusBiscoff",
+  
+  // ── 블루베리 계열 ────────────────────────────────────────────
   "블루베리 도넛":     "blueberryCheesecakeYogurt",
   "블루베리도넛":      "blueberryCheesecakeYogurt",
+  "블루베리 치즈케이크": "blueberryCheesecakeYogurt",
+  "블루베리":          "blueberryCheesecakeYogurt",
+  
+  // ── 먼치킨/포순포순 계열 ────────────────────────────────────
   "먼치킨":            "pompompurinHappyRing",
   "초코 먼치킨":       "chocoCrush",
   "시나몬 먼치킨":     "caramelCookieTwist",
-  "카라멜 쿠키 츄이스티": "caramelCookieTwist",
+  "바바리안먼치킨":     "bavarianField",
+  "레드벨벳먼치킨":     "raspberryCreamCheese",
+  "포순포순푸딩캐러멜필드": "pompompurinCaramelField",
+  "포순포순포도핑링":   "pompompurinHappyRing",
+  "포순포순":          "pompompurinHappyRing",
+  
+  // ── 바바리안/보스턴크림 계열 ────────────────────────────────
+  "보스턴크림":        "bavarianField",
+  "바바리안필드":      "bavarianField",
+  "바바리안":          "bavarianField",
+  
+  // ── 캐스터라/땅콩 계열 ──────────────────────────────────────
   "캐스터라도넛":      "castellaDonut",
   "캐스터라":          "castellaDonut",
+  "땅콩카스텔라":      "peanutCastella",
+  "땅콩 캐스터라":     "peanutCastella",
+  "땅콩":              "peanutCastella",
+  
+  // ── 카라멜/쿠키 계열 ────────────────────────────────────────
+  "카라멜 쿠키 츄이스티": "caramelCookieTwist",
   "카라멜쿠키프레즐":   "caramelCookieTwist",
+  "카라멜 쿠키":        "caramelCookieTwist",
+  
+  // ── 에그타르트/크림브륄레/클라우드크림 ──────────────────────
   "에그타르트":        "eggTart",
   "크림브륄레":        "cremeBrulee",
   "클라우드크림":      "cloudCream",
-  "땅콩카스텔라":      "peanutCastella",
+  
+  // ── 포차코 계열 ────────────────────────────────────────────
   "포차코밀크크림타르트": "pochaccoMilkCreamTart",
-  "포순포순푸딩캐러멜필드": "pompompurinCaramelField",
-  "포순포순포도핑링":   "pompompurinHappyRing",
+  "포차코":            "pochaccoMilkCreamTart",
+  
+  // ── 라즈베리/레드벨벳 계열 ─────────────────────────────────
+  "라즈베리크림치즈":   "raspberryCreamCheese",
+  "라즈베리 크림 치즈": "raspberryCreamCheese",
+  "레드벨벳":          "raspberryCreamCheese",
+  
+  // ── 음료류 ──────────────────────────────────────────────────
   "아메리카노 원두":   "coldBrewAmericano",
   "아메리카노":        "coldBrewAmericano",
   "카페모카":          "cafeMocha",
@@ -135,16 +188,33 @@ const KO_NAME_MAP: Record<string, string> = {
   "허니딸기라떼":      "honeyStrawberryLatte",
   "카라멜마키아토":     "caramelMacchiato",
   "아이스 카페모카":    "icedCafeMocha",
+  
+  // ── 소시지롤/남포김떡꼬치 ───────────────────────────────────
   "빅소시지롤":        "bigSausageRoll",
   "남포김떡꼬치":      "nampoSesameHotteokTwist",
+  "남포 김떡 꼬치":    "nampoSesameHotteokTwist",
+  
+  // ── 머핀/롤/타르트 계열 ────────────────────────────────────
   "초코머핀":          "chocoMuffin",
+  "초코파우더":         "chocoMuffin",
+  "초코파우더 (길라델리)": "chocoMuffin",
+  "길라델리":           "chocoMuffin",
   "카페모카롤":        "cafeMochaRoll",
-  "라즈베리크림치즈":   "raspberryCreamCheese",
-  "딸기초코프레쉬":    "strawberryChocoFresh",
   "에스프레소쿠키프레첼": "espressoCookiePuff",
   "버터글레이즈드":     "butterGlazed",
   "프레시크림카스텔라":  "freshCreamCastella",
   "소금우유쿠키프레첼":  "saltMilkCookiePuff",
+  
+  // ── 두바이 ST/특수 먼치킨 ───────────────────────────────────
+  "두바이 ST":          "lotusBiscoff",
+  "두바이 ST 쫀득맛치킨": "lotusBiscoff",
+  "오리지널 케익 먼치킨": "cacaoPoundCake",
+  "오리지널케이크먼치킨": "cacaoPoundCake",
+  "케익 먼치킨":        "cacaoPoundCake",
+  
+  // ── 허니후리터 계열 ─────────────────────────────────────────
+  "허니후리터":        "honeyFritter",
+  "허니 프리터":       "honeyFritter",
 };
 
 /** 한국어 상품명으로 이미지 경로를 조회합니다. */

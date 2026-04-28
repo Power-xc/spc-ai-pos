@@ -49,7 +49,7 @@ export default function AiInsightCard({
 
   return (
     <div
-      className="absolute border border-[#ebebeb] border-solid content-stretch flex flex-col h-[119.673px] items-start pl-[15px] pr-[15px] py-[16px] rounded-[20px] top-[77.51px] transition-all duration-300 cursor-pointer"
+      className="absolute border border-[#ebebeb] border-solid content-stretch flex flex-col min-h-[144px] items-start pl-[15px] pr-[15px] py-[16px] rounded-[20px] top-[77.51px] transition-all duration-300 cursor-pointer"
       style={{
         left: `${cardLeft}px`,
         width: `${cardWidth}px`,
@@ -81,7 +81,7 @@ export default function AiInsightCard({
               </p>
             </div>
             <img src={icoStar} alt="" className="absolute right-0 top-0" />
-            <div className="content-stretch flex items-center justify-center relative shrink-0 w-full">
+            <div className="content-stretch flex items-center justify-center relative shrink-0 w-full min-h-[42px]">
               <p className="flex-[1_0_0] leading-[0] min-h-px min-w-px not-italic relative text-white text-[0px]">
                 <span className="leading-[21px] text-[13px]">
                   {insight.message}
@@ -90,7 +90,7 @@ export default function AiInsightCard({
                   {insight.boldPart}
                 </span>
                 <span className="leading-[21px] text-[13px]">
-                  할 것으로 예측됩니다.
+                  {insight.suffix}
                 </span>
               </p>
             </div>

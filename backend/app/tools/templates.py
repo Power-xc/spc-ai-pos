@@ -21,16 +21,16 @@ TEMPLATES = {
   • 미조치 시 예상 기회손실: {chance_loss_est:,}원
 """.strip(),
     "production_feedback_positive": """
-✅ 생산 조치를 완료하셔서, 과거 동 시간에 발생했던 찬스 로스를 약 {reduction_pct}% 감소시킨 것으로 추정됩니다.
+ 생산 조치를 완료하셔서, 과거 동 시간에 발생했던 찬스 로스를 약 {reduction_pct}% 감소시킨 것으로 추정됩니다.
 예상 손실 방지 금액: 약 {prevented_amount:,}원
 """.strip(),
     "production_feedback_negative": """
-⚠️ 오늘 {product_name}에서 {stockout_minutes}분 품절이 발생했습니다.
+ 오늘 {product_name}에서 {stockout_minutes}분 품절이 발생했습니다.
 추정 기회손실: 약 {chance_loss_amt:,}원
 4주 평균 대비 {change_pct:+.1f}% 변화
 """.strip(),
     "order_deadline_alert": """
-📦 주문 마감이 임박했습니다!
+ 주문 마감이 임박했습니다!
 {category} 카테고리 주문을 확인해주세요.
 최근 4주 {dow_name} 평균 주문 기준으로 3가지 옵션을 준비했습니다.
 """.strip(),

@@ -1,0 +1,280 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e5]:
+    - generic [ref=e10]:
+      - generic:
+        - generic [ref=e13]:
+          - img [ref=e15]
+          - generic [ref=e19]:
+            - img [ref=e21]
+            - img [ref=e26]
+            - img [ref=e31]
+        - generic:
+          - paragraph: 환영합니다.
+          - paragraph: 강서구01 운영 화면
+          - paragraph: 현재 기준 매장 분석 중
+        - img [ref=e40]
+        - generic [ref=e41]:
+          - paragraph [ref=e42]: MAIN
+          - generic [ref=e43]:
+            - button "종합 현황" [ref=e44] [cursor=pointer]:
+              - paragraph: 종합 현황
+            - button "AI 실시간 현황" [ref=e49] [cursor=pointer]:
+              - paragraph: AI 실시간 현황
+        - img [ref=e53]
+        - generic [ref=e54]:
+          - paragraph [ref=e55]: ACTION
+          - generic [ref=e56]:
+            - button "생산관리" [ref=e248] [cursor=pointer]:
+              - paragraph: 생산관리
+            - button "발주 관리" [ref=e249] [cursor=pointer]:
+              - paragraph [ref=e65]: 발주 관리
+            - button "프로모션" [ref=e67] [cursor=pointer]:
+              - paragraph [ref=e70]: 프로모션
+        - img [ref=e72]
+        - generic [ref=e73]:
+          - paragraph [ref=e74]: SUB
+          - generic [ref=e75]:
+            - button "AI 기반 성과 분석" [ref=e76] [cursor=pointer]:
+              - paragraph: AI 기반 성과 분석
+            - button "AI 검증" [ref=e80] [cursor=pointer]:
+              - paragraph: AI 검증
+            - button "벤치마킹" [ref=e84] [cursor=pointer]:
+              - paragraph: 벤치마킹
+            - button "알람 설정" [ref=e250] [cursor=pointer]:
+              - paragraph: 알람 설정
+      - button "사이드바 토글" [ref=e101] [cursor=pointer]
+      - generic [ref=e103]:
+        - paragraph [ref=e104]:
+          - generic [ref=e105]: pos
+          - generic [ref=e106]: system
+        - generic:
+          - generic:
+            - generic:
+              - img
+      - img [ref=e108]
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - button "HQ POS >" [ref=e111] [cursor=pointer]
+          - button "새로고침" [ref=e112] [cursor=pointer]:
+            - paragraph [ref=e115]: 새로고침
+          - button "AI 리포트 생성" [ref=e116] [cursor=pointer]:
+            - paragraph [ref=e117]: AI 리포트 생성
+        - img [ref=e119]
+        - button "PIP AI BOT" [ref=e120] [cursor=pointer]:
+          - img [ref=e121]
+          - paragraph [ref=e123]: PIP AI BOT
+      - generic [ref=e124]:
+        - generic [ref=e125]:
+          - generic [ref=e126]:
+            - img [ref=e127]
+            - generic [ref=e129]: PIP AI
+          - generic [ref=e130]:
+            - button [ref=e131] [cursor=pointer]
+            - button [ref=e132] [cursor=pointer]:
+              - img [ref=e133]
+        - generic [ref=e136]:
+          - generic [ref=e138]:
+            - button "Today's AI Insights" [ref=e139] [cursor=pointer]:
+              - generic [ref=e140]:
+                - img [ref=e141]
+                - generic [ref=e143]: Today's AI Insights
+              - img [ref=e144]
+            - generic [ref=e146]:
+              - paragraph [ref=e147]: 던킨의 생산·주문·매출을 한 번에!!
+              - paragraph [ref=e148]: 운영을 돕는 올인원 AI, PIP
+              - paragraph [ref=e149]: 종합 현황 분석 중
+          - generic [ref=e152]:
+            - generic [ref=e154]:
+              - paragraph [ref=e155]: 2026-03-05 12:00 기준 종합 현황 데이터입니다.
+              - paragraph [ref=e156]: 추천 질문을 눌러 확인해 주세요.
+            - generic [ref=e157]:
+              - button "오늘 핵심 이슈 요약해줘" [ref=e158] [cursor=pointer]
+              - button "이번 달 일평균 매출을 타 점포 평균과 비교해줘" [ref=e159] [cursor=pointer]
+              - button "벤치마킹이 뭔데" [ref=e160] [cursor=pointer]
+            - paragraph [ref=e161]: 12:00
+        - generic [ref=e163]:
+          - textbox "what's in your mind..?" [ref=e164]
+          - button [ref=e165] [cursor=pointer]
+      - generic [ref=e166]:
+        - generic [ref=e355]:
+          - generic [ref=e356]:
+            - paragraph [ref=e357]: 금일 예상 누적 매출
+            - paragraph [ref=e358]: 시간대 판매 패턴 기반 추정
+          - generic [ref=e359]:
+            - generic [ref=e360]:
+              - paragraph [ref=e361]: ₩252,871
+              - generic [ref=e362]:
+                - paragraph [ref=e363]: "-15.9%"
+                - img [ref=e364]
+            - application [ref=e368]
+        - generic [ref=e376]:
+          - generic [ref=e377]:
+            - paragraph [ref=e378]: AI 추정 순매출
+            - paragraph [ref=e379]: 매출이익률 68% 적용
+          - generic [ref=e380]:
+            - generic [ref=e381]:
+              - paragraph [ref=e382]: ₩171,952
+              - generic [ref=e383]:
+                - paragraph [ref=e384]: +8.8%
+                - img [ref=e385]
+            - application [ref=e389]
+        - generic [ref=e397]:
+          - generic [ref=e398]:
+            - paragraph [ref=e399]: 금일 예상 기회손실
+            - paragraph [ref=e400]: 일 기준 ETA 위험 품목 합산
+          - generic [ref=e402]:
+            - paragraph [ref=e404]: ₩20,500
+            - paragraph [ref=e405]: 8개 · 보충 4개
+            - paragraph [ref=e406]: 리드타임 1시간 기준
+      - generic [ref=e170]:
+        - generic [ref=e171]:
+          - generic [ref=e172]:
+            - paragraph [ref=e174]: 추천 액션
+            - paragraph [ref=e175]: AI 즉시 실행 제안
+          - generic [ref=e251]:
+            - generic [ref=e252]:
+              - img "icon" [ref=e254]
+              - generic [ref=e255]:
+                - paragraph [ref=e256]: 내 생산 계획
+                - paragraph [ref=e257]: 카푸치노츄이스티 기회손실 ₩6,286 추정
+              - generic [ref=e258]: 추천
+            - generic [ref=e259]:
+              - img "icon" [ref=e261]
+              - generic [ref=e262]:
+                - paragraph [ref=e263]: 부족 자재
+                - paragraph [ref=e264]: 카카오하니딥 외 1건
+              - generic [ref=e265]: 긴급
+            - generic [ref=e266]:
+              - img "icon" [ref=e268]
+              - generic [ref=e269]:
+                - paragraph [ref=e270]: 프로모션 업데이트
+                - paragraph [ref=e271]: 오후 할인 이벤트 등록 권장
+              - generic [ref=e272]: 추천
+        - generic [ref=e176]:
+          - generic [ref=e177]:
+            - paragraph [ref=e178]: 이벤트 캘린더
+            - paragraph [ref=e179]: 5 건
+          - generic [ref=e180]:
+            - generic [ref=e181]:
+              - generic [ref=e182]:
+                - paragraph [ref=e183]: 4월
+                - paragraph [ref=e184]: "07"
+              - generic [ref=e185]:
+                - paragraph [ref=e186]: 신제품 출시 프로모션
+                - paragraph [ref=e187]: 베라망고 쿨라타 할인 이벤트
+            - generic [ref=e188]:
+              - generic [ref=e189]:
+                - paragraph [ref=e190]: 4월
+                - paragraph [ref=e191]: "09"
+              - generic [ref=e192]:
+                - paragraph [ref=e193]: 봄 신메뉴 출시
+                - paragraph [ref=e194]: 딸기라떼 & 말차 신제품
+            - generic [ref=e195]:
+              - generic [ref=e196]:
+                - paragraph [ref=e197]: 4월
+                - paragraph [ref=e198]: "10"
+              - generic [ref=e199]:
+                - paragraph [ref=e200]: 직원 교육의 날
+                - paragraph [ref=e201]: 서비스 품질 향상 교육
+            - generic [ref=e202]:
+              - generic [ref=e203]:
+                - paragraph [ref=e204]: 4월
+                - paragraph [ref=e205]: "14"
+              - generic [ref=e206]:
+                - paragraph [ref=e207]: 매장 정기 점검
+                - paragraph [ref=e208]: 설비 및 위생 점검
+            - generic [ref=e209]:
+              - generic [ref=e210]:
+                - paragraph [ref=e211]: 5월
+                - paragraph [ref=e212]: "05"
+              - generic [ref=e213]:
+                - paragraph [ref=e214]: 어린이날 특별 이벤트
+                - paragraph [ref=e215]: 키즈 세트 메뉴 할인
+      - generic [ref=e216]:
+        - generic [ref=e217]:
+          - generic [ref=e218]:
+            - paragraph [ref=e220]: 오늘의 발주 요약
+            - paragraph [ref=e221]: 발주 관리
+          - generic [ref=e273]:
+            - paragraph [ref=e274]: 원주문 마감
+            - paragraph [ref=e275]: 15:00
+          - generic [ref=e276]:
+            - generic [ref=e277]:
+              - paragraph [ref=e278]: 페이머스글레이즈드
+              - paragraph [ref=e279]: 73개
+            - generic [ref=e280]:
+              - paragraph [ref=e281]: 스트로베리필드
+              - paragraph [ref=e282]: 39개
+            - generic [ref=e283]:
+              - paragraph [ref=e284]: 카카오하니딥
+              - paragraph [ref=e285]: 45개
+            - generic [ref=e286]:
+              - paragraph [ref=e287]: 보스톤크림
+              - paragraph [ref=e288]: 30개
+            - generic [ref=e289]:
+              - paragraph [ref=e290]: 카스텔라도넛
+              - paragraph [ref=e291]: 15개
+            - generic [ref=e292]:
+              - paragraph [ref=e293]: 소금우유도넛
+              - paragraph [ref=e294]: 19개
+          - paragraph [ref=e296]: 과거 실적 기반 추천 기준으로 6개 품목 발주가 필요합니다.
+        - generic [ref=e222]:
+          - generic [ref=e223]:
+            - paragraph [ref=e225]: 오늘의 매출 스냅샷
+            - generic [ref=e297]:
+              - paragraph [ref=e298]: 전일 대비
+              - paragraph [ref=e299]: "-15.9%"
+              - img [ref=e300]
+          - application [ref=e305]:
+            - generic [ref=e317]:
+              - generic [ref=e319]: 10:00
+              - generic [ref=e321]: 13:00
+              - generic [ref=e323]: 16:00
+              - generic [ref=e325]: 18:00
+          - generic [ref=e326]:
+            - generic [ref=e327]:
+              - generic [ref=e329]: "1"
+              - generic [ref=e331]: "2"
+              - generic [ref=e333]: "3"
+              - generic [ref=e335]: "4"
+              - generic [ref=e337]: "5"
+            - generic [ref=e338]:
+              - generic [ref=e339]:
+                - paragraph [ref=e340]: 페이머스글레이즈드
+                - paragraph [ref=e341]: 71개
+              - generic [ref=e342]:
+                - paragraph [ref=e343]: 카푸치노츄이스티
+                - paragraph [ref=e344]: 44개
+              - generic [ref=e345]:
+                - paragraph [ref=e346]: 카카오하니딥
+                - paragraph [ref=e347]: 40개
+              - generic [ref=e348]:
+                - paragraph [ref=e349]: 스트로베리필드
+                - paragraph [ref=e350]: 36개
+              - generic [ref=e351]:
+                - paragraph [ref=e352]: 올리브츄이스티
+                - paragraph [ref=e353]: 36개
+      - generic [ref=e227] [cursor=pointer]:
+        - generic [ref=e414]:
+          - generic [ref=e415]:
+            - img [ref=e416]
+            - paragraph [ref=e418]: PIP AI데이터 근거 생산 + 매출 에이전트
+          - paragraph [ref=e420]: 2026-03-05 12:00 기준, 스트로베리필드 등 12개 품목의 재고 부족이 예상됩니다. 생산관리 에이전트에서 권장 수량을 확인하세요.
+        - generic [ref=e229]:
+          - generic [ref=e422]:
+            - paragraph [ref=e425]: 생산관리 에이전트
+            - button "바로가기" [ref=e427]:
+              - paragraph [ref=e428]: 바로가기
+          - generic [ref=e429]:
+            - paragraph [ref=e432]: 주문관리 에이전트
+            - button "바로가기" [ref=e434]:
+              - paragraph [ref=e435]: 바로가기
+          - generic [ref=e436]:
+            - paragraph [ref=e439]: 매출관리 에이전트
+            - button "바로가기" [ref=e441]:
+              - paragraph [ref=e442]: 바로가기
+    - generic [ref=e231]:
+      - generic [ref=e234]: ONLINE
+      - generic [ref=e237]: BR KOREA POS SYSTEM
+      - generic [ref=e240]: PWR
+  - generic [ref=e354]: 18:00

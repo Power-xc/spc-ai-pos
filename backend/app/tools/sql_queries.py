@@ -558,7 +558,7 @@ async def get_store_inventory_today(
                    AND s.product_id = r.product_id
                 WHERE r.store_id = :store_id
                 ORDER BY
-                    r.needs_attention DESC,
+                     CASE WHEN r.on_hand_eod <= 0 THEN 1 ELSE 0 END DESC,
                     COALESCE(NULLIF(s.stockout_minutes, 0), r.stockout_minutes, 0) DESC,
                     COALESCE(s.sold_qty, r.sold_qty, 0) DESC,
                     COALESCE(ap.product_name, s.product_name, r.product_name, r.product_id)
@@ -1797,32 +1797,36 @@ async def get_benchmark_peer_summary(
             """,
             params,
         )
-        peak_rows = await _fetch_gold_all(
-            db,
-            f"""
-            SELECT *
-            FROM (
-                SELECT
-                    h.store_id,
-                    COALESCE(ast.store_name, ds.store_name, h.store_id) AS store_name,
-                    h.sale_hour,
-                    h.total_sales,
-                    row_number() OVER (
-                        PARTITION BY h.store_id
-                        ORDER BY h.total_sales DESC, h.sale_hour
-                    ) AS row_rank
-                FROM {GOLD_SCHEMA}.gold__sales_hourly h
-                LEFT JOIN {APP_SCHEMA}.stores ast
-                  ON ast.store_id = h.store_id
-                LEFT JOIN {GOLD_SCHEMA}.dim_store ds
-                  ON ds.store_id = h.store_id
-                WHERE h.store_id IN ({placeholders})
-                  AND h.biz_date BETWEEN :start_date AND :end_date
-            ) ranked
-            WHERE row_rank = 1
-            """,
-            params,
-        )
+        peak_rows: list[dict[str, Any]] = []
+        try:
+            peak_rows = await _fetch_gold_all(
+                db,
+                f"""
+                SELECT *
+                FROM (
+                    SELECT
+                        h.store_id,
+                        COALESCE(ast.store_name, ds.store_name, h.store_id) AS store_name,
+                        h.sale_hour,
+                        h.total_sales,
+                        row_number() OVER (
+                            PARTITION BY h.store_id
+                            ORDER BY h.total_sales DESC, h.sale_hour
+                        ) AS row_rank
+                    FROM {GOLD_SCHEMA}.gold__sales_hourly h
+                    LEFT JOIN {APP_SCHEMA}.stores ast
+                      ON ast.store_id = h.store_id
+                    LEFT JOIN {GOLD_SCHEMA}.dim_store ds
+                      ON ds.store_id = h.store_id
+                    WHERE h.store_id IN ({placeholders})
+                      AND h.biz_date BETWEEN :start_date AND :end_date
+                ) ranked
+                WHERE row_rank = 1
+                """,
+                params,
+            )
+        except Exception:
+            logger.warning("gold__sales_hourly not available — peak_hour will be null")
 
         if not kpi_rows:
             return {
@@ -1990,9 +1994,63 @@ async def get_benchmark_hourly_sales(
                     "txn_cnt": int(_number(row.get("txn_cnt"))),
                 }
             )
-        return list(grouped.values())
+        if grouped:
+            return list(grouped.values())
     except Exception:
-        logger.exception("Failed to fetch benchmark hourly sales")
+        logger.warning("gold__sales_hourly not available — falling back to KPI+profile hourly")
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+    try:
+        placeholders2, params2 = _named_list_params("bh_store", store_ids)
+        kpi_rows = await _fetch_gold_all(
+            db,
+            f"""
+            SELECT
+                k.store_id,
+                COALESCE(ast.store_name, ds.store_name, k.store_id) AS store_name,
+                avg(k.total_sales) AS daily_avg_sales,
+                avg(k.total_qty) AS daily_avg_qty
+            FROM {GOLD_SCHEMA}.new_kpi_store_day_gold k
+            LEFT JOIN {APP_SCHEMA}.stores ast
+              ON ast.store_id = k.store_id
+            LEFT JOIN {GOLD_SCHEMA}.dim_store ds
+              ON ds.store_id = k.store_id
+            WHERE k.store_id IN ({placeholders2})
+              AND k.biz_date = :biz_date
+            GROUP BY k.store_id, COALESCE(ast.store_name, ds.store_name, k.store_id)
+            """,
+            {**params2, "biz_date": biz_date},
+        )
+        grouped2: dict[str, dict[str, Any]] = {}
+        for row in kpi_rows:
+            sid = str(row.get("store_id") or "")
+            daily_sales = _number(row.get("daily_avg_sales"))
+            daily_qty = _number(row.get("daily_avg_qty"))
+            if daily_sales <= 0:
+                continue
+            bucket = grouped2.setdefault(
+                sid,
+                {
+                    "store_id": sid,
+                    "store_name": _canonical_store_name(sid, row.get("store_name") or sid),
+                    "points": [],
+                },
+            )
+            for hour, share in DEFAULT_HOURLY_PROFILE.items():
+                bucket["points"].append(
+                    {
+                        "hour": hour,
+                        "sales": round(daily_sales * share, 2),
+                        "qty": round(daily_qty * share, 2),
+                        "txn_cnt": 0,
+                    }
+                )
+        return list(grouped2.values())
+    except Exception:
+        logger.exception("Fallback KPI-based hourly for benchmark also failed")
         return []
 
 
@@ -3276,23 +3334,14 @@ async def get_order_reference_data(
     if _is_async_session(db):
         try:
             normalized_category = _normalize_order_category(category)
-            reference_end = reference_date or date.today()
+            latest_data_date = reference_date or await get_latest_biz_date(db, store_id)
             latest_rows = await _fetch_orderable_sales_rows(
                 db,
                 store_id=store_id,
-                start_date=reference_end - timedelta(days=60),
-                end_date=reference_end,
+                start_date=latest_data_date - timedelta(days=60),
+                end_date=latest_data_date,
                 category=normalized_category,
             )
-            if not latest_rows:
-                latest_date = reference_date or await get_latest_biz_date(db, store_id)
-                latest_rows = await _fetch_orderable_sales_rows(
-                    db,
-                    store_id=store_id,
-                    start_date=latest_date - timedelta(days=60),
-                    end_date=latest_date,
-                    category=normalized_category,
-                )
             if not latest_rows:
                 return {
                     "reference_dow": None,
@@ -3415,20 +3464,12 @@ async def get_order_reference_data(
                     for row in promo_rows
                 ],
             }
-        except Exception:
-            logger.exception(
-                "Failed to fetch gold order reference data for store_id=%s",
+        except Exception as exc:
+            logger.warning(
+                "Gold async path failed for store_id=%s: %s — falling through to pandas fallback",
                 store_id,
+                exc,
             )
-            return {
-                "reference_dow": None,
-                "latest_biz_date": None,
-                "option_last_week": [],
-                "option_2weeks_ago": [],
-                "option_last_month": [],
-                "four_week_avg": [],
-                "active_promos": [],
-            }
     try:
         frame = _order_frame(db, store_id)
         if category:
@@ -3630,17 +3671,23 @@ async def get_recent_order_snapshots(
     *,
     category: str | None = None,
     limit: int = 3,
+    cutoff_date: date | None = None,
 ) -> list[dict[str, Any]]:
-    """Return recent order-day snapshots with top items for adjustment guidance."""
+    """Return recent order-day snapshots with top items for adjustment guidance.
+
+    cutoff_date: if set, only biz_date <= cutoff_date is used.
+    """
     if _is_async_session(db):
         try:
             normalized_category = _normalize_order_category(category)
             latest_date = await get_latest_biz_date(db, store_id)
+            # Apply cutoff: never use future data
+            effective_end = min(latest_date, cutoff_date) if cutoff_date else latest_date
             rows = await _fetch_orderable_sales_rows(
                 db,
                 store_id=store_id,
-                start_date=latest_date - timedelta(days=21),
-                end_date=latest_date,
+                start_date=effective_end - timedelta(days=21),
+                end_date=effective_end,
                 category=normalized_category,
             )
             by_day: dict[str, list[dict[str, Any]]] = {}
@@ -3751,7 +3798,7 @@ async def _fetch_orderable_sales_rows(
         "end_date": end_date,
     }
     if normalized_category:
-        category_filter_sql = f"WHERE {category_case} = :order_category"
+        category_filter_sql = f"AND {category_case} = :order_category"
         params["order_category"] = normalized_category
     rows = await _fetch_gold_all(
         db,
@@ -3804,6 +3851,7 @@ async def _fetch_orderable_sales_rows(
             LEFT JOIN {GOLD_SCHEMA}.new_dim_product_silver nd
               ON nd.product_id = p.product_id
             WHERE p.store_id = :store_id
+              AND p.product_id NOT LIKE '7%%'
               AND p.biz_date BETWEEN :start_date AND :end_date
             GROUP BY p.biz_date, p.product_id
         )
@@ -3819,6 +3867,7 @@ async def _fetch_orderable_sales_rows(
             sales_amt,
             {category_case} AS order_category
         FROM aggregated
+        WHERE base_price > 0
         {category_filter_sql}
         ORDER BY biz_date DESC, sales_amt DESC, product_name
         """,

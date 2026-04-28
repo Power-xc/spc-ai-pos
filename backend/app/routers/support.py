@@ -369,13 +369,22 @@ async def get_benchmark_hourly_sales(
     sid = get_request_store_id(request, store_id)
     peer_ids = _normalize_compare_store_ids(sid, compare_store_ids)
     rows = await sql_queries.get_benchmark_hourly_sales(db, [sid, *peer_ids], biz_date)
+    has_real_hourly = any(
+        any(p.get("txn_cnt", 0) > 0 for p in store.get("points", []))
+        for store in rows
+    )
     return APIResponse(
         data={
             "status": "active" if rows else "no_data",
-            "data_source": "dunkin_mart_copy.gold__sales_hourly",
+            "data_source": "dunkin_mart_copy.gold__sales_hourly" if has_real_hourly else "KPI+DEFAULT_HOURLY_PROFILE(fallback)",
             "biz_date": biz_date.isoformat(),
             "stores": rows,
-            "note": None if rows else "시간대별 비교 데이터가 없습니다.",
+            "note": (
+                None if has_real_hourly
+                else "실시간 시간대 데이터 미적재 — 일별 평균 매출과 기준 판매 프로파일로 추정했습니다."
+                if rows
+                else "시간대별 비교 데이터가 없습니다."
+            ),
         }
     )
 

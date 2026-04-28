@@ -18,6 +18,7 @@ from api import (
     admin,
     chat,
     home,
+    hq_ai,
     inventory,
     modal,
     notice,
@@ -369,10 +370,10 @@ _routers = [
     home.router,
     inventory.router,
     order.router,
-    sales.router,
     notice.router,
     settings_api.router,
     chat.router,
+    hq_ai.router,
     modal.router,
     notifications.router,
     admin.router,
@@ -381,6 +382,9 @@ if notification_settings_api is not None:
     _routers.append(notification_settings_api.router)
 for router in _routers:
     app.include_router(router)
+
+# Sales router includes both /api/sales/* and /v1/analytics/* endpoints
+app.include_router(sales.router)
 
 
 @app.get("/health")

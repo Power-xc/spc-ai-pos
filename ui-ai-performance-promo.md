@@ -1,0 +1,229 @@
+- generic [ref=e1]:
+  - generic [ref=e5]:
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e13]:
+          - img [ref=e15]
+          - generic [ref=e19]:
+            - img [ref=e21]
+            - img [ref=e26]
+            - img [ref=e31]
+        - generic [ref=e35]:
+          - paragraph [ref=e36]: 환영합니다.
+          - paragraph [ref=e37]: 강서구01 운영 화면
+          - paragraph [ref=e38]: 현재 기준 매장 분석 중
+        - img [ref=e40]
+        - generic [ref=e41]:
+          - paragraph [ref=e42]: MAIN
+          - generic [ref=e43]:
+            - button "종합 현황" [ref=e44] [cursor=pointer]:
+              - paragraph [ref=e47]: 종합 현황
+            - button "AI 실시간 현황" [ref=e49] [cursor=pointer]:
+              - paragraph [ref=e51]: AI 실시간 현황
+        - img [ref=e53]
+        - generic [ref=e54]:
+          - paragraph [ref=e55]: ACTION
+          - generic [ref=e56]:
+            - button "생산관리 1" [ref=e57] [cursor=pointer]:
+              - paragraph [ref=e60]: 생산관리
+              - generic [ref=e61]: "1"
+            - button "발주 관리 3" [ref=e62] [cursor=pointer]:
+              - paragraph [ref=e65]: 발주 관리
+              - generic [ref=e66]: "3"
+            - button "프로모션" [ref=e67] [cursor=pointer]:
+              - paragraph [ref=e70]: 프로모션
+        - img [ref=e72]
+        - generic [ref=e73]:
+          - paragraph [ref=e74]: SUB
+          - generic [ref=e75]:
+            - button "AI 기반 성과 분석" [active] [ref=e76] [cursor=pointer]:
+              - paragraph [ref=e79]: AI 기반 성과 분석
+            - button "AI 검증" [ref=e80] [cursor=pointer]:
+              - paragraph [ref=e83]: AI 검증
+            - button "벤치마킹" [ref=e84] [cursor=pointer]:
+              - paragraph [ref=e87]: 벤치마킹
+            - button "알람 설정" [ref=e88] [cursor=pointer]:
+              - paragraph [ref=e91]: 알람 설정
+        - button "기준 일자 및 시간 설정" [ref=e92] [cursor=pointer]:
+          - generic [ref=e93]:
+            - img [ref=e95]
+            - generic [ref=e97]:
+              - paragraph [ref=e98]: 2026-03-05
+              - paragraph [ref=e99]: 클릭 시연 기준값 변경
+      - button "사이드바 토글" [ref=e100] [cursor=pointer]
+      - generic [ref=e102]:
+        - paragraph [ref=e103]:
+          - generic [ref=e104]: pos
+          - generic [ref=e105]: system
+        - generic:
+          - generic:
+            - generic:
+              - img
+      - img [ref=e107]
+      - generic [ref=e108]:
+        - generic [ref=e109]:
+          - button "HQ POS >" [ref=e110] [cursor=pointer]
+          - button "새로고침" [ref=e111] [cursor=pointer]:
+            - paragraph [ref=e114]: 새로고침
+          - button "AI 리포트 생성" [ref=e115] [cursor=pointer]:
+            - paragraph [ref=e116]: AI 리포트 생성
+        - img [ref=e118]
+        - button "PIP AI BOT" [ref=e119] [cursor=pointer]:
+          - img [ref=e120]
+          - paragraph [ref=e122]: PIP AI BOT
+      - generic [ref=e247]:
+        - generic [ref=e248]:
+          - generic [ref=e249]:
+            - img [ref=e250]
+            - generic [ref=e252]: PIP AI
+          - generic [ref=e253]:
+            - button [ref=e254] [cursor=pointer]
+            - button [ref=e255] [cursor=pointer]:
+              - img [ref=e256]
+        - generic [ref=e259]:
+          - generic [ref=e261]:
+            - button "Today's AI Insights" [ref=e262] [cursor=pointer]:
+              - generic [ref=e263]:
+                - img [ref=e264]
+                - generic [ref=e266]: Today's AI Insights
+              - img [ref=e267]
+            - generic [ref=e269]:
+              - paragraph [ref=e270]: 던킨의 생산·주문·매출을 한 번에!!
+              - paragraph [ref=e271]: 운영을 돕는 올인원 AI, PIP
+              - paragraph [ref=e272]: AI 기반 성과 분석 분석 중
+          - generic [ref=e275]:
+            - generic [ref=e277]:
+              - paragraph [ref=e278]: 2026-03-05 13:00 기준 성과 분석 데이터입니다.
+              - paragraph [ref=e279]: 추천 질문을 눌러 확인해 주세요.
+            - generic [ref=e280]:
+              - button "월간 매출 비교" [ref=e281] [cursor=pointer]
+              - button "전주 배달 건수 비교" [ref=e282] [cursor=pointer]
+              - button "전월 배달 건수 비교" [ref=e283] [cursor=pointer]
+              - button "채널별 매출 비중" [ref=e284] [cursor=pointer]
+              - button "글레이즈드 전월 비교" [ref=e285] [cursor=pointer]
+              - button "타 점포 평균 비교" [ref=e286] [cursor=pointer]
+              - button "반응 좋은 프로모션" [ref=e287] [cursor=pointer]
+              - button "프로모션 매출 기여도" [ref=e288] [cursor=pointer]
+            - paragraph [ref=e289]: 13:00
+        - generic [ref=e291]:
+          - textbox "what's in your mind..?" [ref=e292]
+          - button [ref=e293] [cursor=pointer]
+      - generic [ref=e296]:
+        - generic [ref=e297]:
+          - button "일별" [ref=e298] [cursor=pointer]
+          - button "주별" [ref=e299] [cursor=pointer]
+          - button "월별" [ref=e300] [cursor=pointer]
+        - generic [ref=e301]:
+          - generic [ref=e302]:
+            - generic [ref=e303]:
+              - paragraph [ref=e304]: 시간대별 매출 추이
+              - paragraph [ref=e306]: 오늘 vs 전주 평균 · POS vs 배달
+            - application [ref=e309]:
+              - generic [ref=e408]:
+                - generic [ref=e409]:
+                  - generic [ref=e411]: 8시
+                  - generic [ref=e413]: 9시
+                  - generic [ref=e415]: 11시
+                  - generic [ref=e417]: 13시
+                  - generic [ref=e419]: 15시
+                  - generic [ref=e421]: 17시
+                  - generic [ref=e423]: 19시
+                  - generic [ref=e425]: 21시
+                - generic [ref=e426]:
+                  - generic [ref=e428]: "0"
+                  - generic [ref=e430]: 45K
+                  - generic [ref=e432]: 90K
+                  - generic [ref=e434]: 135K
+                  - generic [ref=e436]: 180K
+            - generic [ref=e437]:
+              - paragraph [ref=e440]: POS 추정
+              - paragraph [ref=e443]: 배달 추정
+              - paragraph [ref=e446]: 비교 기준선
+            - paragraph [ref=e447]: 채널별 금액은 총매출 기준 추정값이며, 기준선은 전일 동시간 수익 프로필입니다.
+          - generic [ref=e448]:
+            - generic [ref=e449]:
+              - paragraph [ref=e450]: 상품별 매출 기준선
+              - paragraph [ref=e452]: 오늘 매출 / 기준선
+            - generic [ref=e453]:
+              - generic [ref=e454]:
+                - generic [ref=e455]:
+                  - paragraph [ref=e456]: 페이머스글레이즈드
+                  - paragraph [ref=e457]: 기준선 대비 87%
+                - paragraph [ref=e458]: 120,700원 / 138,805원
+              - generic [ref=e461]:
+                - generic [ref=e462]:
+                  - paragraph [ref=e463]: 카푸치노츄이스티
+                  - paragraph [ref=e464]: 기준선 대비 87%
+                - paragraph [ref=e465]: 88,000원 / 101,200원
+              - generic [ref=e468]:
+                - generic [ref=e469]:
+                  - paragraph [ref=e470]: 스트로베리필드
+                  - paragraph [ref=e471]: 기준선 대비 87%
+                - paragraph [ref=e472]: 72,000원 / 82,800원
+              - generic [ref=e475]:
+                - generic [ref=e476]:
+                  - paragraph [ref=e477]: 올리브츄이스티
+                  - paragraph [ref=e478]: 기준선 대비 87%
+                - paragraph [ref=e479]: 72,000원 / 82,800원
+        - generic [ref=e482]:
+          - generic [ref=e483]:
+            - paragraph [ref=e484]: 프로모션 성과 분석
+            - paragraph [ref=e486]: 캠페인별 결제건수/매출 점유율 · 매출 기여도
+          - application [ref=e489]:
+            - generic [ref=e516]:
+              - generic [ref=e517]:
+                - generic [ref=e519]: 아이스아메리카노 2천원 할인
+                - generic [ref=e521]: 던킨런치세트 1000원 할인
+              - generic [ref=e522]:
+                - generic [ref=e524]: "0"
+                - generic [ref=e526]: "25"
+                - generic [ref=e528]: "50"
+                - generic [ref=e530]: "97"
+          - generic [ref=e531]:
+            - paragraph [ref=e534]: 결제건수 점유율
+            - paragraph [ref=e537]: 매출 점유율
+            - paragraph [ref=e540]: 매출 기여도
+          - paragraph [ref=e541]: "캠페인별 결제건수와 매출의 상대적 점유율입니다. (집계 기준: 2026-03-05까지)"
+        - generic [ref=e542]:
+          - generic [ref=e543]:
+            - generic [ref=e544]:
+              - paragraph [ref=e545]: 결제수단별 매출 비중
+              - paragraph [ref=e547]: 매출 비중 기준
+            - generic [ref=e548]:
+              - generic [ref=e550]:
+                - paragraph [ref=e551]: 카드 일반 결제
+                - paragraph [ref=e552]: 매출 비중 64%
+              - generic [ref=e556]:
+                - paragraph [ref=e557]: 분할 결제
+                - paragraph [ref=e558]: 매출 비중 11%
+              - generic [ref=e562]:
+                - paragraph [ref=e563]: 카카오페이
+                - paragraph [ref=e564]: 매출 비중 17%
+              - generic [ref=e568]:
+                - paragraph [ref=e569]: 현금
+                - paragraph [ref=e570]: 매출 비중 8%
+          - generic [ref=e573]:
+            - generic [ref=e574]:
+              - paragraph [ref=e575]: 우리 매장 핵심 지표
+              - paragraph [ref=e577]: 총매출 및 전일비
+            - generic [ref=e578]:
+              - generic [ref=e579]:
+                - generic [ref=e580]:
+                  - paragraph [ref=e581]: 총매출
+                  - generic [ref=e582]:
+                    - generic [ref=e583]: ▼
+                    - paragraph [ref=e584]: "-15.9%"
+                - paragraph [ref=e585]: ₩1,330,900
+              - generic [ref=e586]:
+                - generic [ref=e587]:
+                  - paragraph [ref=e588]: 매출 전일비
+                  - generic [ref=e589]:
+                    - generic [ref=e590]: ▼
+                    - paragraph [ref=e591]: "-15.9%"
+                - paragraph [ref=e592]: "-15.9%"
+            - paragraph [ref=e593]: 주문 수와 객단가는 실제 주문 기준 데이터 연결 후 표시됩니다.
+    - generic [ref=e230]:
+      - generic [ref=e233]: ONLINE
+      - generic [ref=e236]: BR KOREA POS SYSTEM
+      - generic [ref=e239]: PWR
+  - generic [ref=e594]: "25"
