@@ -942,17 +942,6 @@
       background: linear-gradient(135deg, #FF6E00, #E91E8C);
     }
 
-    .ai-fab--dash::before {
-      background: linear-gradient(135deg, #4A3AFF, #7C5CFC);
-    }
-
-    .ai-fab--dash {
-      border-color: #5B4AE2;
-    }
-
-    .ai-fab--dash:hover {
-      box-shadow: 0 12px 35px rgba(91, 74, 226, 0.5);
-    }
 
     @keyframes fabPulse {
       0% { transform: scale(1); opacity: 0.25; }
@@ -966,7 +955,13 @@
     }
 
     .ai-fab--chat .ai-fab-icon { color: #FF6E00; }
-    .ai-fab--dash .ai-fab-icon { color: #5B4AE2; }
+
+    .ai-fab--pip { border-color: #BAE6FD; box-shadow: 0 4px 16px rgba(56,189,248,0.15); }
+
+    .ai-fab--pip:hover { box-shadow: 0 8px 28px rgba(56,189,248,0.35); border-color: #38BDF8; transform: scale(1.1); }
+
+    .ai-fab--pip::before { background: linear-gradient(135deg, #7DD3FC, #38BDF8); }
+    .ai-fab--pip .ai-fab-icon { color: #38BDF8; }
 
     .ai-fab-label {
       background: rgba(15, 15, 30, 0.92);
@@ -1042,7 +1037,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 17px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
       flex-shrink: 0;
     }
 
@@ -1585,6 +1582,856 @@
     }
     .hq-issue-title { font-size: 11px; font-weight: 700; color: #333; margin-bottom: 3px; }
     .hq-issue-desc { font-size: 10px; color: #888; line-height: 1.4; }
+
+    /* ═══════════════════════════════════════════
+        AI INSIGHT DASHBOARD — 12-col grid
+       ═══════════════════════════════════════════ */
+    .hq-ai-dashboard {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      background: #f4f5f7;
+      padding: 16px 20px 120px;
+      gap: 16px;
+      scrollbar-width: thin;
+      scrollbar-color: #d0d0d0 transparent;
+    }
+    .hq-ai-dashboard::-webkit-scrollbar { width: 4px; }
+    .hq-ai-dashboard::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 2px; }
+
+    /* 12-col grid */
+    .ai-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .ai-c3  { grid-column: span 3; }
+    .ai-c4  { grid-column: span 4; }
+    .ai-c6  { grid-column: span 6; }
+    .ai-c8  { grid-column: span 8; }
+    .ai-c12 { grid-column: span 12; }
+    @media (max-width: 1280px) {
+      .ai-c3, .ai-c4, .ai-c6, .ai-c8 { grid-column: span 12; }
+    }
+
+    /* Header */
+    .ai-dash-header {
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+      padding: 16px 20px;
+      display: flex;
+      align-items: stretch;
+      gap: 16px;
+    }
+    .ai-dash-header-left h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #111827;
+      margin: 0;
+    }
+    .ai-dash-header-left p {
+      font-size: 12px;
+      color: #888;
+      margin: 4px 0 0;
+      line-height: 1.45;
+    }
+    .ai-dash-meta {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .ai-meta-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: #F3F4F6;
+      color: #555;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .ai-meta-tag.primary { background: #FF6E00; color: white; }
+    .ai-meta-tag.sky   { background: #F0F9FF; color: #0284C7; }
+    .ai-dash-header-right {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .ai-dash-btn {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid #E5E7EB;
+      background: white;
+      font-size: 12px;
+      font-weight: 700;
+      color: #555;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all .15s;
+    }
+    .ai-dash-btn:hover { border-color: #FF6E00; color: #FF6E00; }
+    .ai-dash-btn.primary { background: #FF6E00; color: white; border-color: #FF6E00; }
+    .ai-dash-btn.primary:hover { background: #e86400; }
+
+    /* KPI cards */
+    .ai-kpi-card {
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+    .ai-kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .ai-kpi-card.k--danger::before { background: linear-gradient(90deg, #ef4444, #f97316); }
+    .ai-kpi-card.k--warn::before  { background: linear-gradient(90deg, #f59e0b, #eab308); }
+    .ai-kpi-card.k--stock::before { background: linear-gradient(90deg, #f97316, #f59e0b); }
+    .ai-kpi-card.k--order::before { background: linear-gradient(90deg, #0284C7, #38BDF8); }
+    .ai-kpi-top { display: flex; align-items: center; gap: 8px; }
+    .ai-kpi-icon-box {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .k--danger .ai-kpi-icon-box { background: #FEF2F2; color: #ef4444; }
+    .k--warn .ai-kpi-icon-box   { background: #FFFBEB; color: #f59e0b; }
+    .k--stock .ai-kpi-icon-box  { background: #FFF7ED; color: #f97316; }
+    .k--order .ai-kpi-icon-box  { background: #F0F9FF; color: #0284C7; }
+    .ai-kpi-label { font-size: 11px; color: #999; font-weight: 700; }
+    .ai-kpi-value { font-size: 24px; font-weight: 900; color: #111827; line-height: 1.1; letter-spacing: -0.5px; }
+    .ai-kpi-change { font-size: 11px; font-weight: 700; }
+    .ai-kpi-change.up      { color: #22c55e; }
+    .ai-kpi-change.down    { color: #ef4444; }
+    .ai-kpi-change.neutral { color: #94a3b8; }
+
+    /* Section card (shared) */
+    .ai-section-card {
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .ai-section-head {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #F3F4F6;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .ai-section-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #111827;
+      flex: 1;
+    }
+    .ai-section-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #FEF2F2;
+      color: #ef4444;
+    }
+    .ai-section-badge.warn { background: #FFFBEB; color: #f59e0b; }
+    .ai-section-badge.sky  { background: #F0F9FF; color: #0284C7; }
+    .ai-section-body {
+      padding: 12px 16px;
+      overflow-y: auto;
+      flex: 1;
+      scrollbar-width: thin;
+    }
+    .ai-section-body::-webkit-scrollbar { width: 3px; }
+    .ai-section-body::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 2px; }
+
+    /* ── Issue cards (wide card, scrollable list) ── */
+    .ai-issue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .ai-issue-card {
+      padding: 12px 14px;
+      border-radius: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      border-left: 4px solid #e0e0e0;
+      background: #FAFBFC;
+      transition: all .15s;
+    }
+    .ai-issue-card:hover { background: #F3F4F6; }
+    .ai-issue-card.sev-urgent { border-left-color: #ef4444; }
+    .ai-issue-card.sev-warning{ border-left-color: #f59e0b; }
+    .ai-issue-card.sev-good   { border-left-color: #22c55e; }
+    .ai-issue-card.sev-info   { border-left-color: #3b82f6; }
+    .ai-issue-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .sev-urgent .ai-issue-icon { background: #FEF2F2; color: #ef4444; }
+    .sev-warning .ai-issue-icon{ background: #FFFBEB; color: #f59e0b; }
+    .sev-good .ai-issue-icon   { background: #F0FDF4; color: #22c55e; }
+    .sev-info .ai-issue-icon   { background: #EFF6FF; color: #3b82f6; }
+    .ai-issue-body { flex: 1; min-width: 0; }
+    .ai-issue-title { font-size: 12px; font-weight: 800; color: #111827; margin: 0 0 3px; }
+    .ai-issue-summary { font-size: 11px; color: #666; line-height: 1.5; margin: 0 0 4px; }
+    .ai-issue-impact  { font-size: 10px; color: #999; margin: 0 0 2px; }
+    .ai-issue-action  { font-size: 10px; color: #FF6E00; font-weight: 700; margin: 0 0 6px; }
+    .ai-issue-cta {
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 6px;
+      border: 1px solid #E5E7EB;
+      background: white;
+      font-size: 10px;
+      font-weight: 700;
+      color: #FF6E00;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .15s;
+    }
+    .ai-issue-cta:hover { background: #FF6E00; color: white; border-color: #FF6E00; }
+
+    /* Risk store table */
+    .ai-risk-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .ai-risk-table th {
+      background: #F9FAFB;
+      font-weight: 700;
+      color: #666;
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 2px solid #E5E7EB;
+      font-size: 10px;
+      white-space: nowrap;
+    }
+    .ai-risk-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #F3F4F6;
+      color: #333;
+    }
+    .ai-risk-table tr:hover td { background: #FFF8F0; }
+    .ai-risk-table .clickable { cursor: pointer; }
+
+    /* Trend rows */
+    .ai-trend-row {
+      display: grid;
+      grid-template-columns: 120px 70px 1fr 110px;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #F5F5F5;
+    }
+    .ai-trend-row:last-child { border-bottom: none; }
+    .ai-trend-label {
+      font-size: 12px;
+      color: #374151;
+      font-weight: 600;
+    }
+    .ai-trend-val {
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .ai-trend-val.down { color: #ef4444; }
+    .ai-trend-val.up   { color: #22c55e; }
+    .ai-trend-bar-track {
+      height: 8px;
+      background: #F3F4F6;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .ai-trend-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width .6s ease;
+    }
+    .ai-trend-bar-fill.down { background: linear-gradient(90deg, #ef4444, #f97316); }
+    .ai-trend-bar-fill.up   { background: linear-gradient(90deg, #22c55e, #34d399); }
+    .ai-trend-desc {
+      font-size: 11px;
+      color: #9CA3AF;
+      text-align: right;
+    }
+
+    /* Hourly bar chart */
+    .ai-hourly-row {
+      display: grid;
+      grid-template-columns: 48px 1fr 36px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .ai-hourly-label {
+      font-size: 11px;
+      color: #555;
+      font-weight: 600;
+      text-align: right;
+    }
+    .ai-hourly-track {
+      height: 16px;
+      background: #F3F4F6;
+      border-radius: 4px;
+      overflow: hidden;
+      min-width: 420px;
+    }
+    .ai-hourly-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width .8s ease;
+    }
+    .ai-hourly-fill.strong { background: linear-gradient(90deg, #0284C7, #38BDF8); }
+    .ai-hourly-fill.medium { background: linear-gradient(90deg, #f97316, #fbbf24); }
+    .ai-hourly-fill.weak   { background: linear-gradient(90deg, #94a3b8, #cbd5e1); }
+    .ai-hourly-val {
+      font-size: 11px;
+      font-weight: 700;
+      color: #333;
+      text-align: right;
+    }
+    .ai-hourly-note {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      background: #F0F9FF;
+      border-left: 4px solid #38BDF8;
+      border-radius: 12px;
+      padding: 12px;
+      color: #334155;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .ai-hourly-note i { color: #38BDF8; margin-top: 2px; flex-shrink: 0; }
+
+    /* AI recommended actions */
+    .ai-action-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #F3F4F6;
+    }
+    .ai-action-item:hover { background: transparent; }
+    .ai-action-item:last-child { border-bottom: none; }
+    .ai-action-priority {
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      flex-shrink: 0;
+      color: white;
+      margin-top: 1px;
+    }
+    .ai-action-priority.p-high { background: #ef4444; }
+    .ai-action-priority.p-mid  { background: #f59e0b; }
+    .ai-action-priority.p-low  { background: #94a3b8; }
+    .ai-action-body { flex: 1; }
+    .ai-action-text { font-size: 12px; font-weight: 600; color: #333; line-height: 1.45; }
+    .ai-action-meta { font-size: 10px; color: #999; margin-top: 2px; }
+    .ai-action-status {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      white-space: nowrap;
+      align-self: center;
+    }
+    .ai-action-status.pending  { background: #FEF3C7; color: #92400e; }
+    .ai-action-status.done     { background: #DCFCE7; color: #166534; }
+    .ai-action-status.progress { background: #DBEAFE; color: #1e40af; }
+
+    /* ═══════════════════════════════════════════
+        FLOATING KPI PANEL
+     ═══════════════════════════════════════════ */
+    .hq-kpi-float {
+      position: fixed;
+      right: 16px;
+      bottom: 188px;
+      z-index: 1199;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .hq-kpi-pill {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #f8fafc;
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(15, 23, 42, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap;
+      transition: all 0.25s ease;
+      user-select: none;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      letter-spacing: -0.2px;
+      pointer-events: all;
+    }
+
+    .hq-kpi-pill:hover {
+      transform: scale(1.03);
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.45);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .hq-kpi-pill .pill-orders {
+      color: #fbbf24;
+      font-weight: 800;
+    }
+
+    .hq-kpi-pill .pill-risk {
+      color: #f87171;
+      font-weight: 800;
+    }
+
+    .hq-kpi-pill .pill-arrow {
+      font-size: 8px;
+      color: rgba(255, 255, 255, 0.35);
+      transition: transform 0.25s ease;
+    }
+
+    .hq-kpi-pill.expanded .pill-arrow {
+      transform: rotate(180deg);
+    }
+
+    .hq-kpi-card {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
+      padding: 12px 14px;
+      min-width: 232px;
+      max-width: 250px;
+      opacity: 0;
+      transform: translateY(8px) scale(0.95);
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .hq-kpi-card.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: all;
+    }
+
+    .hq-kpi-pill {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #f8fafc;
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(15, 23, 42, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap;
+      transition: all 0.25s ease;
+      user-select: none;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      letter-spacing: -0.2px;
+    }
+
+    .hq-kpi-pill:hover {
+      transform: scale(1.03);
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.45);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .hq-kpi-pill .pill-orders {
+      color: #fbbf24;
+      font-weight: 800;
+    }
+
+    .hq-kpi-pill .pill-risk {
+      color: #f87171;
+      font-weight: 800;
+    }
+
+    .hq-kpi-pill .pill-arrow {
+      font-size: 8px;
+      color: rgba(255, 255, 255, 0.35);
+      transition: transform 0.25s ease;
+    }
+
+    .hq-kpi-pill.expanded .pill-arrow {
+      transform: rotate(180deg);
+    }
+
+    .hq-kpi-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
+      padding: 12px 14px;
+      min-width: 232px;
+      max-width: 250px;
+      opacity: 0;
+      transform: translateY(8px) scale(0.95);
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      margin-bottom: 6px;
+    }
+
+    .hq-kpi-card.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: all;
+    }
+
+    .hq-kpi-card-header {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .hq-kpi-card-header-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, #FF6E00, #E91E8C);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: white;
+      font-weight: 900;
+    }
+
+    .hq-kpi-card-header-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: #475569;
+      letter-spacing: -0.2px;
+    }
+
+    .hq-kpi-card-date {
+      margin-left: auto;
+      font-size: 9px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .hq-kpi-main {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      margin-bottom: 8px;
+    }
+
+    .hq-kpi-main-val {
+      font-size: 20px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #FF6E00, #E91E8C);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .hq-kpi-main-lbl {
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .hq-kpi-main-change {
+      margin-left: auto;
+      font-size: 9px;
+      font-weight: 700;
+      color: #ef4444;
+    }
+
+    .hq-kpi-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 4px;
+    }
+
+    .hq-kpi-stat {
+      text-align: center;
+      padding: 6px 4px;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .hq-kpi-stat:first-child { background: #f8fafc; }
+
+    .hq-kpi-stat-v {
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+
+    .hq-kpi-stat-v.s-total { color: #334155; }
+    .hq-kpi-stat-v.s-danger { color: #ef4444; }
+    .hq-kpi-stat-v.s-warn { color: #f59e0b; }
+    .hq-kpi-stat-v.s-ok { color: #22c55e; }
+
+    .hq-kpi-stat-l {
+      font-size: 8px;
+      color: #94a3b8;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    @media (max-width: 1280px) {
+      .hq-kpi-float {
+        right: 12px;
+        bottom: 176px;
+      }
+      .hq-kpi-card {
+        min-width: 200px;
+        max-width: 220px;
+        padding: 10px 12px;
+      }
+      .hq-kpi-stat-v { font-size: 14px; }
+      .hq-kpi-main-val { font-size: 17px; }
+    }
+
+    @media (max-width: 768px) {
+      .hq-kpi-float {
+        right: 8px;
+        bottom: 170px;
+      }
+      .hq-kpi-card {
+        min-width: 180px;
+        max-width: 200px;
+        padding: 8px 10px;
+      }
+      .hq-kpi-stat-v { font-size: 12px; }
+      .hq-kpi-main-val { font-size: 15px; }
+      .hq-kpi-pill { padding: 6px 10px; font-size: 10px; }
+    }
+
+    /* ═══════════════════════════════════════════
+       CENTER BOTTOM FLOATING HQ SUMMARY BAR
+    ═══════════════════════════════════════════ */
+    .hq-float-summary {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%);
+      z-index: 900;
+      max-width: calc(100vw - 220px);
+      min-width: 720px;
+      background: rgba(34, 22, 58, 0.95);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.28);
+      backdrop-filter: blur(10px);
+      padding: 10px 20px;
+      font-size: 13px;
+      line-height: 1.5;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      user-select: none;
+    }
+
+    .hq-float-summary:hover {
+      border-color: rgba(255, 255, 255, 0.22);
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.35);
+    }
+
+    .hq-float-summary.compact {
+      border-radius: 999px;
+      padding: 9px 18px;
+      min-width: auto;
+    }
+
+    .hq-float-summary.expanded {
+      border-radius: 18px;
+      padding: 12px 20px;
+    }
+
+    .hq-float-summary .summary-compact {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+
+    .hq-float-summary .expanded .summary-compact {
+      display: none;
+    }
+
+    .hq-float-summary .summary-compact .compact-sep {
+      color: rgba(255, 255, 255, 0.25);
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .hq-float-summary .summary-expanded {
+      display: none;
+    }
+
+    .hq-float-summary.expanded .summary-compact {
+      display: none !important;
+    }
+
+    .hq-float-summary.expanded .summary-expanded {
+      display: block;
+    }
+
+    .hq-float-summary .summary-line {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      line-height: 1.6;
+    }
+
+    .hq-float-summary .summary-line + .summary-line {
+      margin-top: 3px;
+    }
+
+    .hq-float-summary .summary-label {
+      color: #C4B5FD;
+      font-weight: 700;
+      font-size: 11px;
+    }
+
+    .hq-float-summary .summary-money {
+      color: #FB923C;
+      font-weight: 800;
+    }
+
+    .hq-float-summary .summary-danger {
+      color: #F87171;
+      font-weight: 800;
+    }
+
+    .hq-float-summary .summary-warning {
+      color: #FBBF24;
+      font-weight: 800;
+    }
+
+    .hq-float-summary .summary-ok {
+      color: #4ADE80;
+      font-weight: 800;
+    }
+
+    .hq-float-summary .summary-muted {
+      color: #CBD5E1;
+    }
+
+    .hq-float-summary .summary-arrow {
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.35);
+      transition: transform 0.3s ease;
+      flex-shrink: 0;
+      margin-left: 4px;
+    }
+
+    .hq-float-summary.expanded .summary-arrow {
+      transform: rotate(180deg);
+    }
+
+    .hq-float-summary .compact-label {
+      color: #C4B5FD;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .hq-float-summary .compact-sep {
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 10px;
+    }
+
+    @media (max-width: 1280px) {
+      .hq-float-summary {
+        min-width: auto;
+        max-width: calc(100vw - 130px);
+        bottom: 22px;
+        font-size: 12px;
+        padding: 9px 14px;
+      }
+      .hq-float-summary.compact {
+        padding: 8px 12px;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .hq-float-summary {
+        max-width: calc(100vw - 90px);
+        bottom: 18px;
+        font-size: 11px;
+        padding: 8px 12px;
+      }
+      .hq-float-summary.compact {
+        padding: 7px 10px;
+        border-radius: 999px;
+      }
+      .hq-float-summary .compact-hidden-narrow {
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .hq-float-summary {
+        max-width: calc(100vw - 60px);
+        bottom: 14px;
+        font-size: 10px;
+        padding: 7px 10px;
+        border-radius: 999px;
+      }
+      .hq-float-summary .compact-hidden-narrow {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 
@@ -1600,16 +2447,6 @@
         <i class="fas fa-search"></i>
         <input type="text" placeholder="점포/메뉴 검색...">
       </div>
-      <div class="sys-divider"></div>
-      <div class="sys-kpi-row">
-        <div class="sys-kpi"><span class="sys-kpi-val" style="color:#FF6E00">₩33.4M</span><span class="sys-kpi-lbl">일발주</span></div>
-        <div class="sys-kpi"><span class="sys-kpi-val">33</span><span class="sys-kpi-lbl">전체점포</span></div>
-        <div class="sys-kpi"><span class="sys-kpi-val" style="color:#ef4444">6</span><span class="sys-kpi-lbl">위험</span></div>
-        <div class="sys-kpi"><span class="sys-kpi-val" style="color:#f59e0b">12</span><span class="sys-kpi-lbl">주의</span></div>
-        <div class="sys-kpi"><span class="sys-kpi-val" style="color:#22c55e">15</span><span class="sys-kpi-lbl">정상</span></div>
-      </div>
-      <div class="sys-divider"></div>
-
       <div class="sys-right">
         <div class="sys-account"
           style="display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.06); padding:4px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
@@ -1705,52 +2542,30 @@
          <!-- ── MAIN PAGE: 종합현황 대시보드 ────── -->
           <div class="content-page active" id="page-main">
             <div class="notice-main-page">
-              <!-- AI 운영 요약 배너 -->
-              <div class="nm-banner">
-                <div class="nm-banner-icon">📊</div>
-                <div class="nm-banner-text">
-                  <div class="nm-banner-label">🔔 HQ 운영 요약 · 2026-03-10 14:45 기준</div>
-                  <div class="nm-banner-content">전체 33개 점포 · 일일 발주액 <strong>₩33.4M</strong> · 위험 6개 점포 · 주의 17개 점포 · 21개 점포 블루베리크림치즈 도넛 품절 · 전주 대비 발주 -5.4%</div>
-                </div>
-                <div class="nm-banner-stats">
-                  <div class="nm-stat">
-                     <div class="nv">33</div>
-                     <div class="nl">전체점포</div>
-                   </div>
-                   <div class="nm-stat">
-                     <div class="nv" style="color:#ef4444">6</div>
-                     <div class="nl">위험</div>
-                   </div>
-                   <div class="nm-stat">
-                     <div class="nv" style="color:#f59e0b">12</div>
-                     <div class="nl">주의</div>
-                   </div>
-                </div>
-              </div>
-              <!-- KPI 카드 행 -->
+               <!-- KPI 카드 행 -->
               <div class="hq-kpi-row">
                 <div class="hq-kpi">
-                  <div class="hq-kpi-label">📦 일일 발주액</div>
+                  <div class="hq-kpi-label"> 일일 발주액</div>
                   <div class="hq-kpi-val">₩33.4M</div>
                   <div class="hq-kpi-sub down">▼ 5.4% vs 전주동일</div>
                 </div>
                 <div class="hq-kpi">
-                  <div class="hq-kpi-label">🏭 일일 생산량</div>
+                  <div class="hq-kpi-label"> 일일 생산량</div>
                   <div class="hq-kpi-val">413,233</div>
                   <div class="hq-kpi-sub up">▲ 1.4% vs 4주평균</div>
                 </div>
                 <div class="hq-kpi">
-                  <div class="hq-kpi-label">⚠️ 품절 품목</div>
+                  <div class="hq-kpi-label"> 품절 품목</div>
                   <div class="hq-kpi-val" style="color:#ef4444">792</div>
                   <div class="hq-kpi-sub">32개 점포에서 발생</div>
                 </div>
                 <div class="hq-kpi">
-                  <div class="hq-kpi-label">📋 발주 필요 점포</div>
+                  <div class="hq-kpi-label"> 발주 필요 점포</div>
                   <div class="hq-kpi-val" style="color:#f59e0b">18</div>
                   <div class="hq-kpi-sub">전체의 55%</div>
                 </div>
                 <div class="hq-kpi">
-                  <div class="hq-kpi-label">🔔 미확인 공지</div>
+                  <div class="hq-kpi-label"> 미확인 공지</div>
                   <div class="hq-kpi-val" style="color:#E91E8C">7</div>
                   <div class="hq-kpi-sub">긴급 1건 포함</div>
                 </div>
@@ -1805,17 +2620,17 @@
 
           <!-- AI Dashboard tab (iframe) -->
           <div class="content-page" id="page-ai">
-            <iframe class="pos-iframe" id="aiFrame" src="pos-dashboard.html" title="HQ Fox AI 대시보드" data-origin="same-dir"></iframe>
+            <iframe class="pos-iframe" id="aiFrame" src="pos-dashboard.html" title="PIP AI 대시보드" data-origin="same-dir"></iframe>
           </div>
 
           <!-- 점포 운영 -->
           <div class="content-page" id="page-order">
             <div class="hq-content-page">
               <div class="hq-page-head">
-                <span class="hq-page-title">🏪 점포 운영 현황</span>
-                <span class="hq-badge danger">위험 6</span>
-                <span class="hq-badge warn">주의 17</span>
-                <span class="hq-badge ok">정상 10</span>
+                <span class="hq-page-title"> 점포 운영 현황</span>
+                <span class="hq-badge danger" id="hqOpsRisk">위험 6</span>
+                <span class="hq-badge warn" id="hqOpsWarn">주의 17</span>
+                <span class="hq-badge ok" id="hqOpsOk">정상 10</span>
               </div>
               <div class="hq-three-col" id="hqStoreOps"></div>
             </div>
@@ -1824,7 +2639,7 @@
           <div class="content-page" id="page-table">
             <div class="hq-content-page">
               <div class="hq-page-head">
-                <span class="hq-page-title">📊 점포 현황 · 전체 33개</span>
+                <span class="hq-page-title"> 점포 현황 · 전체 33개</span>
               </div>
               <div class="hq-filter-row" style="padding:0 0 6px 0;">
                 <button class="hq-filter-chip active" onclick="hqStoreFilter(this,'all')">전체</button>
@@ -1841,8 +2656,8 @@
           <div class="content-page" id="page-sales">
             <div class="hq-content-page">
               <div class="hq-page-head">
-                <span class="hq-page-title">📈 매출 분석</span>
-                <span class="hq-badge info">기준: 2026-03-10</span>
+                <span class="hq-page-title"> 매출 분석</span>
+                <span class="hq-badge info">기준: 2026-03-05</span>
               </div>
               <div class="hq-two-col" id="hqSales"></div>
             </div>
@@ -1851,7 +2666,7 @@
           <div class="content-page" id="page-stock">
             <div class="hq-content-page">
               <div class="hq-page-head">
-                <span class="hq-page-title">📦 재고 관리</span>
+                <span class="hq-page-title"> 재고 관리</span>
                 <span class="hq-badge danger">품절 792건</span>
                 <span class="hq-badge warn">저재고 145건</span>
               </div>
@@ -1862,7 +2677,7 @@
           <div class="content-page" id="page-hygiene">
             <div class="hq-content-page">
               <div class="hq-page-head">
-                <span class="hq-page-title">📣 캠페인 성과</span>
+                <span class="hq-page-title"> 캠페인 성과</span>
                 <span class="hq-badge info">최근 집계 기준</span>
               </div>
               <div class="hq-two-col" id="hqCampaign"></div>
@@ -1872,7 +2687,7 @@
           <div class="content-page" id="page-notice">
             <div class="hq-content-page">
               <div class="hq-page-head">
-                <span class="hq-page-title">🔔 공지사항</span>
+                <span class="hq-page-title"> 공지사항</span>
                 <span class="hq-badge" style="background:#fff0e6;color:#d46b08;">미확인 7건</span>
               </div>
               <div style="flex:1;display:flex;flex-direction:column;gap:8px;overflow:auto;">
@@ -1897,21 +2712,15 @@
           <div class="content-page" id="page-staff">
             <div class="hq-content-page">
               <div class="hq-page-head">
-                <span class="hq-page-title">📋 영업 리포트</span>
-                <span class="hq-badge info">2026-03-10 기준</span>
+                <span class="hq-page-title"> 영업 리포트</span>
+                <span class="hq-badge info">2026-03-05 기준</span>
               </div>
               <div class="hq-two-col" id="hqReport"></div>
             </div>
           </div>
-          <!-- AI 인사이트 -->
+          <!-- AI 인사이트 (full-width dashboard) -->
           <div class="content-page" id="page-report">
-            <div class="hq-content-page">
-              <div class="hq-page-head">
-                <span class="hq-page-title">🤖 AI 인사이트</span>
-                <span class="hq-badge" style="background:linear-gradient(135deg,#FF6E00,#E91E8C);color:#fff;">HQ Fox</span>
-              </div>
-              <div class="hq-two-col" id="hqInsight"></div>
-            </div>
+            <div class="hq-ai-dashboard" id="hqAiDashboard"></div>
           </div>
         </div>
       </div>
@@ -1950,45 +2759,121 @@
 
   </div><!-- /pos-root -->
 
-  <!-- ══ AI FAB — 2-button stack (PIP AI App + Chat) ═══════ -->
+   <!-- ══ FLOATING HQ KPI PANEL ═══════ -->
+   <div class="hq-kpi-float" id="hqKpiFloat">
+     <div class="hq-kpi-card" id="hqKpiCard">
+       <div class="hq-kpi-card-header">
+         <div class="hq-kpi-card-header-icon">HQ</div>
+         <span class="hq-kpi-card-header-title">HQ 요약</span>
+         <span class="hq-kpi-card-date" id="hqKpiDate">2026-03-05</span>
+       </div>
+       <div class="hq-kpi-main">
+         <span class="hq-kpi-main-val" id="hqKpiOrders">₩33.4M</span>
+         <span class="hq-kpi-main-lbl">일발주</span>
+         <span class="hq-kpi-main-change" id="hqKpiChange">▼ 5.4%</span>
+       </div>
+       <div class="hq-kpi-stats">
+         <div class="hq-kpi-stat">
+           <div class="hq-kpi-stat-v s-total" id="hqKpiTotal">33</div>
+           <div class="hq-kpi-stat-l">전체</div>
+         </div>
+         <div class="hq-kpi-stat">
+           <div class="hq-kpi-stat-v s-danger" id="hqKpiRisk">6</div>
+           <div class="hq-kpi-stat-l">위험</div>
+         </div>
+         <div class="hq-kpi-stat">
+           <div class="hq-kpi-stat-v s-warn" id="hqKpiWarn">12</div>
+           <div class="hq-kpi-stat-l">주의</div>
+         </div>
+         <div class="hq-kpi-stat">
+           <div class="hq-kpi-stat-v s-ok" id="hqKpiOk">15</div>
+           <div class="hq-kpi-stat-l">정상</div>
+         </div>
+       </div>
+     </div>
+     <div class="hq-kpi-pill" id="hqKpiPill" onclick="toggleHqKpi()">
+       <span>HQ 요약</span>
+       <span class="pill-orders" id="hqKpiPillOrders">₩33.4M</span>
+       <span class="pill-risk" id="hqKpiPillRisk">위험 6</span>
+       <i class="fas fa-chevron-up pill-arrow" id="hqKpiArrow"></i>
+     </div>
+   </div>
+
+   <!-- ══ CENTER BOTTOM FLOATING HQ SUMMARY BAR ═══════ -->
+   <div class="hq-float-summary compact" id="hqFloatSummary" onclick="toggleHqFloatSummary()">
+     <!-- Compact (collapsed) -->
+     <div class="summary-compact">
+       <span class="compact-label">HQ 요약</span>
+       <span class="compact-sep">·</span>
+       <span class="summary-muted">전체 <b style="color:#fff" id="fsTotal">33</b>개</span>
+       <span class="compact-sep">·</span>
+       <span>₩<b class="summary-money" id="fsOrders">33.4M</b></span>
+       <span class="compact-sep">·</span>
+       <span class="summary-danger" id="fsRisk">위험 6</span>
+       <span class="compact-sep">·</span>
+       <span class="summary-warning" id="fsWarn">주의 17</span>
+       <span class="compact-sep compact-hidden-narrow">·</span>
+       <span class="summary-muted compact-hidden-narrow">품절 <b style="color:#fff" id="fsStockout">21</b>개</span>
+       <span class="compact-sep compact-hidden-narrow">·</span>
+       <span class="summary-muted compact-hidden-narrow" id="fsChange">전주 -5.4%</span>
+       <i class="fas fa-chevron-up summary-arrow"></i>
+     </div>
+     <!-- Expanded -->
+     <div class="summary-expanded">
+       <div class="summary-line">
+         <span class="summary-label">HQ 운영 요약</span>
+         <span class="summary-muted">·</span>
+         <span class="summary-muted" id="fsDate">2026-03-05 14:45 기준</span>
+       </div>
+       <div class="summary-line">
+         <span class="summary-muted">전체 <b style="color:#fff" id="fsTotal2">33</b>개 점포</span>
+         <span class="summary-muted">·</span>
+         <span>일일 발주액 <b class="summary-money" id="fsOrders2">₩33.4M</b></span>
+         <span class="summary-muted">·</span>
+         <span class="summary-danger" id="fsRisk2">위험 6개 점포</span>
+         <span class="summary-muted">·</span>
+         <span class="summary-warning" id="fsWarn2">주의 17개 점포</span>
+         <span class="summary-muted">·</span>
+         <span style="color:#fff" id="fsOk2">정상 10개 점포</span>
+       </div>
+       <div class="summary-line">
+         <span style="color:#fff" id="fsStockout2">21개 점포 블루베리크림치즈 도넛 품절</span>
+         <span class="summary-muted">·</span>
+         <span id="fsChange2" style="color:#F87171">전주 대비 발주 -5.4%</span>
+       </div>
+     </div>
+   </div>
+
+   <!-- ══ AI FAB — 2-button stack (PIP AI + Chat) ═══════ -->
   <div class="ai-fab-wrap" id="aiFabWrap">
     <div class="ai-fab-row">
-      <div class="ai-fab ai-fab--dash" id="aiFabDash" onclick="openAIDashboard()" title="HQ Fox AI로 이동">
-         <span class="ai-fab-icon"><i class="fas fa-chart-line"></i></span>
-       </div>
-       <span class="ai-fab-label" id="fabLabelDash">📊 HQ Fox AI</span>
-     </div>
-     <div class="ai-fab-row">
-       <div class="ai-fab ai-fab--chat" id="aiFabChat" onclick="handleFabClick()" title="AI 채팅 열기">
-         <span class="ai-fab-icon"><i class="fas fa-comment-dots"></i></span>
-       </div>
-       <span class="ai-fab-label" id="fabLabelChat">🤖 HQ 채팅</span>
+      <div class="ai-fab ai-fab--pip" id="aiFabPip" onclick="goToFoxAI('newtab')" title="PIP AI로 이동">
+        <span class="ai-fab-icon"><i class="fas fa-wand-magic-sparkles"></i></span>
+      </div>
+      <span class="ai-fab-label" id="fabLabelPip"> PIP AI</span>
+    </div>
+    <div class="ai-fab-row">
+      <div class="ai-fab ai-fab--chat" id="aiFabChat" onclick="handleFabClick()" title="AI 채팅 열기">
+        <span class="ai-fab-icon"><i class="fas fa-comment-dots"></i></span>
+      </div>
+      <span class="ai-fab-label" id="fabLabelChat">HQ 채팅</span>
     </div>
   </div>
 
-  <!-- ══ LOCATION BADGE ════════════════════════════════ -->
-  <div style="position:fixed;top:48px;left:54px;z-index:300;display:flex;gap:6px;align-items:center;padding:6px 12px;background:rgba(15,15,30,0.92);border-bottom:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.08);border-radius:0 0 8px 0;font-size:11px;font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif;">
-   <span style="background:linear-gradient(135deg,#FF6E00,#E91E8C);color:#fff;padding:2px 8px;border-radius:4px;font-weight:700;">HQ</span>
-    <span style="color:rgba(255,255,255,0.7);font-weight:500;">HQ 운영 대시보드</span>
-    <span style="color:rgba(255,255,255,0.3);margin:0 4px;">|</span>
-    <a id="posMainLink" href="http://221.139.49.60:5181/" style="color:#FF8C33;font-weight:600;text-decoration:none;cursor:pointer;" title="PIP POS로 이동">PIP POS 이동 →</a>
-    <span style="color:rgba(255,255,255,0.3);margin:0 4px;">|</span>
-    <a id="pipAiBadgeLink" href="http://221.139.49.60:5181/" target="_blank" rel="noopener" style="color:#FF8C33;font-weight:600;text-decoration:none;cursor:pointer;" title="PIP AI로 이동">PIP AI로 이동 →</a>
-  </div>
 
-  <!-- ══ AI MINI CHAT ══════════════════════════════════ -->
+<!-- ══ AI MINI CHAT ══════════════════════════════════ -->
   <div class="ai-mini" id="aiMini">
     <div class="ai-mini-head">
-      <div class="ai-mini-av">🤖</div>
+      <div class="ai-mini-av">PIP</div>
       <div class="ai-mini-info">
-      <div class="ai-mini-title">HQ Fox</div>
+       <div class="ai-mini-title">PIP AI</div>
         <div class="ai-mini-sub">HQ 운영 대시보드 · 전체 33개 점포</div>
       </div>
       <div class="ai-mini-actions">
-        <button class="ai-mini-goto" onclick="goToFoxAI('fullscreen')" title="HQ Fox AI로 이동">
+         <button class="ai-mini-goto" onclick="goToFoxAI('fullscreen')" title="PIP AI로 이동">
            <i class="fas fa-expand"></i> 전체화면
         </button>
-        <button class="ai-mini-goto" onclick="goToFoxAI('newtab')" style="padding:3px 8px;font-size:10px;" title="새 탭에서 HQ Fox AI 열기">
+        <button class="ai-mini-goto" onclick="goToFoxAI('newtab')" style="padding:3px 8px;font-size:10px;" title="새 탭에서 PIP AI 열기">
           <i class="fas fa-external-link-alt"></i> 새탭
         </button>
         <button class="ai-mini-close" onclick="closeMini()"><i class="fas fa-times"></i></button>
@@ -1996,15 +2881,15 @@
     </div>
     <div class="ai-mini-msgs" id="miniMsgs">
       <div class="m-row ai">
-        <div class="m-av">🤖</div>
-        <div class="m-bubble">안녕하세요! HQ Fox입니다 🦊<br>전체 33개 점포 운영 데이터를 통합 분석합니다.<br><br>📊 일일 발주액 <strong>₩33.4M</strong><br>⚠️ 위험 점포 <strong style="color:#ef4444">6개</strong> · 주의 <strong style="color:#f59e0b">17개</strong><br>📦 블루베리크림치즈 도넛 <strong>21개 점포 품절</strong><br><br>무엇이든 물어보세요!</div>
+        <div class="m-av">PIP</div>
+        <div class="m-bubble">안녕하세요! PIP AI입니다<br>전체 33개 점포 운영 데이터를 통합 분석합니다.<br><br>일일 발주액 <strong>₩33.4M</strong><br>위험 점포 <strong style="color:#ef4444">6개</strong> · 주의 <strong style="color:#f59e0b">17개</strong><br>블루베리크림치즈 도넛 <strong>21개 점포 품절</strong><br><br>무엇이든 물어보세요!</div>
       </div>
     </div>
     <div class="ai-mini-quickrow" id="miniQuickRow">
       <!-- Quick chips are dynamically generated by generateNoticeChips() -->
     </div>
     <div class="ai-mini-input-row">
-      <input class="mini-inp" id="miniInp" type="text" placeholder="Fox에게 질문하세요..."
+       <input class="mini-inp" id="miniInp" type="text" placeholder="PIP AI에게 질문하세요..."
         onkeydown="if(event.key==='Enter')sendMiniMsg()">
       <button class="mini-send" onclick="sendMiniMsg()"><i class="fas fa-paper-plane"></i></button>
     </div>
@@ -2064,17 +2949,17 @@
         summary: '두비이 앱에서 소프트웨어·달걀프러이션 프로모션 진행 중. 매장용 가이드 배포.',
         impact: '앱 사용 고객 대상 혜택. 매장 직원 안내 필요.',
         actionItems: ['직원 앱 프로모션 안내 숙지'] },
-      { tag: '공지', cls: 'nt-notice', title: '[공지] 렌트스 신제품 종류들 판매 기준일 변경 완료 안내', date: '2026-03-10', unread: false,
+       { tag: '공지', cls: 'nt-notice', title: '[공지] 렌트스 신제품 종류들 판매 기준일 변경 완료 안내', date: '2026-03-05', unread: false,
         category: '제품', actionRequired: false,
         summary: '렌트스 신제품 판매 기준일이 변경 완료. 기존 기준일에서 일부 조정.',
         impact: '신제품 입고 일정 및 진열 변경 가능.',
         actionItems: ['신제품 입고 일정 확인'] },
-      { tag: '공지', cls: 'nt-notice', title: '[공지] 두비이 앱 소프트리산 앱 트리 적립 한중 이벤트 오픈 안내', date: '2026-03-10', unread: false,
+       { tag: '공지', cls: 'nt-notice', title: '[공지] 두비이 앱 소프트리산 앱 트리 적립 한중 이벤트 오픈 안내', date: '2026-03-05', unread: false,
         category: '프로모션', actionRequired: false,
         summary: '두비이 앱 트리 적립 이벤트 오픈. 고객 참여형 프로모션.',
         impact: '앱 활성화 고객 증가 예상.',
         actionItems: ['매장 내 이벤트 포스터 부착'] },
-      { tag: '안내', cls: 'nt-guide', title: '[안내] 3월 식품안전 점검 대비 마련 (3/10 확인일 10:21~21시)', date: '2026-03-10', unread: false,
+       { tag: '안내', cls: 'nt-guide', title: '[안내] 3월 식품안전 점검 대비 마련 (3/5 확인일 10:21~21시)', date: '2026-03-05', unread: false,
         category: '위생', actionRequired: true,
         summary: '3월 10일 식품안전 점검 예정. 10:21~21시 사이 방문 점검 가능. 위생 체크리스트 사전 점검 필수.',
         impact: '불합격 시 영업정지 위험. 매장 위생 관리 강화 필요.',
@@ -2230,11 +3115,11 @@
     function renderRecents() {}
 
     var NOTIFS = [
-      { id: 1, ico: '📦', title: '재고 위험 알림', sub: '광명시01·안양시01·강남구01 등 6개 점포 위험 · 블루베리크림치즈 도넛 21개 점포 품절', unread: true },
-      { id: 2, ico: '⚠️', title: '발주 필요 품목', sub: '스트로우-중단 21점포 · 초코파우더 20점포 · 10온즈컵 20점포 품절', unread: true },
-      { id: 3, ico: '📊', title: '전주 대비 발주 변동', sub: '전주 동일요일 대비 발주액 -5.4% 감소 · 청주시01·수원시01 발주액 상위', unread: true },
-      { id: 4, ico: '🔔', title: '긴급 공지', sub: '5월 1일 아메리카노·라떼 200원 인상 확정 · POS 가격 업데이트 필수', unread: true },
-      { id: 5, ico: '🏭', title: '생산 이슈', sub: '두바이 스타일 초콜릿 도넛 전일 생산량 13.3M개 · 소시지인치즈베이글 11.9M개', unread: false },
+      { id: 1, ico: '', title: '재고 위험 알림', sub: '광명시01·안양시01·강남구01 등 6개 점포 위험 · 블루베리크림치즈 도넛 21개 점포 품절', unread: true },
+      { id: 2, ico: '', title: '발주 필요 품목', sub: '스트로우-중단 21점포 · 초코파우더 20점포 · 10온즈컵 20점포 품절', unread: true },
+      { id: 3, ico: '', title: '전주 대비 발주 변동', sub: '전주 동일요일 대비 발주액 -5.4% 감소 · 청주시01·수원시01 발주액 상위', unread: true },
+      { id: 4, ico: '', title: '긴급 공지', sub: '5월 1일 아메리카노·라떼 200원 인상 확정 · POS 가격 업데이트 필수', unread: true },
+      { id: 5, ico: '', title: '생산 이슈', sub: '두바이 스타일 초콜릿 도넛 전일 생산량 13.3M개 · 소시지인치즈베이글 11.9M개', unread: false },
     ];
 
     var miniTypingEl = null;
@@ -2259,7 +3144,11 @@
       // HQ Quick Chip 초기 렌더링
       renderQuickChips(generateNoticeChips());
       // HQ 페이지 초기 렌더링
-      setTimeout(function() { hqInitPages(); }, 200);
+      setTimeout(function() {
+        hqInitPages();
+        updateHqKpi();
+        updateHqFloatSummary();
+      }, 200);
     })();
 
     /* ═══════════════════════════════════════════
@@ -2320,12 +3209,7 @@
     }
 
     function syncExternalLinks() {
-      var posUrl = getPipPosBaseUrl();
-      var aiUrl = getPipAiUrl();
-      var posMainLink = document.getElementById('posMainLink');
-      var pipAiBadgeLink = document.getElementById('pipAiBadgeLink');
-      if (posMainLink) posMainLink.setAttribute('href', posUrl);
-      if (pipAiBadgeLink) pipAiBadgeLink.setAttribute('href', aiUrl);
+      // external links are now handled via onClick handlers on FAB buttons
     }
 
     function goToBasePOS(mode) {
@@ -2410,7 +3294,7 @@
    /* ═══════════════════════════════════════════
         PIP AI 백엔드 연동 + 공지 컨텍스트
      ═══════════════════════════════════════════ */
-    var FOX_API_URL = '/api/chat';
+    var FOX_API_URL = '/api/hq-ai/chat';
     var FOX_STORE_ID = 'HQ_ALL';
     var foxSessionId = 'fox-mockup-' + Date.now();
     var foxBusy = false;
@@ -2457,24 +3341,21 @@
       };
     }
 
-    /* ── 공지 상태 기반 동적 Quick Chip 생성 ── */
+    /* ── 메뉴별 추천 Quick Chip 생성 ── */
     function generateNoticeChips() {
-      const snap = buildNoticeSnapshot();
-      var chips = [];
-      chips.push({ icon: '📊', text: '오늘 전체 매출 요약해줘' });
-      chips.push({ icon: '🏪', text: '어느 점포가 가장 강한지 알려줘' });
-      chips.push({ icon: '📦', text: '재고 부족 점포 알려줘' });
-      if (snap.urgent_count > 0) {
-        chips.push({ icon: '🚨', text: '긴급 공지 ' + snap.urgent_count + '건 요약해줘' });
-      }
-      return chips;
+      return [
+        { icon: '', text: '오늘 전체 매출 요약해줘' },
+        { icon: '', text: '어느 점포가 가장 강한지 알려줘' },
+        { icon: '', text: '재고 위험 품목 TOP5 알려줘' },
+        { icon: '', text: '발주 필요한 품목 TOP5 알려줘' },
+      ];
     }
 
     function renderQuickChips(chips) {
       var row = document.getElementById('miniQuickRow');
       if (!row) return;
       row.innerHTML = chips.map(function(c) {
-        return '<button class="mq" onclick="sendMiniQ(this)">' + c.icon + ' ' + esc(c.text) + '</button>';
+        return '<button class="mq" onclick="sendMiniQ(this)">' + (c.icon ? c.icon + ' ' : '') + esc(c.text) + '</button>';
       }).join('');
     }
 
@@ -2486,7 +3367,7 @@
       function enrichLine(n) {
         var line = '  - [' + n.date + '] ' + n.title;
         if (n.category) line += ' [' + n.category + ']';
-        if (n.actionRequired) line += ' ⚡조치필요';
+        if (n.actionRequired) line += ' 조치필요';
         if (n.summary) line += '\n    요약: ' + n.summary;
         if (n.impact) line += '\n    영향: ' + n.impact;
         if (n.actionItems && n.actionItems.length > 0) line += '\n    조치: ' + n.actionItems.join(', ');
@@ -2508,7 +3389,7 @@
         noticeContext.push('');
       }
       if (snap.action_required_notices.length > 0) {
-        noticeContext.push('【⚡ 조치 필요 공지】');
+        noticeContext.push('【 조치 필요 공지】');
         snap.action_required_notices.forEach(function(n) { noticeContext.push(enrichLine(n)); });
         noticeContext.push('');
       }
@@ -2561,30 +3442,37 @@
         });
         clearTimeout(timeout);
         if (!resp.ok) throw new Error('API 오류: ' + resp.status);
-        var data = await resp.json();
+        var respBody = await resp.json();
+
+        // APIResponse error 상태 처리
+        if (respBody.status === 'error') {
+          var errMsg = respBody.error;
+          if (errMsg && errMsg.message) return ' 오류: ' + errMsg.message;
+          return ' AI 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+        }
+
+        // APIResponse 형식: { status, data: { answer, domain, sources, data, latency_ms, token_usage } }
+        var inner = respBody.data || respBody;
 
         // suggested_questions 추출 → Quick Chip 갱신
-        var suggested = data.suggested_questions || [];
+        var suggested = inner.suggested_questions || [];
         if (suggested.length > 0) {
           var newChips = suggested.slice(0, 4).map(function(q) {
-            return { icon: '✨', text: q.text || q };
+            return { icon: '', text: q.text || q };
           });
           renderQuickChips(newChips);
         }
 
         // 응답 텍스트 추출
-        if (data.answer) return data.answer;
-        if (data.response) return data.response;
-        if (data.content && typeof data.content === 'string') return data.content;
-        if (data.content && data.content.message) return data.content.message;
-        if (data.message) return data.message;
-        return JSON.stringify(data);
+        var ans = inner.answer || inner.response || (inner.content && typeof inner.content === 'string' ? inner.content : null) ||
+                  (inner.content && inner.content.message ? inner.content.message : null) || inner.message || JSON.stringify(inner);
+        return { answer: ans, blocks: inner.answerBlocks || null };
       } catch (err) {
         if (err.name === 'AbortError') {
-          return '⏱️ AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
+          return { answer: ' AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.' };
         }
         console.error('PIP AI 호출 실패:', err);
-        return '⚠️ AI 서버에 연결할 수 없습니다. 백엔드가 실행 중인지 확인해주세요. (localhost:8100)';
+        return { answer: ' AI 서버에 연결할 수 없습니다. 백엔드가 실행 중인지 확인해주세요. (localhost:8100)' };
       }
     }
 
@@ -2596,9 +3484,9 @@
       inp.value = '';
       foxBusy = true;
       showMiniTyping();
-      callFoxAI(text).then(function(reply) {
+       callFoxAI(text).then(function(result) {
         removeMiniTyping();
-        appendMiniMsg('ai', reply);
+        appendMiniMsg('ai', result.answer, result.blocks);
         foxBusy = false;
       });
     }
@@ -2608,20 +3496,19 @@
       appendMiniMsg('user', text);
       foxBusy = true;
       showMiniTyping();
-      callFoxAI(text).then(function(reply) {
+       callFoxAI(text).then(function(result) {
         removeMiniTyping();
-        appendMiniMsg('ai', reply);
+        appendMiniMsg('ai', result.answer, result.blocks);
         foxBusy = false;
       });
     }
-
     function showMiniTyping() {
       const c = document.getElementById('miniMsgs');
       miniTypingEl = document.createElement('div');
       miniTypingEl.className = 'm-row ai typing-indicator';
       miniTypingEl.innerHTML = `
-    <div class="m-av">🤖</div>
-    <div class="m-bubble" style="padding:10px 14px;display:flex;gap:3px;align-items:center">
+     <div class="m-av">PIP</div>
+     <div class="m-bubble" style="padding:10px 14px;display:flex;gap:3px;align-items:center">
       <span style="width:6px;height:6px;border-radius:50%;background:#aaa;animation:typeBounce .6s ease infinite alternate"></span>
       <span style="width:6px;height:6px;border-radius:50%;background:#aaa;animation:typeBounce .6s .2s ease infinite alternate"></span>
       <span style="width:6px;height:6px;border-radius:50%;background:#aaa;animation:typeBounce .6s .4s ease infinite alternate"></span>
@@ -2632,22 +3519,69 @@
     function removeMiniTyping() {
       if (miniTypingEl) { miniTypingEl.remove(); miniTypingEl = null; }
     }
-    function appendMiniMsg(role, text) {
+    function appendMiniMsg(role, text, blocks) {
       var c = document.getElementById('miniMsgs');
       var d = document.createElement('div');
       d.className = 'm-row ' + role;
       if (role === 'ai') {
-        // AI 메시지: 공지 관련 키워드 감지 → 구조화된 카드 렌더링
-        var html = '<div class="m-av">🤖</div>';
-        html += '<div class="m-bubble" style="max-width:260px">';
-        html += formatAIResponse(text);
-        html += '</div>';
+        // answerBlocks가 있으면 우선 렌더링
+        var contentHtml = '';
+        if (blocks && blocks.length > 0) {
+          contentHtml = renderAnswerBlocks(blocks);
+        } else {
+          contentHtml = formatAIResponse(text);
+        }
+        var html = '<div class="m-av">PIP</div>';
+        html += '<div class="m-bubble" style="max-width:260px">' + contentHtml + '</div>';
         d.innerHTML = html;
       } else {
         d.innerHTML = '<div class="m-bubble">' + esc(text) + '</div>';
       }
       c.appendChild(d);
       c.scrollTop = c.scrollHeight;
+    }
+
+    /* ── answerBlocks 렌더링 ── */
+    function renderAnswerBlocks(blocks) {
+      if (!blocks || !blocks.length) return '';
+      var html = '';
+      for (var i = 0; i < blocks.length; i++) {
+        var b = blocks[i];
+        if (b.type === 'kpi' && b.items) {
+          html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 0;">';
+          for (var j = 0; j < b.items.length; j++) {
+            var it = b.items[j];
+            html += '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:5px 6px"><div style="font-size:9px;color:#64748b;white-space:nowrap;overflow:hidden">' + esc(it.label) + '</div><div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:1px">' + esc(it.value) + '</div></div>';
+          }
+          html += '</div>';
+        } else if (b.type === 'table' && b.rows && b.rows.length > 0) {
+          html += '<div style="margin:6px 0;font-size:10px;overflow-x:auto"><div style="font-size:11px;font-weight:700;color:#334155;margin-bottom:3px">' + esc(b.title) + '</div>';
+          html += '<table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0"><thead><tr style="background:#f1f5f9">';
+          for (var ci = 0; ci < b.columns.length; ci++) html += '<th style="padding:3px 4px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;white-space:nowrap">' + esc(b.columns[ci]) + '</th>';
+          html += '</tr></thead><tbody>';
+          for (var ri = 0; ri < b.rows.length; ri++) {
+            var bg = ri % 2 === 0 ? '#fff' : '#f8fafc';
+            html += '<tr style="background:' + bg + '">';
+            var row = b.rows[ri];
+            for (var ci2 = 0; ci2 < row.length; ci2++) {
+              var cell = esc(row[ci2]);
+              var extra = '';
+              if (cell.indexOf('+') > -1 && cell.indexOf('%') > -1) extra = ';color:#16a34a';
+              else if (cell.startsWith('-') && cell.indexOf('%') > -1) extra = ';color:#dc2626';
+              html += '<td style="padding:3px 4px;border-bottom:1px solid #f1f5f9' + extra + '">' + cell + '</td>';
+            }
+            html += '</tr>';
+          }
+          html += '</tbody></table></div>';
+        } else if (b.type === 'insight') {
+          html += '<div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:6px 8px;margin:6px 0;font-size:11px;color:#92400e;border-radius:0 4px 4px 0">' + esc(b.text) + '</div>';
+        } else if (b.type === 'sources' && b.items) {
+          html += '<div style="margin:6px 0;padding:4px 6px;background:#f8fafc;border-radius:4px;font-size:9px;color:#94a3b8;display:flex;flex-wrap:wrap;gap:4px">';
+          for (var si = 0; si < b.items.length; si++) html += '<span>' + esc(b.items[si]) + '</span>';
+          html += '</div>';
+        }
+      }
+      return html;
     }
 
     /* ── AI 응답 포맷팅: 공지 카드 + 액션 버튼 ── */
@@ -2697,9 +3631,9 @@
 
       // 공지 관련 액션 버튼 추가
       result += '<div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">';
-      result += '<button onclick="showToast(\'종합 현황으로 이동합니다\',\'info\')" style="padding:4px 10px;border-radius:12px;border:1.5px solid #ffd4b0;background:#fff4ec;font-size:10px;font-weight:700;color:#FF6E00;cursor:pointer;font-family:inherit">📊 대시보드</button>';
-      result += '<button onclick="sendMiniMsg_inline(\'위험 점포 요약해줘\')" style="padding:4px 10px;border-radius:12px;border:1.5px solid #fecaca;background:#fef2f2;font-size:10px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit">🚨 위험점포</button>';
-      result += '<button onclick="sendMiniMsg_inline(\'재고 부족 품목 알려줘\')" style="padding:4px 10px;border-radius:12px;border:1.5px solid #e0e0e0;background:#f9fafb;font-size:10px;font-weight:700;color:#374151;cursor:pointer;font-family:inherit">📦 재고확인</button>';
+      result += '<button onclick="showToast(\'종합 현황으로 이동합니다\',\'info\')" style="padding:4px 10px;border-radius:12px;border:1.5px solid #ffd4b0;background:#fff4ec;font-size:10px;font-weight:700;color:#FF6E00;cursor:pointer;font-family:inherit"> 대시보드</button>';
+      result += '<button onclick="sendMiniMsg_inline(\'위험 점포 요약해줘\')" style="padding:4px 10px;border-radius:12px;border:1.5px solid #fecaca;background:#fef2f2;font-size:10px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit"> 위험점포</button>';
+      result += '<button onclick="sendMiniMsg_inline(\'재고 부족 품목 알려줘\')" style="padding:4px 10px;border-radius:12px;border:1.5px solid #e0e0e0;background:#f9fafb;font-size:10px;font-weight:700;color:#374151;cursor:pointer;font-family:inherit"> 재고확인</button>';
       result += '</div>';
 
       return result;
@@ -2711,9 +3645,9 @@
       appendMiniMsg('user', text);
       foxBusy = true;
       showMiniTyping();
-      callFoxAI(text).then(function(reply) {
+       callFoxAI(text).then(function(result) {
         removeMiniTyping();
-        appendMiniMsg('ai', reply);
+        appendMiniMsg('ai', result.answer, result.blocks);
         foxBusy = false;
       });
     }
@@ -2758,10 +3692,10 @@
     ═══════════════════════════════════════════ */
     function showToast(msg, type = 'info') {
       const c = document.getElementById('toastWrap');
-      const icons = { info: 'ℹ️', success: '✅', warn: '⚠️', err: '❌' };
+      const icons = { info: '', success: '', warn: '', err: '' };
       const t = document.createElement('div');
       t.className = `toast ${type}`;
-      t.innerHTML = `<span>${icons[type] || 'ℹ️'}</span>${esc(msg)}`;
+      t.innerHTML = `<span>${icons[type] || ''}</span>${esc(msg)}`;
       c.appendChild(t);
       setTimeout(() => {
         t.style.opacity = '0'; t.style.transform = 'translateY(6px)';
@@ -2797,7 +3731,32 @@
     /* ═══════════════════════════════════════════
        HQ DATA CONSTANTS (실데이터 기반)
     ═══════════════════════════════════════════ */
-    var HQ_STORES = [
+     /* ═══════════════════════════════════
+        HQ API FETCH
+     ═══════════════════════════════════ */
+     var HQ_API_BASE = '/api/hq';
+     var HQ_DATA_CACHE = {};
+
+     function hqFetch(key) {
+       return function() {
+         if (HQ_DATA_CACHE[key]) return Promise.resolve(HQ_DATA_CACHE[key]);
+         return fetch(HQ_API_BASE + '/' + key, {
+           headers: { 'X-User-Role': 'hq_admin' }
+         }).then(function(r) {
+           if (!r.ok) throw new Error('HTTP ' + r.status);
+           return r.json();
+         }).then(function(resp) {
+           var data = resp.status === 'success' ? resp.data : {};
+           HQ_DATA_CACHE[key] = data;
+           return data;
+         }).catch(function(err) {
+           console.error('HQ fetch error for ' + key + ':', err);
+           return null;
+         });
+       };
+     }
+
+     var HQ_STORES = [
       {id:'POC_001',name:'고양시02',region:'경기도',city:'고양시',status:'정상',stockout:4,lowStock:5,dailyOrder:286734,dailyProd:0},
       {id:'POC_002',name:'영등포구01',region:'서울특별시',city:'영등포구',status:'주의',stockout:8,lowStock:9,dailyOrder:561672,dailyProd:0},
       {id:'POC_003',name:'노원구01',region:'서울특별시',city:'노원구',status:'주의',stockout:17,lowStock:11,dailyOrder:315714,dailyProd:0},
@@ -2906,79 +3865,198 @@
       }
     }
 
-    function renderHQKpi(c) {
-      c.innerHTML = [
-        hqRow('일일 발주액 (33개 점포)','₩33,438,646','▼ 5.4% vs 전주','down'),
-        hqRow('일일 생산량','413,233개','▲ 1.4% vs 4주평균','up'),
-        hqRow('평균 점포당 발주액','₩1,013,292','—',''),
-        hqRow('최고 발주 점포','청주시01','₩1,974,664/일',''),
-        hqRow('최저 발주 점포','고양시02','₩286,734/일',''),
-        hqBar('서울특별시',7,33,'#FF6E00'),
-        hqBar('경기도',8,33,'#E91E8C'),
-        hqBar('부산광역시',4,33,'#3498DB'),
-        hqBar('경상북도',3,33,'#22c55e'),
-        hqBar('기타',11,33,'#999'),
-        hqRow('품절 품목 수','792건','32개 점포에서 발생','down'),
-        hqRow('저재고 품목 (1-2개)','145건','발주 권장','warn'),
-        hqRow('미확인 공지','7건','긴급 1건 포함',''),
-      ].join('');
-    }
+     function renderHQKpi(c) {
+        hqFetch('summary')().then(function(data) {
+          if (!data || (!data.kpis && !data.tables && !data.insights)) {
+            c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+            return;
+          }
+          var html = '';
+          if (data.kpis && data.kpis.length) {
+            for (var i = 0; i < data.kpis.length; i++) {
+              var k = data.kpis[i];
+              var sub = k.sub ? ('<span class="hq-row-sub">' + esc(k.sub) + '</span>') : '';
+              html += '<div class="hq-row"><span class="hq-row-label">' + esc(k.label) + '</span><span class="hq-row-val">' + esc(k.value) + '</span>' + sub + '</div>';
+            }
+          }
+          if (data.tables && data.tables.length) {
+            for (var ti = 0; ti < data.tables.length; ti++) {
+              var t = data.tables[ti];
+              html += '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#22c55e;margin-top:8px;">' + esc(t.title) + '</div>';
+              if (t.columns && t.columns.length) {
+                html += '<div class="hq-row" style="font-weight:700;font-size:10px;color:#64748b;"><span class="hq-row-label">' + esc(t.columns[0]) + '</span><span class="hq-row-val">' + (t.columns[1] ? esc(t.columns[1]) : '') + '</span>' + (t.columns[2] ? '<span class="hq-row-sub">' + esc(t.columns[2]) + '</span>' : '') + '</div>';
+              }
+              for (var j = 0; j < t.rows.length; j++) {
+                var row = t.rows[j];
+                if (Array.isArray(row)) {
+                  html += '<div class="hq-row"><span class="hq-row-label">' + esc(row[0]) + '</span><span class="hq-row-val">' + esc(row[1]) + '</span>' + (row[2] ? '<span class="hq-row-sub">' + esc(row[2]) + '</span>' : '') + '</div>';
+                } else {
+                  var colKeys = t.columns ? t.columns : Object.keys(row);
+                  html += '<div class="hq-row"><span class="hq-row-label">' + esc(row[colKeys[0]]) + '</span><span class="hq-row-val">' + esc(row[colKeys[1] || Object.keys(row)[1]]) + '</span></div>';
+                }
+              }
+            }
+          }
+          if (data.insights && data.insights.length) {
+            for (var ii = 0; ii < data.insights.length; ii++) {
+              html += '<div style="padding:4px 12px;font-size:10px;color:#3b82f6;margin-top:4px;"><i class="fas fa-lightbulb" style="margin-right:4px;"></i>' + esc(data.insights[ii]) + '</div>';
+            }
+          }
+          if (data.sources && data.sources.length) {
+            var srcLabels = data.sources.map(function(s){ return esc(s.label); }).join(', ');
+            html += '<div style="font-size:9px;color:#94a3b8;margin-top:4px;padding:0 12px;">출처: ' + srcLabels + '</div>';
+          }
+          c.innerHTML = html;
+        }).catch(function() {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+        });
+      }
 
     function renderHQRisk(c) {
-      var risk = HQ_STORES.filter(function(s){ return s.status === '위험'; });
-      var warn = HQ_STORES.filter(function(s){ return s.status === '주의'; });
-      var html = '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#ef4444;">🔴 위험 점포 (품절 ≥15)</div>';
-      risk.forEach(function(s) {
-        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
-        html += statusBadge(s.status) + ' ';
-        html += '<span class="hq-row-label">' + s.name + '(' + s.city + ')</span>';
-        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
-        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '/일</span>';
-        html += '</div>';
+      hqFetch('store-operations')().then(function(data) {
+        if (!data) {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+          return;
+        }
+        var html = '';
+        var risk = [];
+        var warn = [];
+        if (data.tables && data.tables.length) {
+          data.tables.forEach(function(t) {
+            if (t.rows) {
+              t.rows.forEach(function(r) {
+                var row = Array.isArray(r) ? r : r;
+                if (Array.isArray(row) && row.length >= 4) {
+                  var storeStatus = row[2];
+                  var storeObj = {name: row[0], city: '', status: storeStatus, stockout: parseInt(row[3])||0, dailyOrder: parseInt(row[4])||0, id: row[5]||''};
+                  if (storeStatus === '위험') risk.push(storeObj);
+                  else if (storeStatus === '주의') warn.push(storeObj);
+                }
+              });
+            }
+          });
+        }
+        if (risk.length === 0 && warn.length === 0) {
+          var fallbackRisk = HQ_STORES.filter(function(s){return s.status==='위험';});
+          fallbackRisk.forEach(function(s) {
+            risk.push({name: s.name, city: s.city, status: s.status, stockout: s.stockout, dailyOrder: s.dailyOrder, id: s.id});
+          });
+          var fallbackWarn = HQ_STORES.filter(function(s){return s.status==='주의';});
+          fallbackWarn.forEach(function(s) {
+            warn.push({name: s.name, city: s.city, status: s.status, stockout: s.stockout, dailyOrder: s.dailyOrder, id: s.id});
+          });
+        }
+        html += '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#ef4444;"> 위험 점포 (품절 ≥15)</div>';
+        risk.forEach(function(s) {
+          html += '<div class="hq-row" onclick="hqSelectStore(\'' + esc(s.id||s.name) + '\')">';
+          html += statusBadge(s.status) + ' ';
+          html += '<span class="hq-row-label">' + esc(s.name) + '(' + (s.city||'') + ')</span>';
+          html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+          html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '/일</span>';
+          html += '</div>';
+        });
+        html += '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#f59e0b;margin-top:6px;"> 주의 점포 (품절 8-14)</div>';
+        warn.forEach(function(s) {
+          html += '<div class="hq-row" onclick="hqSelectStore(\'' + esc(s.id||s.name) + '\')">';
+          html += statusBadge(s.status) + ' ';
+          html += '<span class="hq-row-label">' + esc(s.name) + '(' + (s.city||'') + ')</span>';
+          html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+          html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '/일</span>';
+          html += '</div>';
+        });
+        if (data.insights && data.insights.length) {
+          data.insights.forEach(function(ins) {
+            html += '<div style="padding:4px 12px;font-size:10px;color:#3b82f6;margin-top:4px;"><i class="fas fa-lightbulb" style="margin-right:4px;"></i>' + esc(ins) + '</div>';
+          });
+        }
+        if (data.sources && data.sources.length) {
+          var srcLabels = data.sources.map(function(s){ return esc(s.label); }).join(', ');
+          html += '<div style="font-size:9px;color:#94a3b8;margin-top:4px;padding:0 12px;">출처: ' + srcLabels + '</div>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
       });
-      html += '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#f59e0b;margin-top:6px;">🟡 주의 점포 (품절 8-14)</div>';
-      warn.forEach(function(s) {
-        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
-        html += statusBadge(s.status) + ' ';
-        html += '<span class="hq-row-label">' + s.name + '(' + s.city + ')</span>';
-        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
-        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '/일</span>';
-        html += '</div>';
-      });
-      c.innerHTML = html;
     }
 
     function renderHQTop(c) {
-      var sorted = HQ_STORES.slice().sort(function(a,b){ return b.dailyOrder - a.dailyOrder; });
-      var html = '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#22c55e;">📈 발주액 상위 10개 점포</div>';
-      sorted.slice(0,10).forEach(function(s,i) {
-        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
-        html += '<span style="font-size:10px;font-weight:700;color:' + (i<3?'#FF6E00':'#999') + ';width:18px;">' + (i+1) + '</span>';
-        html += '<span class="hq-row-label">' + s.name + '(' + s.city + ')</span>';
-        html += statusBadge(s.status);
-        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
-        html += '</div>';
+      hqFetch('store-operations')().then(function(data) {
+        if (!data) {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+          return;
+        }
+        var html = '';
+        var allStores = [];
+        if (data.tables && data.tables.length) {
+          data.tables.forEach(function(t) {
+            if (t.rows) {
+              t.rows.forEach(function(r) {
+                if (Array.isArray(r) && r.length >= 3) {
+                  allStores.push({name: r[0], city: r[1]||'', status: r[2], stockout: parseInt(r[3])||0, dailyOrder: parseInt(r[4])||0, id: r[5]||r[0]});
+                }
+              });
+            }
+          });
+        }
+        if (allStores.length === 0) allStores = HQ_STORES.slice();
+        var sorted = allStores.slice().sort(function(a,b){return b.dailyOrder - a.dailyOrder;});
+        html += '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#22c55e;"> 발주액 상위 10개 점포</div>';
+        sorted.slice(0,10).forEach(function(s,i) {
+          html += '<div class="hq-row" onclick="hqSelectStore(\'' + esc(s.id) + '\')">';
+          html += '<span style="font-size:10px;font-weight:700;color:' + (i<3?'#FF6E00':'#999') + ';width:18px;">' + (i+1) + '</span>';
+          html += '<span class="hq-row-label">' + esc(s.name) + '(' + esc(s.city) + ')</span>';
+          html += statusBadge(s.status);
+          html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
+          html += '</div>';
+        });
+        html += '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#ef4444;margin-top:6px;"> 발주액 하위 5개 점포</div>';
+        sorted.slice(-5).reverse().forEach(function(s,i) {
+          html += '<div class="hq-row" onclick="hqSelectStore(\'' + esc(s.id) + '\')">';
+          html += '<span style="font-size:10px;font-weight:700;color:#999;width:18px;">' + (sorted.length-i) + '</span>';
+          html += '<span class="hq-row-label">' + esc(s.name) + '(' + esc(s.city) + ')</span>';
+          html += statusBadge(s.status);
+          html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
+          html += '</div>';
+        });
+        if (data.insights && data.insights.length) {
+          data.insights.forEach(function(ins) {
+            html += '<div style="padding:4px 12px;font-size:10px;color:#3b82f6;margin-top:4px;"><i class="fas fa-lightbulb" style="margin-right:4px;"></i>' + esc(ins) + '</div>';
+          });
+        }
+        if (data.sources && data.sources.length) {
+          var srcLabels = data.sources.map(function(s){ return esc(s.label); }).join(', ');
+          html += '<div style="font-size:9px;color:#94a3b8;margin-top:4px;padding:0 12px;">출처: ' + srcLabels + '</div>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
       });
-      html += '<div style="padding:6px 12px;font-size:11px;font-weight:700;color:#ef4444;margin-top:6px;">📉 발주액 하위 5개 점포</div>';
-      sorted.slice(-5).reverse().forEach(function(s,i) {
-        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
-        html += '<span style="font-size:10px;font-weight:700;color:#999;width:18px;">' + (33-i) + '</span>';
-        html += '<span class="hq-row-label">' + s.name + '(' + s.city + ')</span>';
-        html += statusBadge(s.status);
-        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
-        html += '</div>';
-      });
-      c.innerHTML = html;
     }
 
     function renderHQIssues(c) {
-      c.innerHTML = [
-        '<div class="hq-issue-card"><div class="hq-issue-title">🔴 블루베리크림치즈 도넛 21개 점포 품절</div><div class="hq-issue-desc">전체 33개 점포 중 21개 점포에서 품절 발생. 긴급 발주 필요.</div></div>',
-        '<div class="hq-issue-card"><div class="hq-issue-title">🔴 스트로우-중단 21개 점포 품절</div><div class="hq-issue-desc">포장재 부족. 음료 서비스에 지장 우려. 즉시 발주 필요.</div></div>',
-        '<div class="hq-issue-card"><div class="hq-issue-title">🟡 6개 점포 위험 상태 (품절 ≥15)</div><div class="hq-issue-desc">광명시01(20), 안양시01(19), 강남구01(19), 마포구02(19), 부산진구01(19), 수원시01(19)</div></div>',
-        '<div class="hq-issue-card"><div class="hq-issue-title">🟡 전주 대비 발주액 -5.4%</div><div class="hq-issue-desc">전주 동일요일 대비 발주 감소. 매출 연착 가능성 확인 필요.</div></div>',
-        '<div class="hq-issue-card"><div class="hq-issue-title">📋 5월 1일 가격 인상 확정</div><div class="hq-issue-desc">아메리카노·라떼 200원 인상. 4/30까지 POS 업데이트 필수.</div></div>',
-      ].join('');
+      hqFetch('summary')().then(function(data) {
+        if (!data || (!data.alerts && !data.insights)) {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+          return;
+        }
+        var html = '';
+        if (data.alerts && data.alerts.length) {
+          data.alerts.forEach(function(a) {
+            var title = a.title || a.message || '';
+            var desc = a.description || a.detail || '';
+            html += '<div class="hq-issue-card"><div class="hq-issue-title">' + esc(title) + '</div><div class="hq-issue-desc">' + esc(desc) + '</div></div>';
+          });
+        } else if (data.insights && data.insights.length) {
+          data.insights.forEach(function(ins) {
+            html += '<div class="hq-issue-card"><div class="hq-issue-title">' + esc(ins) + '</div></div>';
+          });
+        } else {
+          html += '<div class="hq-row"><span class="hq-row-label">알림 없음</span></div>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+      });
     }
 
     function hqRow(label, val, sub, type) {
@@ -2992,71 +4070,168 @@
 
     /* ── 점포 운영 ── */
     function renderHQStoreOps() {
-      var c = document.getElementById('hqStoreOps');
-      if (!c) return;
-      var riskStores = HQ_STORES.filter(function(s){return s.status==='위험';});
-      var warnStores = HQ_STORES.filter(function(s){return s.status==='주의';});
-      var normalStores = HQ_STORES.filter(function(s){return s.status==='정상';});
-
-      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🔴 위험 점포</span><span class="hq-badge danger">' + riskStores.length + '</span></div><div class="hq-section-body">';
-      riskStores.forEach(function(s) {
-        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
-        html += statusBadge(s.status) + ' ';
-        html += '<span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
-        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
-        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
-        html += '</div>';
+      hqFetch('store-operations')().then(function(data) {
+        var c = document.getElementById('hqStoreOps');
+        if (!c) return;
+        if (!data) {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+          return;
+        }
+        var html = '';
+        var kpiRows = '';
+        if (data.kpis && data.kpis.length) {
+          data.kpis.forEach(function(k) {
+            var sub = k.sub ? ('<span class="hq-row-sub">' + esc(k.sub) + '</span>') : '';
+            kpiRows += '<div class="hq-row"><span class="hq-row-label">' + esc(k.label) + '</span><span class="hq-row-val">' + esc(k.value) + '</span>' + sub + '</div>';
+          });
+        }
+        var allStores = [];
+        if (data.tables && data.tables.length) {
+          data.tables.forEach(function(t) {
+            if (t.title) {
+              html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">' + esc(t.title) + '</span>';
+              if (t.count !== undefined) html += '<span class="hq-badge '+(t.badgeCls||'info')+'">' + t.count + '</span>';
+              html += '</div><div class="hq-section-body">';
+            }
+            if (t.rows) {
+              t.rows.forEach(function(r) {
+                if (Array.isArray(r)) {
+                  var st = r[2];
+                  var cls = st==='위험' ? 'danger' : (st==='주의' ? 'warn' : 'ok');
+                  html += '<div class="hq-row" onclick="hqSelectStore(\'' + esc(r[5]||r[0]) + '\')">';
+                  html += '<span class="hq-badge ' + cls + '">' + esc(st) + '</span> ';
+                  html += '<span class="hq-row-label">' + esc(r[0]) + ' (' + esc(r[1]||'') + ')</span>';
+                  html += '<span class="hq-row-sub">품절 ' + r[3] + '건</span>';
+                  html += '<span class="hq-row-val">' + (typeof r[4]==='number'?fmtWon(r[4]):esc(r[4]||'-')) + '</span>';
+                  html += '</div>';
+                  allStores.push({id: r[5]||r[0], name: r[0], city: r[1]||'', status: st, stockout: parseInt(r[3])||0, dailyOrder: parseInt(r[4])||0, lowStock: parseInt(r[6])||0});
+                }
+              });
+            }
+            if (t.title) html += '</div></div>';
+          });
+        }
+        if (html === '') {
+          var riskStores = HQ_STORES.filter(function(s){return s.status==='위험';});
+          var warnStores = HQ_STORES.filter(function(s){return s.status==='주의';});
+          var normalStores = HQ_STORES.filter(function(s){return s.status==='정상';});
+          html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title"> 위험 점포</span><span class="hq-badge danger">' + riskStores.length + '</span></div><div class="hq-section-body">';
+          riskStores.forEach(function(s) {
+            html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+            html += statusBadge(s.status) + ' <span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
+            html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+            html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span></div>';
+          });
+          html += '</div></div>';
+          html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title"> 주의 점포</span><span class="hq-badge warn">' + warnStores.length + '</span></div><div class="hq-section-body">';
+          warnStores.forEach(function(s) {
+            html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+            html += statusBadge(s.status) + ' <span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
+            html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+            html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span></div>';
+          });
+          html += '</div></div>';
+          html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title"> 정상 점포</span><span class="hq-badge ok">' + normalStores.length + '</span></div><div class="hq-section-body">';
+          normalStores.forEach(function(s) {
+            html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
+            html += statusBadge(s.status) + ' <span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
+            html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
+            html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span></div>';
+          });
+          html += '</div></div>';
+        }
+        if (kpiRows) html = kpiRows + html;
+        if (data.insights && data.insights.length) {
+          data.insights.forEach(function(ins) {
+            html += '<div style="padding:4px 12px;font-size:10px;color:#3b82f6;margin-top:4px;"><i class="fas fa-lightbulb" style="margin-right:4px;"></i>' + esc(ins) + '</div>';
+          });
+        }
+        if (data.sources && data.sources.length) {
+          var srcLabels = data.sources.map(function(s){ return esc(s.label); }).join(', ');
+          html += '<div style="font-size:9px;color:#94a3b8;margin-top:4px;padding:0 12px;">출처: ' + srcLabels + '</div>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        var c = document.getElementById('hqStoreOps');
+        if (c) c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
       });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🟡 주의 점포</span><span class="hq-badge warn">' + warnStores.length + '</span></div><div class="hq-section-body">';
-      warnStores.forEach(function(s) {
-        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
-        html += statusBadge(s.status) + ' ';
-        html += '<span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
-        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
-        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
-        html += '</div>';
-      });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🟢 정상 점포</span><span class="hq-badge ok">' + normalStores.length + '</span></div><div class="hq-section-body">';
-      normalStores.forEach(function(s) {
-        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
-        html += statusBadge(s.status) + ' ';
-        html += '<span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
-        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
-        html += '<span class="hq-row-val">' + fmtWon(s.dailyOrder) + '</span>';
-        html += '</div>';
-      });
-      html += '</div></div>';
-
-      c.innerHTML = html;
     }
 
     /* ── 점포 현황 ── */
     function renderHQStoreTable(filter) {
       var c = document.getElementById('hqStoreTable');
       if (!c) return;
-      filter = filter || 'all';
-      var stores = HQ_STORES;
-      if (filter === '위험') stores = stores.filter(function(s){return s.status==='위험';});
-      else if (filter === '주의') stores = stores.filter(function(s){return s.status==='주의';});
-      else if (filter === '정상') stores = stores.filter(function(s){return s.status==='정상';});
-
-      var html = '<thead><tr><th>점포</th><th>지역</th><th>상태</th><th>품절</th><th>저재고</th><th>일발주</th></tr></thead><tbody>';
-      stores.forEach(function(s) {
-        html += '<tr onclick="hqSelectStore(\'' + s.id + '\')" style="cursor:pointer;">';
-        html += '<td style="font-weight:700;">' + s.name + '</td>';
-        html += '<td>' + s.city + '</td>';
-        html += '<td>' + statusBadge(s.status) + '</td>';
-        html += '<td style="color:' + (s.stockout>=15?'#ef4444':s.stockout>=8?'#f59e0b':'#22c55e') + ';font-weight:700;">' + s.stockout + '</td>';
-        html += '<td>' + s.lowStock + '</td>';
-        html += '<td>' + fmtWon(s.dailyOrder) + '</td>';
-        html += '</tr>';
+      hqFetch('store-status')().then(function(data) {
+        if (!data) {
+          c.innerHTML = '<thead><tr><th>점포</th><th>지역</th><th>상태</th><th>품절</th><th>저재고</th><th>일발주</th></tr></thead><tbody><tr><td colspan="6" style="text-align:center;">데이터 조회 실패 - 다시 시도</td></tr></tbody>';
+          return;
+        }
+        filter = filter || 'all';
+        var allStores = [];
+        var apiCols = ['점포','지역','상태','품절','저재고','일발주','id'];
+        if (data.tables && data.tables.length) {
+          data.tables.forEach(function(t) {
+            if (t.rows && t.columns && t.columns.indexOf('점포') >= 0) {
+              var colMap = {};
+              t.columns.forEach(function(cn, ci) { colMap[cn] = ci; });
+              t.rows.forEach(function(r) {
+                if (Array.isArray(r)) {
+                  var idx = function(colName) {
+                    var i = colMap[colName];
+                    if (i !== undefined) return i;
+                    for (var ci2 = 0; ci2 < apiCols.length; ci2++) { if (apiCols[ci2] === colName) return ci2; }
+                    return -1;
+                  };
+                  var nameIdx = idx('점포') >= 0 ? idx('점포') : 0;
+                  var cityIdx = idx('지역') >= 0 ? idx('지역') : 1;
+                  var statusIdx = idx('상태') >= 0 ? idx('상태') : 2;
+                  var stockoutIdx = idx('품절') >= 0 ? idx('품절') : 3;
+                  var lowStockIdx = idx('저재고') >= 0 ? idx('저재고') : 4;
+                  var orderIdx = idx('일발주') >= 0 ? idx('일발주') : 5;
+                  var idIdx = idx('id') >= 0 ? idx('id') : (nameIdx);
+                  allStores.push({
+                    name: r[nameIdx], city: r[cityIdx]||'', status: r[statusIdx],
+                    stockout: parseInt(r[stockoutIdx])||0, lowStock: parseInt(r[lowStockIdx])||0,
+                    dailyOrder: parseInt(r[orderIdx])||0, id: r[idIdx]||r[nameIdx]
+                  });
+                } else {
+                  var s = r;
+                  allStores.push({
+                    name: s.name||'-', city: s.city||'', status: s.status||'-',
+                    stockout: parseInt(s.stockout)||0, lowStock: parseInt(s.lowStock)||0,
+                    dailyOrder: parseInt(s.dailyOrder)||0, id: s.id||(s.name||'-')
+                  });
+                }
+              });
+            }
+          });
+        }
+        if (allStores.length === 0) allStores = HQ_STORES.slice();
+        var stores = allStores;
+        if (filter === '위험') stores = stores.filter(function(s){return s.status==='위험';});
+        else if (filter === '주의') stores = stores.filter(function(s){return s.status==='주의';});
+        else if (filter === '정상') stores = stores.filter(function(s){return s.status==='정상';});
+        var html = '<thead><tr><th>점포</th><th>지역</th><th>상태</th><th>품절</th><th>저재고</th><th>일발주</th></tr></thead><tbody>';
+        stores.forEach(function(s) {
+          html += '<tr onclick="hqSelectStore(\'' + esc(s.id) + '\')" style="cursor:pointer;">';
+          html += '<td style="font-weight:700;">' + esc(s.name) + '</td>';
+          html += '<td>' + esc(s.city) + '</td>';
+          html += '<td>' + statusBadge(s.status) + '</td>';
+          html += '<td style="color:' + (s.stockout>=15?'#ef4444':s.stockout>=8?'#f59e0b':'#22c55e') + ';font-weight:700;">' + s.stockout + '</td>';
+          html += '<td>' + s.lowStock + '</td>';
+          html += '<td>' + fmtWon(s.dailyOrder) + '</td>';
+          html += '</tr>';
+        });
+        html += '</tbody>';
+        if (data.insights && data.insights.length) {
+          html += '<tr><td colspan="6" style="padding:4px 0;font-size:10px;color:#3b82f8;">';
+          html += data.insights.map(function(i){ return '<i class="fas fa-lightbulb" style="margin-right:2px;"></i>'+esc(i); }).join(' · ');
+          html += '</td></tr>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        c.innerHTML = '<thead><tr><th>점포</th><th>지역</th><th>상태</th><th>품절</th><th>저재고</th><th>일발주</th></tr></thead><tbody><tr><td colspan="6" style="text-align:center;">데이터 조회 실패 - 다시 시도</td></tr></tbody>';
       });
-      html += '</tbody>';
-      c.innerHTML = html;
     }
     function hqStoreFilter(el, filter) {
       el.closest('.hq-filter-row').querySelectorAll('.hq-filter-chip').forEach(function(c){c.classList.remove('active');});
@@ -3066,255 +4241,595 @@
 
     /* ── 매출 분석 ── */
     function renderHQSales() {
-      var c = document.getElementById('hqSales');
-      if (!c) return;
-      var sorted = HQ_STORES.slice().sort(function(a,b){return b.dailyOrder - a.dailyOrder;});
-      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📊 점포별 일일 발주액 (TOP 10)</span></div><div class="hq-section-body">';
-      sorted.slice(0,10).forEach(function(s,i) {
-        var maxOrder = sorted[0].dailyOrder;
-        var pct = Math.round(s.dailyOrder / maxOrder * 100);
-        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + s.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (i<3?'#FF6E00':'#3498DB') + '"></div></div><span class="hq-bar-val">' + fmtWon(s.dailyOrder) + '</span></div>';
+      hqFetch('sales-analysis')().then(function(data) {
+        var c = document.getElementById('hqSales');
+        if (!c) return;
+        if (!data) {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+          return;
+        }
+        var html = '';
+        if (data.kpis && data.kpis.length) {
+          data.kpis.forEach(function(k) {
+            var sub = k.sub ? ('<span class="hq-row-sub">' + esc(k.sub) + '</span>') : '';
+            html += '<div class="hq-row"><span class="hq-row-label">' + esc(k.label) + '</span><span class="hq-row-val">' + esc(k.value) + '</span>' + sub + '</div>';
+          });
+          html += '<div style="height:6px;"></div>';
+        }
+        var tablesRendered = false;
+        if (data.tables && data.tables.length) {
+          tablesRendered = true;
+          data.tables.forEach(function(t) {
+            html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">' + esc(t.title) + '</span></div><div class="hq-section-body">';
+            if (t.columns && t.columns.length) {
+              html += '<div class="hq-row" style="font-weight:700;font-size:10px;color:#64748b;">';
+              t.columns.forEach(function(col) { html += '<span class="hq-row-label">' + esc(col) + '</span>'; });
+              html += '</div>';
+            }
+            if (t.rows) {
+              t.rows.forEach(function(r, idx) {
+                if (Array.isArray(r)) {
+                  var isBar = t.type === 'bar';
+                  if (isBar) {
+                    html += '<div class="hq-bar-row"><span class="hq-bar-label">' + esc(r[0]) + '</span>';
+                    html += '<div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + (r[2]||80) + '%;background:' + (idx<3?'#FF6E00':'#3498DB') + '"></div></div>';
+                    html += '<span class="hq-bar-val">' + esc(r[1]) + '</span></div>';
+                  } else {
+                    html += '<div class="hq-row"><span class="hq-row-label">' + esc(r[0]) + '</span><span class="hq-row-val">' + esc(r[1]) + '</span>' + (r[2] ? '<span class="hq-row-sub">' + esc(r[2]) + '</span>' : '') + '</div>';
+                  }
+                } else {
+                  var keys = Object.keys(r);
+                  html += '<div class="hq-row"><span class="hq-row-label">' + esc(r[keys[0]]) + '</span><span class="hq-row-val">' + esc(r[keys[1]]) + '</span></div>';
+                }
+              });
+            }
+            html += '</div></div>';
+          });
+        }
+        if (!tablesRendered) {
+          var sorted = HQ_STORES.slice().sort(function(a,b){return b.dailyOrder - a.dailyOrder;});
+          html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title"> 점포별 일일 발주액 (TOP 10)</span></div><div class="hq-section-body">';
+          sorted.slice(0,10).forEach(function(s,i) {
+            var maxOrder = sorted[0].dailyOrder;
+            var pct = Math.round(s.dailyOrder / maxOrder * 100);
+            html += '<div class="hq-bar-row"><span class="hq-bar-label">' + s.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (i<3?'#FF6E00':'#3498DB') + '"></div></div><span class="hq-bar-val">' + fmtWon(s.dailyOrder) + '</span></div>';
+          });
+          html += '</div></div>';
+        }
+        if (data.insights && data.insights.length) {
+          data.insights.forEach(function(ins) {
+            html += '<div style="padding:4px 12px;font-size:10px;color:#3b82f6;margin-top:4px;"><i class="fas fa-lightbulb" style="margin-right:4px;"></i>' + esc(ins) + '</div>';
+          });
+        }
+        if (data.sources && data.sources.length) {
+          var srcLabels = data.sources.map(function(s){ return esc(s.label); }).join(', ');
+          html += '<div style="font-size:9px;color:#94a3b8;margin-top:4px;padding:0 12px;">출처: ' + srcLabels + '</div>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        var c = document.getElementById('hqSales');
+        if (c) c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
       });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📈 주간 발주 추이</span></div><div class="hq-section-body">';
-      var weeklyData = [
-        {label:'2/28(토)',val:31200000},{label:'3/1(일)',val:28500000},{label:'3/2(월)',val:35200000},
-        {label:'3/3(화)',val:34800000},{label:'3/4(수)',val:35900000},{label:'3/5(목)',val:34100000},
-        {label:'3/6(금)',val:33400000},{label:'3/7(토)',val:29800000},{label:'3/8(일)',val:27100000},
-        {label:'3/9(월)',val:35338646},{label:'3/10(화)',val:33438646},
-      ];
-      var maxW = 36000000;
-      weeklyData.forEach(function(d) {
-        var pct = Math.round(d.val / maxW * 100);
-        var isToday = d.label.indexOf('3/10') >= 0;
-        html += '<div class="hq-bar-row"><span class="hq-bar-label" style="' + (isToday?'font-weight:800;color:#FF6E00;':'') + '">' + d.label + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (isToday?'#FF6E00':'#3498DB') + '"></div></div><span class="hq-bar-val" style="' + (isToday?'font-weight:800;color:#FF6E00;':'') + '">' + fmtWon(d.val) + '</span></div>';
-      });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🏷️ 상위 발주 품목 (누적)</span></div><div class="hq-section-body">';
-      var maxProd = HQ_TOP_PRODUCTS[0].orderAmt;
-      HQ_TOP_PRODUCTS.forEach(function(p,i) {
-        var pct = Math.round(p.orderAmt / maxProd * 100);
-        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + p.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (i<3?'#FF6E00':'#22c55e') + '"></div></div><span class="hq-bar-val">' + fmtWon(p.orderAmt) + '</span></div>';
-      });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🗺️ 지역별 발주 현황</span></div><div class="hq-section-body">';
-      var regions = [
-        {name:'서울특별시',count:7,order:0},{name:'경기도',count:8,order:0},{name:'부산광역시',count:4,order:0},
-        {name:'경상북도',count:3,order:0},{name:'대구광역시',count:2,order:0},{name:'강원도',count:2,order:0},
-        {name:'전라북도',count:2,order:0},{name:'충청남도',count:1,order:0},{name:'충청북도',count:1,order:0},
-        {name:'인천광역시',count:1,order:0},{name:'전라남도',count:1,order:0}
-      ];
-      HQ_STORES.forEach(function(s) {
-        regions.forEach(function(r) { if (s.region === r.name) r.order += s.dailyOrder; });
-      });
-      regions.sort(function(a,b){return b.order - a.order;});
-      var maxR = regions[0].order;
-      regions.forEach(function(r) {
-        var pct = Math.round(r.order / maxR * 100);
-        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + r.name + ' (' + r.count + ')</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:#FF6E00"></div></div><span class="hq-bar-val">' + fmtWon(r.order) + '</span></div>';
-      });
-      html += '</div></div>';
-
-      c.innerHTML = html;
     }
 
     /* ── 재고 ── */
     function renderHQStock() {
-      var c = document.getElementById('hqStock');
-      if (!c) return;
-      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🔴 품절 TOP 15 품목 (점포수)</span><span class="hq-badge danger">792건</span></div><div class="hq-section-body">';
-      var maxStores = HQ_STOCKOUT_PRODUCTS[0].stores;
-      HQ_STOCKOUT_PRODUCTS.forEach(function(p,i) {
-        var pct = Math.round(p.stores / 33 * 100);
-        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + p.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (p.stores>=15?'#ef4444':'#f59e0b') + '"></div></div><span class="hq-bar-val">' + p.stores + '점포</span></div>';
+      hqFetch('inventory')().then(function(data) {
+        var c = document.getElementById('hqStock');
+        if (!c) return;
+        if (!data) {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+          return;
+        }
+        var html = '';
+        if (data.kpis && data.kpis.length) {
+          data.kpis.forEach(function(k) {
+            var sub = k.sub ? ('<span class="hq-row-sub">' + esc(k.sub) + '</span>') : '';
+            html += '<div class="hq-row"><span class="hq-row-label">' + esc(k.label) + '</span><span class="hq-row-val">' + esc(k.value) + '</span>' + sub + '</div>';
+          });
+          html += '<div style="height:6px;"></div>';
+        }
+        var tablesRendered = false;
+        if (data.tables && data.tables.length) {
+          tablesRendered = true;
+          data.tables.forEach(function(t) {
+            html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">' + esc(t.title) + '</span>';
+            if (t.count !== undefined) html += '<span class="hq-badge '+(t.badgeCls||'danger')+'">' + t.count + '</span>';
+            html += '</div><div class="hq-section-body">';
+            if (t.rows) {
+              t.rows.forEach(function(r, idx) {
+                if (Array.isArray(r)) {
+                  var isBar = t.type === 'bar';
+                  if (isBar) {
+                    var maxVal = t.maxVal || (parseInt(r[1])||1);
+                    html += '<div class="hq-bar-row"><span class="hq-bar-label">' + esc(r[0]) + '</span>';
+                    html += '<div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + Math.round(r[1]/maxVal*100) + '%;background:' + (r[1]>=15?'#ef4444':'#f59e0b') + '"></div></div>';
+                    html += '<span class="hq-bar-val">' + r[1] + (r[2]||'점포') + '</span></div>';
+                  } else {
+                    html += '<div class="hq-row" onclick="hqSelectStore(\'' + esc(r[5]||r[0]) + '\')">';
+                    if (r[2]) html += '<span class="hq-badge '+(r[2]==='위험'?'danger':(r[2]==='주의'?'warn':'ok'))+'">' + esc(r[2]) + '</span> ';
+                    html += '<span class="hq-row-label">' + esc(r[0]) + '</span>';
+                    html += '<span class="hq-row-sub">' + (r[3]||'') + '</span>';
+                    html += '<span class="hq-row-val">' + (r[4]||'-') + '</span></div>';
+                  }
+                } else {
+                  var keys = Object.keys(r);
+                  html += '<div class="hq-row"><span class="hq-row-label">' + esc(r[keys[0]]) + '</span><span class="hq-row-val">' + esc(r[keys[1]]) + '</span></div>';
+                }
+              });
+            }
+            html += '</div></div>';
+          });
+        }
+        if (!tablesRendered) {
+          html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title"> 품절 TOP 품목</span><span class="hq-badge danger">품절 현황</span></div><div class="hq-section-body">';
+          HQ_STOCKOUT_PRODUCTS.forEach(function(p) {
+            var pct = Math.round(p.stores / 33 * 100);
+            html += '<div class="hq-bar-row"><span class="hq-bar-label">' + p.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:' + (p.stores>=15?'#ef4444':'#f59e0b') + '"></div></div><span class="hq-bar-val">' + p.stores + '점포</span></div>';
+          });
+          html += '</div></div>';
+        }
+        if (data.insights && data.insights.length) {
+          data.insights.forEach(function(ins) {
+            html += '<div style="padding:4px 12px;font-size:10px;color:#3b82f6;margin-top:4px;"><i class="fas fa-lightbulb" style="margin-right:4px;"></i>' + esc(ins) + '</div>';
+          });
+        }
+        if (data.sources && data.sources.length) {
+          var srcLabels = data.sources.map(function(s){ return esc(s.label); }).join(', ');
+          html += '<div style="font-size:9px;color:#94a3b8;margin-top:4px;padding:0 12px;">출처: ' + srcLabels + '</div>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        var c = document.getElementById('hqStock');
+        if (c) c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
       });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">⚠️ 위험 점포 재고 현황</span><span class="hq-badge danger">6개</span></div><div class="hq-section-body">';
-      var riskStores = HQ_STORES.filter(function(s){return s.status==='위험';});
-      riskStores.forEach(function(s) {
-        html += '<div class="hq-row" onclick="hqSelectStore(\'' + s.id + '\')">';
-        html += statusBadge(s.status) + ' ';
-        html += '<span class="hq-row-label">' + s.name + ' (' + s.city + ')</span>';
-        html += '<span class="hq-row-sub">품절 ' + s.stockout + '건</span>';
-        html += '<span class="hq-row-val" style="color:#ef4444">긴급발주</span>';
-        html += '</div>';
-      });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📦 카테고리별 품절 현황</span></div><div class="hq-section-body">';
-      var cats = [{name:'도넛',count:94},{name:'포장재',count:71},{name:'식재료',count:35},{name:'베이글',count:41},{name:'음료',count:18}];
-      var maxCat = 94;
-      cats.forEach(function(cat) {
-        var pct = Math.round(cat.count / maxCat * 100);
-        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + cat.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:#E91E8C"></div></div><span class="hq-bar-val">' + cat.count + '건</span></div>';
-      });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">💡 발주 권장 품목</span></div><div class="hq-section-body">';
-      var reorderItems = [
-        {name:'블루베리크림치즈 도넛',urgency:'긴급',stores:21},
-        {name:'스트로우-중단',urgency:'긴급',stores:21},
-        {name:'초코파우더(길라델리)',urgency:'긴급',stores:20},
-        {name:'10온즈컵(수입)',urgency:'긴급',stores:20},
-        {name:'10온즈리드',urgency:'권장',stores:15},
-        {name:'설탕(미니바)',urgency:'권장',stores:15},
-        {name:'킷캣초코 스트로베리',urgency:'권장',stores:15},
-        {name:'플레인베이글',urgency:'권장',stores:14},
-      ];
-      reorderItems.forEach(function(item) {
-        var badge = item.urgency === '긴급' ? '<span class="hq-badge danger">긴급</span>' : '<span class="hq-badge warn">권장</span>';
-        html += '<div class="hq-row">' + badge + ' <span class="hq-row-label">' + item.name + '</span><span class="hq-row-sub">' + item.stores + '점포 품절</span></div>';
-      });
-      html += '</div></div>';
-
-      c.innerHTML = html;
     }
 
     /* ── 캠페인 ── */
     function renderHQCampaign() {
-      var c = document.getElementById('hqCampaign');
-      if (!c) return;
-      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📣 최근 집계 기준 캠페인 반응</span><span class="hq-badge info">프로모션 데이터 없음</span></div><div class="hq-section-body">';
-      html += '<div style="padding:8px 12px;font-size:11px;color:#666;line-height:1.6;">전용 프로모션 데이터가 없으므로, 발주·생산 데이터 기반으로 캠페인 성과를 간접 추정합니다.</div>';
-
-      var campaigns = [
-        {name:'5월 가격 인상 대비 (아메리카노·라떼 200원)',status:'준비',impact:'전 점포 영향',note:'4/30 POS 업데이트 필수'},
-        {name:'오전 한 잔 할인쿠폰 프로모션',status:'진행',impact:'종이영수증 발급',note:'2분기~(-6기) 진행'},
-        {name:'D-DAY 프로모션',status:'진행',impact:'매출 변동 예상',note:'챔피온/신생아/연중 이벤트 포함'},
-        {name:'KT 싱킹기프트 신시제품',status:'중단',impact:'쿠폰 발급 중지',note:'본사 사정으로 운영 중단'},
-        {name:'봄 세상맞이 세트',status:'진행',impact:'세트 메뉴 구성',note:'3월 프로모션'},
-      ];
-      campaigns.forEach(function(camp) {
-        var statusCls = camp.status === '중단' ? 'danger' : (camp.status === '준비' ? 'warn' : 'info');
-        html += '<div class="hq-row">';
-        html += '<span class="hq-badge ' + statusCls + '">' + camp.status + '</span>';
-        html += '<span class="hq-row-label">' + camp.name + '</span>';
-        html += '<span class="hq-row-sub">' + camp.impact + '</span>';
-        html += '</div>';
+      hqFetch('campaigns')().then(function(data) {
+        var c = document.getElementById('hqCampaign');
+        if (!c) return;
+        if (!data) {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+          return;
+        }
+        var html = '';
+        if (data.kpis && data.kpis.length) {
+          data.kpis.forEach(function(k) {
+            var sub = k.sub ? ('<span class="hq-row-sub">' + esc(k.sub) + '</span>') : '';
+            html += '<div class="hq-row"><span class="hq-row-label">' + esc(k.label) + '</span><span class="hq-row-val">' + esc(k.value) + '</span>' + sub + '</div>';
+          });
+        }
+        var tablesRendered = false;
+        if (data.tables && data.tables.length) {
+          tablesRendered = true;
+          data.tables.forEach(function(t) {
+            html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">' + esc(t.title) + '</span></div><div class="hq-section-body">';
+            if (t.rows) {
+              t.rows.forEach(function(r, idx) {
+                if (Array.isArray(r)) {
+                  var statusCls = r[1] === '중단' ? 'danger' : (r[1] === '준비' ? 'warn' : 'info');
+                  html += '<div class="hq-row"><span class="hq-badge ' + statusCls + '">' + esc(r[1]) + '</span> <span class="hq-row-label">' + esc(r[0]) + '</span>';
+                  if (r[2]) html += '<span class="hq-row-sub">' + esc(r[2]) + '</span>';
+                  html += '</div>';
+                } else {
+                  var keys = Object.keys(r);
+                  html += '<div class="hq-row"><span class="hq-row-label">' + esc(r[keys[0]]) + '</span><span class="hq-row-val">' + esc(r[keys[1]]) + '</span></div>';
+                }
+              });
+            }
+            html += '</div></div>';
+          });
+        }
+        if (!tablesRendered) {
+          html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title"> 캠페인 현황</span><span class="hq-badge info">데이터 없음</span></div><div class="hq-section-body"><div class="hq-row"><span class="hq-row-label">캠페인 정보가 없습니다</span></div></div></div>';
+        }
+        if (data.insights && data.insights.length) {
+          data.insights.forEach(function(ins) {
+            html += '<div style="padding:4px 12px;font-size:10px;color:#3b82f6;margin-top:4px;"><i class="fas fa-lightbulb" style="margin-right:4px;"></i>' + esc(ins) + '</div>';
+          });
+        }
+        if (data.sources && data.sources.length) {
+          var srcLabels = data.sources.map(function(s){ return esc(s.label); }).join(', ');
+          html += '<div style="font-size:9px;color:#94a3b8;margin-top:4px;padding:0 12px;">출처: ' + srcLabels + '</div>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        var c = document.getElementById('hqCampaign');
+        if (c) c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
       });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📊 상위 발주 품목 기반 추정</span></div><div class="hq-section-body">';
-      html += '<div style="padding:8px 12px;font-size:11px;color:#666;line-height:1.6;">프로모션 전용 데이터가 없어 발주액 기준으로 캠페인 기여도를 간접 파악합니다.</div>';
-      HQ_TOP_PRODUCTS.slice(0,5).forEach(function(p,i) {
-        var pct = Math.round(p.orderAmt / HQ_TOP_PRODUCTS[0].orderAmt * 100);
-        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + p.name + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + pct + '%;background:#FF6E00"></div></div><span class="hq-bar-val">' + fmtWon(p.orderAmt) + '</span></div>';
-      });
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🏪 점포별 발주 비교 (TOP 5)</span></div><div class="hq-section-body">';
-      var sorted = HQ_STORES.slice().sort(function(a,b){return b.dailyOrder - a.dailyOrder;});
-      sorted.slice(0,5).forEach(function(s) {
-        html += '<div class="hq-row"><span class="hq-row-label">' + s.name + ' (' + s.city + ')</span><span class="hq-row-val">' + fmtWon(s.dailyOrder) + '/일</span></div>';
-      });
-      html += '</div></div>';
-
-      c.innerHTML = html;
     }
 
     /* ── 공지 ── */
     function renderHQNotice() {
-      var urgentEl = document.getElementById('hqNoticeUrgent');
-      var allEl = document.getElementById('hqNoticeAll');
-      if (!urgentEl || !allEl) return;
-
-      var urgents = NM_LEFT.filter(function(n){ return n.tag === 'urgent' || n.tag === '긴급' || (n.title && n.title.includes('긴급')); });
-      urgentEl.innerHTML = urgents.map(function(n) {
-        return '<div class="hq-row"><span class="hq-badge danger">긴급</span><span class="hq-row-label">' + n.title + '</span><span class="hq-row-sub">' + n.date + '</span></div>';
-      }).join('');
-
-      var allNotices = [].concat(NM_LEFT, NM_RIGHT).slice(0, 20);
-      allEl.innerHTML = allNotices.map(function(n) {
-        var cls = n.cls || 'nt-normal';
-        return '<div class="hq-row"><span class="nm-tag ' + cls + '">' + n.tag + '</span><span class="hq-row-label">' + n.title + '</span><span class="hq-row-sub">' + n.date + '</span></div>';
-      }).join('');
+      hqFetch('notices')().then(function(data) {
+        var urgentEl = document.getElementById('hqNoticeUrgent');
+        var allEl = document.getElementById('hqNoticeAll');
+        if (!urgentEl || !allEl) return;
+        if (!data || (!data.tables && !data.kpis)) {
+          var allNotices = [].concat(NM_LEFT, NM_RIGHT).slice(0, 20);
+          var urgents = allNotices.filter(function(n){ return n.tag === 'urgent' || n.tag === '긴급' || (n.title && n.title.includes('긴급')); });
+          urgentEl.innerHTML = urgents.map(function(n) {
+            return '<div class="hq-row"><span class="hq-badge danger">긴급</span><span class="hq-row-label">' + esc(n.title) + '</span><span class="hq-row-sub">' + esc(n.date) + '</span></div>';
+          }).join('');
+          allEl.innerHTML = allNotices.map(function(n) {
+            var cls = n.cls || 'nt-normal';
+            return '<div class="hq-row"><span class="nm-tag ' + cls + '">' + esc(n.tag) + '</span><span class="hq-row-label">' + esc(n.title) + '</span><span class="hq-row-sub">' + esc(n.date) + '</span></div>';
+          }).join('');
+          return;
+        }
+        var urgentHtml = '';
+        var allHtml = '';
+        if (data.kpis && data.kpis.length) {
+          data.kpis.forEach(function(k) {
+            var sub = k.sub ? ('<span class="hq-row-sub">' + esc(k.sub) + '</span>') : '';
+            urgentHtml += '<div class="hq-row"><span class="hq-row-label">' + esc(k.label) + '</span><span class="hq-row-val">' + esc(k.value) + '</span>' + sub + '</div>';
+          });
+        }
+        if (data.tables && data.tables.length) {
+          data.tables.forEach(function(t) {
+            if (t.rows) {
+              t.rows.forEach(function(r) {
+                if (Array.isArray(r)) {
+                  var isUrgent = r[2] === '긴급' || r[2] === 'urgent';
+                  var rowHtml = '<div class="hq-row">';
+                  if (isUrgent) rowHtml += '<span class="hq-badge danger">긴급</span>';
+                  rowHtml += '<span class="hq-row-label">' + esc(r[0]) + '</span>';
+                  rowHtml += '<span class="hq-row-sub">' + esc(r[r.length-1]) + '</span></div>';
+                  if (isUrgent) urgentHtml += rowHtml;
+                  allHtml += rowHtml;
+                } else {
+                  var keys = Object.keys(r);
+                  var rowHtml2 = '<div class="hq-row"><span class="hq-row-label">' + esc(r[keys[0]]) + '</span><span class="hq-row-val">' + esc(r[keys[1]]) + '</span></div>';
+                  allHtml += rowHtml2;
+                  if (r[keys[2]] === '긴급') urgentHtml += '<div class="hq-row"><span class="hq-badge danger">긴급</span>' + rowHtml2;
+                }
+              });
+            }
+          });
+        }
+        if (!urgentHtml && !allHtml) {
+          allHtml = '<div class="hq-row"><span class="hq-row-label">공지사항이 없습니다</span></div>';
+        }
+        urgentEl.innerHTML = urgentHtml;
+        allEl.innerHTML = allHtml;
+      }).catch(function() {
+        var urgentEl = document.getElementById('hqNoticeUrgent');
+        var allEl = document.getElementById('hqNoticeAll');
+        if (urgentEl) urgentEl.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+        if (allEl) allEl.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+      });
     }
 
     /* ── 리포트 ── */
     function renderHQReport() {
-      var c = document.getElementById('hqReport');
-      if (!c) return;
-      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📊 영업 리포트 요약</span><span class="hq-badge info">2026-03-10</span></div><div class="hq-section-body">';
-      html += hqRow('전체 점포 수','33개','—','');
-      html += hqRow('일일 총 발주액','₩33,438,646','▼ 5.4% vs 전주','down');
-      html += hqRow('점포 평균 발주액','₩1,013,292/일','—','');
-      html += hqRow('위험 점포','6개','품절 ≥15','down');
-      html += hqRow('주의 점포','17개','품절 8-18','warn');
-      html += hqRow('정상 점포','15개','품절 <8','up');
-      html += hqRow('총 품절 품목','792건','32개 점포','down');
-      html += hqRow('미확인 공지','7건','긴급 1건 포함','warn');
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📈 주간 추이</span></div><div class="hq-section-body">';
-      html += hqRow('전주 대비 발주','▼ 5.4%','동일요일 비교','down');
-      html += hqRow('4주 평균 대비','▲ 1.4%','안정적 흐름','up');
-      html += hqRow('전월 대비 발주','▲ 20.3%','성장세','up');
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🏷️ 채널별 발주 비중</span></div><div class="hq-section-body">';
-      html += hqBar('도넛류',45,100,'#FF6E00');
-      html += hqBar('베이글류',18,100,'#E91E8C');
-      html += hqBar('음료·원두',15,100,'#3498DB');
-      html += hqBar('포장재',12,100,'#22c55e');
-      html += hqBar('기타 식재료',10,100,'#999');
-      html += '</div></div>';
-
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📝 핵심 인사이트</span></div><div class="hq-section-body" style="padding:8px 12px;">';
-      html += '<div style="font-size:11px;color:#444;line-height:1.7;">';
-      html += '1. <strong>청주시01</strong>이 일일 발주액 ₩1.97M로 전체 1위이며, <strong>수원시01</strong>(₩1.67M)과 <strong>마포구01</strong>(₩1.34M)이 그 뒤를 잇습니다.<br>';
-      html += '2. <strong>블루베리크림치즈 도넛</strong>과 <strong>스트로우-중단</strong>이 21개 점포에서 동시 품절되어 전사적 발주가 시급합니다.<br>';
-      html += '3. 서울·경기 지역 15개 점포가 전체 발주의 약 55%를 차지하며, 부산 4개 점포는 약 15%를 차지합니다.<br>';
-      html += '4. 전주 대비 발주액 -5.4% 감소는 주말 패턴과 연관될 수 있으며, 월간 기준으로는 +20.3% 성장세입니다.<br>';
-      html += '5. <strong>6개 위험 점포</strong>(광명시01, 안양시01, 강남구01, 마포구02, 부산진구01, 수원시01)의 품절 건수가 각각 19-20건으로 긴급 조치가 필요합니다.';
-      html += '</div></div>';
-
-      c.innerHTML = html;
+      hqFetch('reports')().then(function(data) {
+        var c = document.getElementById('hqReport');
+        if (!c) return;
+        if (!data) {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+          return;
+        }
+        var html = '';
+         html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title"> 영업 리포트 요약</span><span class="hq-badge info">' + (data.asOfDate||'-') + '</span></div><div class="hq-section-body">';
+        if (data.kpis && data.kpis.length) {
+          data.kpis.forEach(function(k) {
+            var dirCls = '';
+            if (k.sub) {
+              if (k.sub.indexOf('▼') >= 0 || k.sub.indexOf('-') >= 0) dirCls = 'down';
+              else if (k.sub.indexOf('▲') >= 0 || k.sub.indexOf('+') >= 0) dirCls = 'up';
+              else dirCls = 'warn';
+            }
+            html += hqRow(k.label, k.value, k.sub||'', dirCls);
+          });
+        } else {
+          html += hqRow('전체 점포 수','33개','—','');
+          html += hqRow('일일 총 발주액','₩33,438,646','▼ 5.4% vs 전주','down');
+          html += hqRow('점포 평균 발주액','₩1,013,292/일','—','');
+        }
+        html += '</div></div>';
+        if (data.tables && data.tables.length) {
+          data.tables.forEach(function(t) {
+            html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">' + esc(t.title) + '</span></div><div class="hq-section-body">';
+            if (t.rows) {
+              t.rows.forEach(function(r, idx) {
+                if (Array.isArray(r)) {
+                  var isBar = t.type === 'bar';
+                  if (isBar) {
+                    html += hqBar(r[0], parseInt(r[1])||0, 100, idx%2===0?'#FF6E00':'#E91E8C');
+                  } else {
+                    var dirCls = '';
+                    if (r[2]) {
+                      if (r[2].indexOf('▼') >= 0) dirCls = 'down';
+                      else if (r[2].indexOf('▲') >= 0) dirCls = 'up';
+                    }
+                    html += hqRow(r[0], r[1], r[2]||'', dirCls);
+                  }
+                } else {
+                  var keys = Object.keys(r);
+                  html += hqRow(r[keys[0]], r[keys[1]]||'', '', '');
+                }
+              });
+            }
+            html += '</div></div>';
+          });
+        } else {
+          html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title"> 주간 추이</span></div><div class="hq-section-body">';
+          html += hqRow('전주 대비 발주','▼ 5.4%','동일요일 비교','down');
+          html += hqRow('4주 평균 대비','▲ 1.4%','안정적 흐름','up');
+          html += hqRow('전월 대비 발주','▲ 20.3%','성장세','up');
+          html += '</div></div>';
+        }
+        if (data.insights && data.insights.length) {
+          html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title"> 핵심 인사이트</span></div><div class="hq-section-body">';
+          data.insights.forEach(function(ins, i) {
+            html += '<div style="font-size:11px;color:#444;line-height:1.7;margin-bottom:4px;">' + (i+1) + '. ' + esc(ins) + '</div>';
+          });
+          html += '</div></div>';
+        }
+        if (data.sources && data.sources.length) {
+          var srcLabels = data.sources.map(function(s){ return esc(s.label); }).join(', ');
+          html += '<div style="font-size:9px;color:#94a3b8;margin-top:4px;padding:0 12px;">출처: ' + srcLabels + '</div>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        var c = document.getElementById('hqReport');
+        if (c) c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+      });
     }
 
-    /* ── AI 인사이트 ── */
+    /* ── AI 인사이트 full-width 대시보드 (12-col grid) ── */
     function renderHQInsight() {
-      var c = document.getElementById('hqInsight');
-      if (!c) return;
-      var html = '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🤖 오늘의 핵심 이슈</span></div><div class="hq-section-body" style="padding:8px 12px;">';
-      html += '<div style="font-size:11px;color:#444;line-height:1.7;">';
-      html += '<div style="margin-bottom:8px;padding:8px;background:#fff5f5;border-radius:6px;border-left:3px solid #ef4444;"><strong>🔴 긴급:</strong> 블루베리크림치즈 도넛·스트로우-중단 21개 점포 품절. 초코파우더·10온즈컵 20개 점포 품절. 즉각적 발주 필요.</div>';
-      html += '<div style="margin-bottom:8px;padding:8px;background:#fffbeb;border-radius:6px;border-left:3px solid #f59e0b;"><strong>🟡 주의:</strong> 16개 점포 주의 상태. 연제구01(17건), 노원구01(17건), 해운대구01(14건) 등 품절 8-18건으로 지속 모니터링 필요.</div>';
-      html += '<div style="margin-bottom:8px;padding:8px;background:#f0fdf4;border-radius:6px;border-left:3px solid #22c55e;"><strong>🟢 양호:</strong> 강릉시01(품절 0건), 여수시01(품절 0건) 정상 운영. 15개 점포 정상 상태 유지.</div>';
-      html += '<div style="padding:8px;background:#eff6ff;border-radius:6px;border-left:3px solid #3b82f6;"><strong>📊 발주:</strong> 일일 총 발주액 ₩33.4M. 전주 대비 -5.4%이나, 월간 기준 +20.3% 성장세. 청주시01이 ₩1.97M로 최대.</div>';
-      html += '</div></div>';
+      hqFetch('ai-insights')().then(function(data) {
+        var c = document.getElementById('hqAiDashboard');
+        if (!c) return;
+        if (!data) {
+          c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
+          return;
+        }
+        var asOf = data.asOfDate || '2026-03-05';
+        var totalStores = data.summary ? (data.summary.totalStores || HQ_STORES.length) : HQ_STORES.length;
+        var riskStores = data.summary ? (data.summary.riskStores || HQ_STORES.filter(function(s){return s.status==='위험';})) : HQ_STORES.filter(function(s){return s.status==='위험';});
+        var warnStores = data.summary ? (data.summary.warnStores || HQ_STORES.filter(function(s){return s.status==='주의';})) : HQ_STORES.filter(function(s){return s.status==='주의';});
+        var okStores = data.summary ? (data.summary.okStores || HQ_STORES.filter(function(s){return s.status==='정상';})) : HQ_STORES.filter(function(s){return s.status==='정상';});
+        var totalDailyOrder = data.summary ? (data.summary.totalDailyOrder || HQ_STORES.reduce(function(a,s){return a+s.dailyOrder;},0)) : HQ_STORES.reduce(function(a,s){return a+s.dailyOrder;},0);
 
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">⚠️ 위험 점포 상세</span></div><div class="hq-section-body">';
-      var riskStores = HQ_STORES.filter(function(s){return s.status==='위험';});
-      riskStores.forEach(function(s) {
-        html += '<div class="hq-row">' + statusBadge(s.status) + ' <span class="hq-row-label">' + s.name + ' (' + s.city + ')</span><span class="hq-row-sub">품절 ' + s.stockout + '건</span></div>';
+        var html = '<div class="ai-dash-header">';
+        html += '<div class="ai-dash-header-left">';
+        html += '<h2><i class="fas fa-wand-magic-sparkles" style="color:#0284C7;margin-right:6px;font-size:15px;"></i>AI 인사이트</h2>';
+        html += '<p>본사 전체 점포 데이터를 분석해 오늘 우선 조치할 이슈를 정리합니다.</p>';
+        html += '<div class="ai-dash-meta">';
+        html += '<span class="ai-meta-tag primary"><i class="fas fa-calendar-day"></i> 기준일 '+esc(asOf)+'</span>';
+        html += '<span class="ai-meta-tag"><i class="fas fa-store"></i> 전체 '+totalStores+'개 점포</span>';
+        html += '<span class="ai-meta-tag sky"><i class="fas fa-database"></i> HQ 전체 데이터 마트 기준</span>';
+        html += '</div></div>';
+        html += '<div class="ai-dash-header-right">';
+        html += '<button class="ai-dash-btn" onclick="renderHQInsight()"><i class="fas fa-rotate"></i></button>';
+        html += '<button class="ai-dash-btn" onclick="handleFabClick()"><i class="fas fa-comment-dots"></i> AI 질문</button>';
+        html += '<button class="ai-dash-btn primary" onclick="goToFoxAI(\'newtab\')"><i class="fas fa-file-lines"></i> 리포트</button>';
+        html += '</div></div>';
+
+        if (data.kpis && data.kpis.length) {
+          var kpiClsMap = {danger:'k--danger',warn:'k--warn',stock:'k--stock',order:'k--order',info:'k--info'};
+          var iconMap = {danger:'fa-exclamation-triangle',warn:'fa-triangle-exclamation',stock:'fa-box-open',order:'fa-cart-shopping',info:'fa-chart-line'};
+          html += '<div class="ai-grid">';
+          data.kpis.forEach(function(k) {
+            var cls = k.cls || k.type || 'info';
+            var icode = k.icon || iconMap[cls] || iconMap.info;
+            var chgCls = k.changeCls || (k.sub && (k.sub.indexOf('\u25bc')>=0)?'down':'up');
+            html += '<div class="ai-c3"><div class="ai-kpi-card '+(kpiClsMap[cls]||'k--info')+'">';
+            html += '<div class="ai-kpi-top"><div class="ai-kpi-icon-box"><i class="fas '+icode+'"></i></div><span class="ai-kpi-label">'+esc(k.label)+'</span></div>';
+            html += '<div class="ai-kpi-value">'+esc(k.value)+'</div>';
+            html += '<div class="ai-kpi-change '+(chgCls||'neutral')+'">'+(esc(k.sub||k.change||''))+'</div>';
+            html += '</div></div>';
+          });
+          html += '</div>';
+        }
+
+        if (data.tables && data.tables.length) {
+          var issuesTable = null;
+          var actionsTable = null;
+          var trendsTable = null;
+          var hourlyTable = null;
+          var riskTable = null;
+          var stockTable = null;
+          data.tables.forEach(function(t) {
+            if (t.type==='issues') issuesTable = t;
+            else if (t.type==='actions') actionsTable = t;
+            else if (t.type==='trends') trendsTable = t;
+            else if (t.type==='hourly') hourlyTable = t;
+            else if (t.type==='risk') riskTable = t;
+            else if (t.type==='stock') stockTable = t;
+          });
+
+          if (issuesTable || actionsTable || trendsTable || hourlyTable || riskTable || stockTable) {
+            if (issuesTable) {
+              html += '<div class="ai-grid">';
+              html += '<div class="ai-c8"><div class="ai-section-card"><div class="ai-section-head"><span class="ai-section-title">오늘의 핵심 이슈</span><span class="ai-section-badge">'+(issuesTable.count||'')+'</span></div><div class="ai-section-body"><div class="ai-issue-list">';
+              var sevIcons = {urgent:'fa-circle-exclamation',warning:'fa-triangle-exclamation',good:'fa-circle-check',info:'fa-chart-line'};
+              issuesTable.rows.forEach(function(r) {
+                if (Array.isArray(r)) {
+                  var sev = r[1]||'info';
+                  var ico = sevIcons[sev]||'fa-info-circle';
+                  html += '<div class="ai-issue-card sev-'+sev+'"><div class="ai-issue-icon"><i class="fas '+ico+'"></i></div>';
+                  html += '<div class="ai-issue-body"><div class="ai-issue-title">'+esc(r[0])+'</div>';
+                  html += '<div class="ai-issue-summary">'+esc(r[2]||'')+'</div>';
+                  if (r[3]) html += '<div class="ai-issue-impact"><strong>영향:</strong> '+esc(r[3])+'</div>';
+                  if (r[4]) html += '<div class="ai-issue-action"><strong>권장 조치:</strong> '+esc(r[4])+'</div>';
+                  if (r[5]) html += '<button class="ai-issue-cta" onclick="hqInsightCta(\''+esc(r[5])+'\')">'+esc(r[5])+'</button>';
+                  html += '</div></div>';
+                } else {
+                  var k2 = Object.keys(r);
+                  html += '<div class="ai-issue-card sev-'+(r.severity||'info')+'"><div class="ai-issue-body"><div class="ai-issue-title">'+esc(r[k2[0]])+'</div>';
+                  if (k2[1]) html += '<div class="ai-issue-summary">'+esc(r[k2[1]])+'</div>';
+                  html += '</div></div>';
+                }
+              });
+              html += '</div></div></div></div>';
+            }
+            if (actionsTable) {
+              html += '<div class="ai-c4"><div class="ai-section-card"><div class="ai-section-head"><span class="ai-section-title">AI 추천 조치</span><span class="ai-section-badge sky">우선순위 기반</span></div><div class="ai-section-body">';
+              var priClsMap = {1:'p-high',2:'p-high',3:'p-mid',4:'p-mid',5:'p-low'};
+              actionsTable.rows.forEach(function(a) {
+                if (Array.isArray(a)) {
+                  var p = parseInt(a[0])||1;
+                  html += '<div class="ai-action-item"><div class="ai-action-priority '+(priClsMap[p]||'p-low')+'">'+p+'</div>';
+                  html += '<div class="ai-action-body"><div class="ai-action-text">'+esc(a[1])+'</div>';
+                  if (a[2]) html += '<div class="ai-action-meta">'+esc(a[2])+'으로 이동 →</div></div>';
+                  html += '<span class="ai-action-status '+(a[2]||'pending')+'">'+(esc(a[3])||'미확인')+'</span></div>';
+                } else {
+                  var k3 = Object.keys(a);
+                  html += '<div class="ai-action-item"><div class="ai-action-priority p-high">'+(a.priority||1)+'</div>';
+                  html += '<div class="ai-action-body"><div class="ai-action-text">'+esc(a[k3[1]||'text'])+'</div></div></div>';
+                }
+              });
+              html += '</div></div></div>';
+              if (!issuesTable) html += '<div class="ai-grid">';
+            }
+            if (issuesTable || actionsTable) html += '</div>';
+
+            if (trendsTable || hourlyTable) {
+              html += '<div class="ai-grid">';
+              if (trendsTable) {
+                html += '<div class="ai-c6"><div class="ai-section-card"><div class="ai-section-head"><span class="ai-section-title">'+esc(trendsTable.title||'주간 추이 분석')+'</span><span class="ai-section-badge sky">전주 대비</span></div><div class="ai-section-body">';
+                var maxTv = 0;
+                trendsTable.rows.forEach(function(r){if(r.length>1) maxTv = Math.max(maxTv, parseInt(r[1])||0);});
+                trendsTable.rows.forEach(function(r) {
+                  if (Array.isArray(r)) {
+                    var dir = r[2]==='up'?'up':(r[2]==='down'?'down':'up');
+                    var barPct = maxTv>0 ? Math.round(r[1]/maxTv*100) : 50;
+                    html += aiTrendRow(esc(r[0]), esc(r[1]), barPct, dir, esc(r[3]||''));
+                  }
+                });
+                html += '</div></div></div>';
+              }
+              if (hourlyTable) {
+                html += '<div class="ai-c6"><div class="ai-section-card"><div class="ai-section-head"><span class="ai-section-title">'+esc(hourlyTable.title||'시간대별 매출 비중')+'</span><span class="ai-section-badge sky">AI 추정</span></div><div class="ai-section-body">';
+                var maxHpct = 0;
+                hourlyTable.rows.forEach(function(r){if(r[1]) maxHpct = Math.max(maxHpct, parseInt(r[1])||0);});
+                if (maxHpct === 0) maxHpct = 10;
+                hourlyTable.rows.forEach(function(r) {
+                  var cls = r[1]>=9?'strong':(r[1]>=5?'medium':'weak');
+                  html += '<div class="ai-hourly-row"><span class="ai-hourly-label">'+esc(r[0])+'</span>';
+                  html += '<div class="ai-hourly-track"><div class="ai-hourly-fill '+cls+'" style="width:'+(r[1]/maxHpct*100)+'%"></div></div>';
+                  html += '<span class="ai-hourly-val">'+r[1]+'%</span></div>';
+                });
+                html += '</div></div></div>';
+              }
+              html += '</div>';
+            }
+
+            if (riskTable || stockTable) {
+              html += '<div class="ai-grid">';
+              if (riskTable) {
+                html += '<div class="ai-c6"><div class="ai-section-card"><div class="ai-section-head"><span class="ai-section-title">'+esc(riskTable.title||'위험 점포 TOP 5')+'</span><span class="ai-section-badge">'+riskTable.title+'</span></div>';
+                html += '<div class="ai-section-body"><table class="ai-risk-table"><thead><tr>';
+                (riskTable.columns||['점포명','지역','위험 사유','품절 수','매출 영향','조치 상태']).forEach(function(col){ html += '<th>'+esc(col)+'</th>'; });
+                html += '</tr></thead><tbody>';
+                riskTable.rows.slice(0,5).forEach(function(r) {
+                  if (Array.isArray(r)) {
+                    var imp = r[3]>=19?'높음':(r[3]>=15?'중간':'낮음');
+                    html += '<tr class="clickable" onclick="hqSelectStore(\''+esc(r[5]||r[0])+'\')"><td><strong>'+esc(r[0])+'</strong></td>';
+                    html += '<td>'+esc(r[1])+'</td><td>품절 '+r[3]+'건</td>';
+                    html += '<td><span class="hq-badge danger">'+r[3]+'건</span></td>';
+                    html += '<td><span class="hq-badge '+(imp==='높음'?'danger':'warn')+'">'+imp+'</span></td>';
+                    html += '<td><span class="hq-badge warn">확인 필요</span></td></tr>';
+                  }
+                });
+                html += '</tbody></table></div></div></div>';
+              }
+              if (stockTable) {
+                html += '<div class="ai-c6"><div class="ai-section-card"><div class="ai-section-head"><span class="ai-section-title">'+esc(stockTable.title||'재고 위험 품목 TOP 5')+'</span><span class="ai-section-badge">품절 TOP</span></div>';
+                html += '<div class="ai-section-body"><table class="ai-risk-table"><thead><tr>';
+                (stockTable.columns||['순위','품목명','카테고리','품절 점포','비중']).forEach(function(col){ html += '<th>'+esc(col)+'</th>'; });
+                html += '</tr></thead><tbody>';
+                var maxS = stockTable.maxVal || 1;
+                if (stockTable.rows && stockTable.rows.length > 0 && Array.isArray(stockTable.rows[0])) {
+                  maxS = Math.max(maxS, stockTable.rows[0][1]||1);
+                }
+                (stockTable.rows||[]).slice(0,5).forEach(function(p,i) {
+                  if (Array.isArray(p)) {
+                    var bw = maxS>0 ? Math.round(p[1]/maxS*100) : 0;
+                    html += '<tr><td>'+(i+1)+'</td><td><strong>'+esc(p[0])+'</strong></td><td>'+esc(p[2]||'')+'</td>';
+                    html += '<td><span class="hq-badge '+(p[1]>=20?'danger':(p[1]>=15?'warn':'info'))+'">'+p[1]+'개</span></td>';
+                    html += '<td><div class="ai-hourly-track" style="min-width:100px;"><div class="ai-hourly-fill '+(p[1]>=20?'strong':(p[1]>=15?'medium':'weak'))+'" style="width:'+bw+'%;"></div></div></td></tr>';
+                  }
+                });
+                html += '</tbody></table></div></div></div>';
+              }
+              html += '</div>';
+            }
+          } else {
+            data.tables.forEach(function(t) {
+              html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">'+esc(t.title)+'</span></div><div class="hq-section-body">';
+              if (t.rows && t.columns) {
+                html += '<table class="ai-risk-table"><thead><tr>';
+                t.columns.forEach(function(col){ html += '<th>'+esc(col)+'</th>'; });
+                html += '</tr></thead><tbody>';
+                t.rows.forEach(function(r) {
+                  if (Array.isArray(r)) {
+                    html += '<tr>';
+                    r.forEach(function(v) { html += '<td>'+esc(v)+'</td>'; });
+                    html += '</tr>';
+                  }
+                });
+                html += '</tbody></table>';
+              }
+              html += '</div></div>';
+            });
+          }
+        } else if (HQ_STORES.length) {
+          // Fallback: use mock data
+          var kpiData = [
+            {cls:'k--danger',icon:'fa-exclamation-triangle',label:'위험 점포',value:riskStores.length+'개',change:'전체 '+(Math.round(riskStores.length/totalStores*100))+'%',changeCls:'down'},
+            {cls:'k--warn',icon:'fa-triangle-exclamation',label:'주의 점포',value:warnStores.length+'개',change:'전체 '+(Math.round(warnStores.length/totalStores*100))+'%',changeCls:'neutral'},
+            {cls:'k--stock',icon:'fa-box-open',label:'재고 위험 품목',value:HQ_STOCKOUT_PRODUCTS.length+'종',change:'TOP1 21개 점포 품절',changeCls:'down'},
+            {cls:'k--order',icon:'fa-cart-shopping',label:'일일 발주액',value:'₩'+(totalDailyOrder/1e6).toFixed(1)+'M',change:'▼ 5.4% vs 전주동일',changeCls:'down'},
+          ];
+          html += '<div class="ai-grid">';
+          kpiData.forEach(function(k) {
+            html += '<div class="ai-c3"><div class="ai-kpi-card '+k.cls+'">';
+            html += '<div class="ai-kpi-top"><div class="ai-kpi-icon-box"><i class="fas '+k.icon+'"></i></div><span class="ai-kpi-label">'+k.label+'</span></div>';
+            html += '<div class="ai-kpi-value">'+k.value+'</div>';
+            html += '<div class="ai-kpi-change '+k.changeCls+'">'+k.change+'</div>';
+            html += '</div></div>';
+          });
+          html += '</div>';
+        }
+
+        if (data.insights && data.insights.length) {
+          html += '<div class="ai-section-card ai-actions-full"><div class="ai-section-head"><span class="ai-section-title">AI 인사이트</span><span class="ai-section-badge sky">분석 결과</span></div><div class="ai-section-body">';
+          data.insights.forEach(function(ins) {
+            html += '<div class="ai-action-item"><div class="ai-action-body"><div class="ai-action-text" style="color:#444;"><i class="fas fa-lightbulb" style="color:#f59e0b;margin-right:4px;"></i>'+esc(ins)+'</div></div></div>';
+          });
+          html += '</div></div>';
+        }
+        if (data.sources && data.sources.length) {
+          var srcLabels = data.sources.map(function(s){ return esc(s.label); }).join(', ');
+          html += '<div style="font-size:9px;color:#94a3b8;margin-top:4px;padding:0 12px;">출처: '+srcLabels+'</div>';
+        }
+        c.innerHTML = html;
+      }).catch(function() {
+        var c = document.getElementById('hqAiDashboard');
+        if (c) c.innerHTML = '<div class="hq-row"><span class="hq-row-label">데이터 조회 실패</span><span class="hq-row-sub down">다시 시도</span></div>';
       });
-      html += '</div></div>';
+    }
 
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">📈 주간 추이 분석</span></div><div class="hq-section-body">';
-      html += hqRow('전일 대비','▼ 5.4%','발주액 기준','down');
-      html += hqRow('전주 동일요일','▼ 5.4%','발주액 기준','down');
-      html += hqRow('4주 평균 대비','▲ 1.4%','안정','up');
-      html += hqRow('전월 대비','▲ 20.3%','성장세','up');
-      html += hqRow('캠페인 영향','간접 추정','프로모션 전용 데이터 없음','info');
-      html += '</div></div>';
+    function aiTrendRow(label, val, barPct, dir, desc) {
+      var r = '<div class="ai-trend-row"><span class="ai-trend-label">'+label+'</span>';
+      r += '<span class="ai-trend-val '+dir+'">'+val+'</span>';
+      r += '<div class="ai-trend-bar-track"><div class="ai-trend-bar-fill '+dir+'" style="width:'+barPct+'%"></div></div>';
+      r += '<span class="ai-trend-desc">'+desc+'</span></div>';
+      return r;
+    }
 
-      html += '<div class="hq-section"><div class="hq-section-head"><span class="hq-section-title">🕐 시간대별 추정</span></div><div class="hq-section-body">';
-      var hourly = [
-        {h:'08:00',pct:3},{h:'09:00',pct:4},{h:'10:00',pct:5},{h:'11:00',pct:7},
-        {h:'12:00',pct:9},{h:'13:00',pct:8},{h:'14:00',pct:8},{h:'15:00',pct:9},
-        {h:'16:00',pct:10},{h:'17:00',pct:11},{h:'18:00',pct:11},{h:'19:00',pct:8},
-        {h:'20:00',pct:5},{h:'21:00',pct:3}
-      ];
-      hourly.forEach(function(h) {
-        html += '<div class="hq-bar-row"><span class="hq-bar-label">' + h.h + '</span><div class="hq-bar-track"><div class="hq-bar-fill" style="width:' + (h.pct * 9) + '%;background:#FF6E00"></div></div><span class="hq-bar-val">' + h.pct + '%</span></div>';
-      });
-      html += '</div></div>';
-
-      c.innerHTML = html;
+    function hqInsightCta(label) {
+      if (label === '재고 확인') { setActive(document.querySelector('[onclick*=stock]'),'stock'); }
+      else if (label === '점포 보기') { setActive(document.querySelector('[onclick*=order]'),'order'); }
+      else if (label === '비교 분석') { setActive(document.querySelector('[onclick*=table]'),'table'); }
+      else if (label === '상세 분석') { setActive(document.querySelector('[onclick*=sales]'),'sales'); }
+      else { showToast('AI 인사이트: '+label+' 요청', 'info'); }
     }
 
     /* ── 필터 ── */
@@ -3334,6 +4849,35 @@
 
     /* ── 종합현황 초기 렌더링 ── */
     function hqInitPages() {
+      // Fetch store-status to update HQ_STORES with gold data
+      fetch(HQ_API_BASE + '/store-status', {
+        headers: { 'X-User-Role': 'hq_admin' }
+      })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(resp) {
+        if (resp && resp.status === 'success' && resp.data && resp.data.tables) {
+          var storeStatusTable = resp.data.tables.find(function(t) { return t.columns && t.columns.indexOf('점포') >= 0; });
+          if (storeStatusTable && storeStatusTable.rows) {
+            storeStatusTable.rows.forEach(function(r) {
+              var cm = {};
+              storeStatusTable.columns.forEach(function(c, i) { cm[c] = i; });
+              var name = r[cm['점포']] || r[0];
+              var existing = HQ_STORES.find(function(s) { return s.name === name; });
+              if (existing) {
+                existing.status = r[cm['상태']] || existing.status;
+                existing.stockout = parseInt(r[cm['품절']]) || 0;
+                existing.lowStock = parseInt(r[cm['저재고']]) || 0;
+                existing.dailyOrder = parseInt(r[cm['일발주']]) || existing.dailyOrder;
+              }
+            });
+          }
+        }
+        updateHqKpiCard();
+        updateHqFloatSummary();
+        updateStoreFilterChips();
+      })
+      .catch(function() {});
+
       renderHQKpi(document.getElementById('nmLeftList'));
       nmRenderList('nmRightList', NM_LEFT);
       renderHQStoreOps();
@@ -3346,25 +4890,43 @@
       renderHQInsight();
     }
 
+    /* ── 점포 필터 칩 + 운영 배지 업데이트 ── */
+    function updateStoreFilterChips() {
+      var riskCount = HQ_STORES.filter(function(s){ return s.status === '위험'; }).length;
+      var warnCount = HQ_STORES.filter(function(s){ return s.status === '주의'; }).length;
+      var okCount = HQ_STORES.filter(function(s){ return s.status === '정상'; }).length;
+
+      var chips = document.querySelectorAll('.hq-filter-chip');
+      if (chips.length >= 3) {
+        chips[1].textContent = '위험 (' + riskCount + ')';
+        chips[2].textContent = '주의 (' + warnCount + ')';
+        chips[3].textContent = '정상 (' + okCount + ')';
+      }
+
+      setText('hqOpsRisk', '위험 ' + riskCount);
+      setText('hqOpsWarn', '주의 ' + warnCount);
+      setText('hqOpsOk', '정상 ' + okCount);
+    }
+
     /* ── AI Quick Chips ── */
     function generateNoticeChips() {
       return [
-        { icon: '📊', text: '오늘 전체 매출 요약해줘' },
-        { icon: '🏪', text: '어느 점포가 가장 강한지 알려줘' },
-        { icon: '📦', text: '재고 위험 점포 알려줘' },
-        { icon: '🚨', text: '발주 필요한 품목 TOP5' },
-        { icon: '📈', text: '전주 대비 발주 추이 설명해줘' },
-        { icon: '🏷️', text: '결제수단 비중 요약해줘' },
-        { icon: '📊', text: '상위 점포와 하위 점포 차이' },
-        { icon: '📣', text: '최근 집계 기준 반응 좋은 캠페인' },
-        { icon: '🕐', text: '시간대별로 약한 구간 알려줘' },
+        { icon: '', text: '오늘 전체 매출 요약해줘' },
+        { icon: '', text: '어느 점포가 가장 강한지 알려줘' },
+        { icon: '', text: '재고 위험 점포 알려줘' },
+        { icon: '', text: '발주 필요한 품목 TOP5' },
+        { icon: '', text: '전주 대비 발주 추이 설명해줘' },
+        { icon: '', text: '결제수단 비중 요약해줘' },
+        { icon: '', text: '상위 점포와 하위 점포 차이' },
+        { icon: '', text: '최근 집계 기준 반응 좋은 캠페인' },
+        { icon: '', text: '시간대별로 약한 구간 알려줘' },
       ];
     }
 
     /* ── Enhanced AI Context ── */
     var HQ_AI_CONTEXT = [
       '【HQ 운영 대시보드 핵심 데이터】',
-      '기준일: 2026-03-10 14:45',
+       '기준일: 2026-03-05 14:45',
       '전체 점포: 33개',
       '일일 총 발주액: ₩33,438,646',
       '점포 평균 일발주: ₩1,013,292',
@@ -3411,16 +4973,20 @@
       '5. 카푸치노츄이스티: ₩304,262,775',
     ].join('\n');
 
-    /* ── Override callFoxAI to include HQ data context ── */
-    var _origCallFoxAI = callFoxAI;
-    callFoxAI = async function(message) {
-      var snap = buildNoticeSnapshot();
-      var body = {
-        store_id: FOX_STORE_ID,
-        message: message,
-        session_id: foxSessionId,
-        context: {
-          current_page: '/hq-dashboard',
+     /* ── Override callFoxAI to include HQ data context ── */
+     var _origCallFoxAI = callFoxAI;
+     callFoxAI = async function(message) {
+       var snap = buildNoticeSnapshot();
+       var body = {
+         store_id: 'HQ_ALL',
+         message: message,
+         session_id: foxSessionId,
+         context: {
+           asOfDate: '2026-03-05',
+           scope: 'HQ',
+           storeId: null,
+           region: '전체',
+           current_page: '/hq-dashboard',
           page_key: 'hq_dashboard',
           page_context: 'HQ 운영 대시보드 · 전체 33개 점포',
           notice_snapshot: snap,
@@ -3451,22 +5017,25 @@
         });
         clearTimeout(timeout);
         if (!resp.ok) throw new Error('API 오류: ' + resp.status);
-        var data = await resp.json();
+        var respJson = await resp.json();
+        if (respJson.status === 'error') {
+          var errMsg2 = respJson.error;
+          if (errMsg2 && errMsg2.message) return { answer: ' 오류: ' + errMsg2.message };
+          return { answer: ' AI 서버 오류가 발생했습니다.' };
+        }
+        var data = respJson.data || respJson;
         var suggested = data.suggested_questions || [];
         if (suggested.length > 0) {
-          var newChips = suggested.slice(0, 4).map(function(q) { return { icon: '✨', text: q.text || q }; });
+          var newChips = suggested.slice(0, 4).map(function(q) { return { icon: '', text: q.text || q }; });
           renderQuickChips(newChips);
         }
-        if (data.answer) return data.answer;
-        if (data.response) return data.response;
-        if (data.content && typeof data.content === 'string') return data.content;
-        if (data.content && data.content.message) return data.content.message;
-        if (data.message) return data.message;
-        return JSON.stringify(data);
+        var ans2 = data.answer || data.response || (data.content && typeof data.content === 'string' ? data.content : null) ||
+                    (data.content && data.content.message ? data.content.message : null) || data.message || JSON.stringify(data);
+        return { answer: ans2, blocks: data.answerBlocks || null };
       } catch (err) {
-        if (err.name === 'AbortError') return '⏱️ AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
+        if (err.name === 'AbortError') return { answer: ' AI 응답 시간이 초과되었습니다.' };
         console.error('PIP AI 호출 실패:', err);
-        return '⚠️ AI 서버에 연결할 수 없습니다. 백엔드가 실행 중인지 확인해주세요. (localhost:8100)';
+        return { answer: ' AI 서버 연결 불가. (localhost:8100)' };
       }
     };
 
@@ -3489,6 +5058,134 @@
         hqInitPages();
       }, 100);
     })();
+
+    /* ═══════════════════════════════════════════
+       FLOATING KPI PANEL
+    ═══════════════════════════════════════════ */
+    var hqKpiOpen = false;
+
+    function toggleHqKpi() {
+      hqKpiOpen = !hqKpiOpen;
+      var card = document.getElementById('hqKpiCard');
+      var pill = document.getElementById('hqKpiPill');
+      card.classList.toggle('open', hqKpiOpen);
+      pill.classList.toggle('expanded', hqKpiOpen);
+    }
+
+    function closeHqKpi() {
+      hqKpiOpen = false;
+      var card = document.getElementById('hqKpiCard');
+      var pill = document.getElementById('hqKpiPill');
+      if (card) card.classList.remove('open');
+      if (pill) pill.classList.remove('expanded');
+    }
+
+    function updateHqKpi() {
+      var stores = HQ_STORES || [];
+      var totalStores = stores.length;
+      var riskStores = stores.filter(function(s){ return s.status === '위험'; }).length;
+      var warnStores = stores.filter(function(s){ return s.status === '주의'; }).length;
+      var okStores = stores.filter(function(s){ return s.status === '정상'; }).length;
+
+      var totalOrder = 0;
+      stores.forEach(function(s){ totalOrder += s.dailyOrder; });
+
+      var ordersText = '';
+      if (totalOrder >= 1000000) ordersText = '₩' + (totalOrder / 1000000).toFixed(1) + 'M';
+      else if (totalOrder > 0) ordersText = '₩' + totalOrder.toLocaleString();
+      else ordersText = '₩0';
+
+      var ordersEl = document.getElementById('hqKpiOrders');
+      if (ordersEl) ordersEl.textContent = ordersText;
+
+      var totalEl = document.getElementById('hqKpiTotal');
+      if (totalEl) totalEl.textContent = totalStores;
+
+      var riskEl = document.getElementById('hqKpiRisk');
+      if (riskEl) riskEl.textContent = riskStores;
+
+      var warnEl = document.getElementById('hqKpiWarn');
+      if (warnEl) warnEl.textContent = warnStores;
+
+      var okEl = document.getElementById('hqKpiOk');
+      if (okEl) okEl.textContent = okStores;
+
+      // Pill
+      var pillOrders = document.getElementById('hqKpiPillOrders');
+      if (pillOrders) pillOrders.textContent = ordersText;
+
+      var pillRisk = document.getElementById('hqKpiPillRisk');
+      if (pillRisk) pillRisk.textContent = '위험 ' + riskStores;
+    }
+
+    /* Close KPI card on outside click */
+    document.addEventListener('click', function(e) {
+      var floatWrap = document.getElementById('hqKpiFloat');
+      if (floatWrap && hqKpiOpen && !e.target.closest('.hq-kpi-float')) {
+        closeHqKpi();
+      }
+    });
+
+    /* ═══════════════════════════════════════════
+       CENTER BOTTOM FLOATING HQ SUMMARY BAR
+    ═══════════════════════════════════════════ */
+    var hqFloatSummaryExpanded = false;
+
+    function toggleHqFloatSummary() {
+      hqFloatSummaryExpanded = !hqFloatSummaryExpanded;
+      var el = document.getElementById('hqFloatSummary');
+      if (!el) return;
+      el.className = el.className.replace(/\bcompact\b|\bexpanded\b/g, '').trim();
+      el.classList.add(hqFloatSummaryExpanded ? 'expanded' : 'compact');
+      el.querySelector('.summary-compact').style.display = hqFloatSummaryExpanded ? 'none' : 'flex';
+      el.querySelector('.summary-expanded').style.display = hqFloatSummaryExpanded ? 'block' : 'none';
+    }
+
+    function updateHqFloatSummary() {
+      var stores = HQ_STORES || [];
+      var totalStores = stores.length;
+      var riskStores = stores.filter(function(s){ return s.status === '위험'; }).length;
+      var warnStores = stores.filter(function(s){ return s.status === '주의'; }).length;
+      var okStores = stores.filter(function(s){ return s.status === '정상'; }).length;
+
+      var totalOrder = 0;
+      stores.forEach(function(s){ totalOrder += s.dailyOrder; });
+
+      var ordersText = '';
+      if (totalOrder >= 1000000) ordersText = (totalOrder / 1000000).toFixed(1) + 'M';
+      else if (totalOrder > 0) ordersText = totalOrder.toLocaleString();
+      else ordersText = '0';
+
+      var topStockout = HQ_STOCKOUT_PRODUCTS && HQ_STOCKOUT_PRODUCTS.length > 0 ? HQ_STOCKOUT_PRODUCTS[0] : null;
+      var stockoutStores = topStockout ? topStockout.stores : 0;
+      var stockoutName = topStockout ? topStockout.name : '-';
+
+      var asOfDate = '2026-03-05';
+      var vsLastWeek = -5.4;
+
+      // Compact
+      setText('fsTotal', totalStores);
+      setText('fsOrders', ordersText);
+      setText('fsRisk', '위험 ' + riskStores);
+      setText('fsWarn', '주의 ' + warnStores);
+      setText('fsStockout', stockoutStores);
+      setText('fsChange', '전주 ' + (vsLastWeek >= 0 ? '+' : '') + vsLastWeek + '%');
+
+      // Expanded
+      setText('fsDate', asOfDate + ' 14:45 기준');
+      setText('fsTotal2', totalStores);
+      setText('fsOrders2', '₩' + ordersText);
+      setText('fsRisk2', '위험 ' + riskStores + '개 점포');
+      setText('fsWarn2', '주의 ' + warnStores + '개 점포');
+      setText('fsOk2', '정상 ' + okStores + '개 점포');
+      setText('fsStockout2', stockoutStores + '개 점포 ' + stockoutName + ' 품절');
+      setText('fsChange2', '전주 대비 발주 ' + (vsLastWeek >= 0 ? '+' : '') + vsLastWeek + '%');
+    }
+
+    function setText(id, val) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = val;
+    }
   </script>
 </body>
 
