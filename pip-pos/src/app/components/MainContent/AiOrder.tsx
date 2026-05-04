@@ -15,6 +15,8 @@ import type {
 
 interface Props {
   open: boolean;
+  initialStep?: number;
+  mode?: "ai" | "manual";
   onOrderComplete?: (items: AiOrderItem[]) => void;
   onClose?: () => void;
 }
@@ -43,7 +45,12 @@ type ReviewGroup = {
   items: AiOrderItem[];
 };
 
-const STEPS = ["AI 추천 발주", "수동발주", "점주 최종 컨펌"];
+const AI_STEPS = ["AI 추천 발주", "수동발주", "점주 최종 컨펌"];
+const MANUAL_STEPS = ["수동발주", "점주 최종 컨펌"];
+
+export function getOrderSteps(mode: "ai" | "manual"): string[] {
+  return mode === "manual" ? MANUAL_STEPS : AI_STEPS;
+}
 
 function parsePrice(price: string): number {
   return parseInt(price.replace(/[^0-9]/g, ""), 10) || 0;
@@ -87,7 +94,10 @@ function buildReviewGroups(items: AiOrderItem[], reportDate?: string | null): Re
   return Array.from(grouped.values());
 }
 
-export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
+export default function AiOrder({ open, initialStep = 0, mode = "ai", onOrderComplete, onClose }: Props) {
+  const isManual = mode === "manual";
+  const orderSteps = isManual ? MANUAL_STEPS : AI_STEPS;
+
   const [summary, setSummary] = useState<AiOrderSummary | null>(null);
   const [allItems, setAllItems] = useState<AiOrderItem[]>([]);
   const [quantities, setQuantities] = useState<Record<string, string>>({});
@@ -98,7 +108,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeStep, setActiveStep] = useState<number>(initialStep);
   const [orderOptions, setOrderOptions] = useState<OrderOptionSummary[]>([]);
   const [selectedOptionIdx, setSelectedOptionIdx] = useState(0);
   const [confirmState, setConfirmState] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -216,12 +226,14 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
           <div className="flex items-center gap-[6px]">
             <div className="w-[7px] h-[4px] bg-[#3aaedd] rounded-[30px]" />
             <p className="font-bold text-[12px] text-[#555] leading-[20px]">
-              {activeStep >= 1
-                ? (summary?.weekLabel ?? "").replace("AI 추천", "직접 발주").replace("실적 기반 추천", "직접 발주") || "직접 발주"
-                : (summary?.weekLabel ?? "AI 추천 발주")}
+              {isManual
+                ? "직접 발주"
+                : activeStep >= 1
+                  ? (summary?.weekLabel ?? "").replace("AI 추천", "직접 발주").replace("실적 기반 추천", "직접 발주") || "직접 발주"
+                  : (summary?.weekLabel ?? "AI 추천 발주")}
             </p>
-            {activeStep === 0 && summary?.aiScore && (
-              <div className="flex items-center gap-[3px] bg-[#eaf6ff] rounded-[10px] px-[6px] py-[2px]">
+            {activeStep === 0 && !isManual && summary?.aiScore && (
+              <div className="flex items-center gap-[4px] bg-[#eaf6ff] rounded-[10px] px-[6px] py-[2px]">
                 <span className="text-[8px] font-bold text-[#3aaedd]">
                   과거 실적 기반 {summary.aiScore}
                 </span>
@@ -235,7 +247,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
         </div>
         {/* ── 스텝 위저드 ── */}
         <div className="px-[30px] py-[14px] flex items-center justify-between">
-          {STEPS.map((label, idx) => {
+          {orderSteps.map((label, idx) => {
             const isActive = idx === activeStep;
             const isPast = idx < activeStep;
             const isFuture = idx > activeStep;
@@ -290,7 +302,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                 </div>
 
                 {/* 연결선 */}
-                {idx < STEPS.length - 1 && (
+                {idx < orderSteps.length - 1 && (
                   <div className="relative w-[175px] h-[3px] bg-[#f0f1f3] rounded-[20px] mb-[13px]">
                     {/* 진행된 구간에 그라데이션 오버레이 */}
                     {isPast && (
@@ -410,7 +422,8 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
         )}
 
         {/* ── 콘텐츠 (스텝별 분기) ── */}
-        {activeStep === 0 && (
+        {/* AI 모드: Step 0 = AI 추천발주, manual 모드: 건너뜀 */}
+        {activeStep === 0 && !isManual && (
           <div className="flex flex-col gap-[15px] pt-[15px] pb-[15px]">
             <div className="flex flex-col gap-[15px] px-[15px]">
               {/* 탭 */}
@@ -726,8 +739,8 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
           </div>
         )}
 
-        {/* ── Step 2: 수동발주 ── */}
-        {activeStep === 1 && (
+         {/* ── 수동발주 편집 (AI 모드 step 1, manual 모드 step 0) ── */}
+         {(isManual ? activeStep === 0 : activeStep === 1) && (
           <div className="flex flex-col gap-[15px] pt-[0] pb-[10px]">
             <div className="flex flex-col gap-[15px] px-[15px]">
               {/* 안내 배너 */}
@@ -749,7 +762,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                   <circle cx="7" cy="4.5" r="0.6" fill="red" />
                 </svg>
                 <p className="text-[9px] text-[red] leading-[14px]">
-                  과거 실적 기반 추천 수량을 직접 수정할 수 있습니다. 수정 후 발주를
+                  {isManual ? "과거 실적 기반 발주 수량을 직접 수정할 수 있습니다. 수정 후 발주를" : "과거 실적 기반 추천 수량을 직접 수정할 수 있습니다. 수정 후 발주를"}
                   확정해 주세요.
                 </p>
               </div>
@@ -822,7 +835,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                           </span>
                         </p>
                         <p className="text-[8px] text-[#aaa] leading-[13px]">
-                          추천: {item.aiRecommendedQty}
+                           {isManual ? "수량:" : "추천:"} {item.aiRecommendedQty}
                         </p>
                       </div>
                     </div>
@@ -925,10 +938,10 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
               </div>
             </div>
 
-            {/* 하단 CTA — 수동발주 완료 → 2배 초과 검증 → step 2 */}
+            {/* 하단 CTA — 수동발주 완료 → 2배 초과 검증 → 최종 컨펌 */}
             <div className="px-[15px] flex items-center justify-between">
               <button
-                onClick={() => setActiveStep(0)}
+                onClick={isManual ? onClose : () => setActiveStep(0)}
                 className="w-[43px] h-[33px] px-[12px] py-[4px] rounded-[20px] flex items-center justify-center gap-[7px] cursor-pointer bg-[#3CAADD]"
               >
                 <svg
@@ -971,7 +984,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                   if (over.length > 0) {
                     setOverLimitItems(over);
                   } else {
-                    setActiveStep(2);
+                    setActiveStep(isManual ? 1 : 2);
                     setStep2Pages([1, 1]);
                   }
                 }}
@@ -1022,8 +1035,8 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
           </div>
         )}
 
-        {/* ── Step 2: 점주 최종 컨펌 ── */}
-        {activeStep === 2 &&
+        {/* ── 최종 컨펌 (AI 모드 step 2, manual 모드 step 1) ── */}
+        {(activeStep === 2 || (isManual && activeStep === 1)) &&
           (() => {
             const groups = buildReviewGroups(allItems, summary?.reportDate);
             const DELIVERY_FEE = 3000;
@@ -1372,7 +1385,7 @@ export default function AiOrder({ open, onOrderComplete, onClose }: Props) {
                 </p>
               </div>
               <p className="text-[10px] text-[#555] leading-[15px]">
-                아래 품목이 추천 수량의{" "}
+                아래 품목이 {isManual ? "입력" : "추천"} 수량의{" "}
                 <span className="font-bold text-[red]">2배</span>를
                 초과했습니다.
                 <br />

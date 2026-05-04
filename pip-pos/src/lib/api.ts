@@ -695,6 +695,15 @@ export function getMenuIssueCounts(): Promise<MenuIssueCount[]> {
   return cached("menuIssueCounts", () => mockDelay(mockMenuIssueCounts));
 }
 
+function resolveInventoryChanceLoss(
+  invItems: InventoryCurrentItem[] | null | undefined,
+  productionEstimatedLoss = 0,
+): number {
+  const lossFromInventory = (invItems ?? [])
+    .reduce((sum, item) => sum + (Number(item.estimated_chance_loss ?? 0) || 0), 0);
+  return Math.round(Math.max(lossFromInventory, productionEstimatedLoss));
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  대시보드 통계 카드 — API: /home/sales-summary
 // ══════════════════════════════════════════════════════════════════
@@ -727,10 +736,7 @@ export async function getStatCards(): Promise<StatCardData[]> {
       ? Math.max(0.3, Math.min(0.8, profitability.gross_profit_margin_pct / 100))
       : 0.68;
 
-    // Use estimated_chance_loss from /inventory/current as primary loss source
-    const lossFromInventory = (invItems ?? [])
-      .reduce((sum, item) => sum + (Number(item.estimated_chance_loss ?? 0) || 0), 0);
-    const lossValue = Math.round(Math.max(lossFromInventory, prodSummary.totalEstimatedLoss));
+    const lossValue = resolveInventoryChanceLoss(invItems, prodSummary.totalEstimatedLoss);
     const isLossEstimated = lossValue > 0;
     // Use inventory-snapshot summary for consistent counts across all screens
     const urgentCount = snapSummary?.urgentCount ?? prodSummary.urgentCount;
@@ -3579,9 +3585,11 @@ export async function getInventorySnapshotSummary(): Promise<{
 
 export async function getInventoryChanceLoss(): Promise<number> {
   try {
-    const url = applyDemoQueryParams("/inventory/current");
-    const raw = await apiGet<any[]>(url);
-    return raw.reduce((s, i) => s + (Number(i.estimated_chance_loss ?? 0) || 0), 0);
+    const [raw, prodSummary] = await Promise.all([
+      safeGet<InventoryCurrentItem[]>("/inventory/current"),
+      getProductionSummary().catch(() => null),
+    ]);
+    return resolveInventoryChanceLoss(raw, prodSummary?.totalEstimatedLoss ?? 0);
   } catch {
     return 0;
   }
@@ -3753,7 +3761,7 @@ export async function getOrderAgent(): Promise<OrderAgentData> {
     const hourlyRows = (summaryData?.hourly_trend ?? [])
       .filter((row) => Number(row.hour) < demoAsOfHour)
       .sort((a, b) => Number(a.hour) - Number(b.hour));
-    const cumulativeSales = hourlyRows.reduce(
+    let cumulativeSales = hourlyRows.reduce(
       (sum, row) => sum + Number(row.revenue ?? 0),
       0,
     );

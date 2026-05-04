@@ -13,6 +13,8 @@ class SalesQueryRequest(BaseModel):
     store_id: str
     query: str
     session_id: str | None = None
+    demo_date: str | None = None
+    demo_time: str | None = None
 
     model_config = ConfigDict(
         json_schema_extra={

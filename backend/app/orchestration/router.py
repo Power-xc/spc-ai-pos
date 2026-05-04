@@ -3139,6 +3139,12 @@ class AgentRouter:
             return await finalize(response)
 
         domain_started_at = perf_counter()
+        resolved_demo_date: date | None = None
+        demo_date_val = (context or {}).get("demo_date")
+        if demo_date_val:
+            if not isinstance(demo_date_val, date):
+                demo_date_val = date.fromisoformat(str(demo_date_val))
+            resolved_demo_date = demo_date_val
         sales_response = await self.sales_agent.process_query(
             store_id,
             resolved_message,
@@ -3146,6 +3152,7 @@ class AgentRouter:
             role=role,
             user_id=user_id,
             trace=trace,
+            demo_date=resolved_demo_date,
         )
         add_elapsed(trace, "domain_service_ms", domain_started_at)
         response = ChatResponse(

@@ -51,9 +51,13 @@ class IntentClassifier:
             r"(알림|通知|notification).*(설정|변경|조정|조회|상태)",
             "NOTIFICATION_SETTINGS",
         ),
-        # Utility: Weather
+        # Utility: Weather — "비" requires weather context (와/온다/예보/etc) to avoid matching "비교"
         (
-            r"(오늘|내일|어제|이번주|주말).*(날씨|weather|기온|비|눈|맑음|흐림)",
+            r"(오늘|내일|어제|이번주|주말).*(날씨|weather|기온|눈|맑음|흐림)",
+            "UTILITY_WEATHER",
+        ),
+        (
+            r"(오늘|내일|어제|이번주|주말).*(비).*?(와|온다|예보|오나요|올까|올|줄|왔다|오네|오나)",
             "UTILITY_WEATHER",
         ),
         (r"(날씨|weather).*(알려|어때|어떻|뭐|보여|말해|알려줘)", "UTILITY_WEATHER"),
@@ -116,6 +120,81 @@ class IntentClassifier:
             "AI_INSIGHTS",
         ),
         (r"(주문|발주).*(빼고|제외|빼줘)", "order_exclude_item"),
+        # ── BENCHMARK — must come before PRODUCT_SALES_COMPARISON (일평균/타점포/다른매장) ──
+        (
+            r"(오늘|금일).*(일평균|일\s*평균).*(타\s*점포|다른\s*매장|다른\s*점포|평균).*(비교|대비|차이|어떻|어때)",
+            "BENCHMARK",
+        ),
+        (
+            r"(오늘|금일).*(매출).*(타\s*점포|다른\s*매장|다른\s*점포|평균).*(비교|대비|어떻|어때)",
+            "BENCHMARK",
+        ),
+        (
+            r"(이번\s*달|이번\s*월|이번\s*기간).*(일평균|일\s*평균).*(타\s*점포|다른\s*매장|다른\s*점포|평균|벤치마크).*(비교|대비|차이|어떻|어때)",
+            "BENCHMARK",
+        ),
+        (
+            r"(타\s*점포|다른\s*매장|다른\s*점포|전체\s*평균|비교군).*(매출|평균|비교|대비|차이)",
+            "BENCHMARK",
+        ),
+        (
+            r"(매출|실적|판매|수익).*?(타\s*점포|다른\s*매장|전체\s*평균|벤치마크).*(비교|대비|어떻|어때)",
+            "BENCHMARK",
+        ),
+        (
+            r"(일평균|일\s*평균).*(타\s*점포|다른\s*매장|전체\s*평균|벤치마크)",
+            "BENCHMARK",
+        ),
+        (
+            r"우리\s*매장.*(일평균|평균).*매출.*(다른\s*점포|타\s*점포|평균).*(어때|어떻|위치|비교)",
+            "BENCHMARK",
+        ),
+        (
+            r"(클러스터|상권|타\s*점포|점포 평균).*평균.*(강점|약점|차이|위치|비교)",
+            "BENCHMARK",
+        ),
+        # ── DELIVERY COUNT / CHANNEL ORDER ANALYSIS ──
+        # Must come before product/order comparison rules: "배달 주문 건수" is
+        # channel order-count analysis, not 발주 주문량 or a product name.
+        (
+            r"(전\s*월|전월|지난\s*달|전\s*주|전주|지난\s*주).*(배달|딜리버리|쿠팡|쿠팡이츠|배민|해피오더|BM1).*(건\s*수|건수|주문\s*건\s*수|주문건수|주문\s*수|비교|대비)",
+            "CHANNEL_ANALYSIS",
+        ),
+        (
+            r"(배달|딜리버리|쿠팡|쿠팡이츠|배민|해피오더|BM1).*(건\s*수|건수|주문\s*건\s*수|주문건수|주문\s*수).*(전\s*월|전월|지난\s*달|전\s*주|전주|지난\s*주|비교|대비|알려|보여)?",
+            "CHANNEL_ANALYSIS",
+        ),
+        (
+            r"(배달|딜리버리|쿠팡|쿠팡이츠|배민|해피오더|BM1).*(채널\s*별|채널별).*(주문|건\s*수|건수)",
+            "CHANNEL_ANALYSIS",
+        ),
+        # ── PRODUCT_SALES_COMPARISON — must come before ORDER rules (전주/전월 비교해) ──
+        # Short-form: "글레이즈드 전월 비교" (no 매출 keyword needed)
+        (
+            r"(?!.*(일평균|타\s*점포|다른\s*매장|다른\s*점포|점포\s*평균|그룹\s*평균|상권\s*평균)).*[a-zA-Z가-힣]{2,20}.*(전일|전\s*일|어제|전날|전주|전\s*주|지난주|지난\s*주|전월|전\s*월|지난달|지난\s*달|저번달|저번\s*달|전년|전\s*년|작년).*비교",
+            "PRODUCT_SALES_COMPARISON",
+        ),
+        (
+            r"(?!.*(일평균|타\s*점포|다른\s*매장|다른\s*점포|점포\s*평균|그룹\s*평균|상권\s*평균)).*비교.*[가-힣a-zA-Z]{2,20}.*(전일|전\s*일|어제|전날|전주|전\s*주|지난주|지난\s*주|전월|전\s*월|지난달|지난\s*달|저번달|저번\s*달|전년|전\s*년|작년)",
+            "PRODUCT_SALES_COMPARISON",
+        ),
+        (
+            r"(?!.*(일평균|타\s*점포|다른\s*매장|다른\s*점포|점포\s*평균|그룹\s*평균|상권\s*평균)).*[가-힣a-zA-Z]{2,20}.*(전일|전\s*일|어제|전날|전주|전\s*주|지난주|지난\s*주|전월|전\s*월|지난달|지난\s*달|저번달|저번\s*달|전년|전\s*년|작년).*(매출|수량|판매|금액)",
+            "PRODUCT_SALES_COMPARISON",
+        ),
+        (
+            r"(?!.*(일평균|타\s*점포|다른\s*매장|다른\s*점포|점포\s*평균|그룹\s*평균|상권\s*평균)).*[가-힣a-zA-Z]{2,20}.*매출.*(전일|전\s*일|어제|전날|전주|전\s*주|지난주|지난\s*주|전월|전\s*월|지난달|지난\s*달|저번달|저번\s*달|전년|전\s*년|작년|대비|비교|vs|차이|변화)",
+            "PRODUCT_SALES_COMPARISON",
+        ),
+        (
+            r"(?!.*(일평균|타\s*점포|다른\s*매장|다른\s*점포|점포\s*평균|그룹\s*평균|상권\s*평균)).*[가-힣a-zA-Z]{2,20}.*(전일|전\s*일|어제|전날|전주|전\s*주|지난주|지난\s*주|전월|전\s*월|지난달|지난\s*달|저번달|저번\s*달|전년|전\s*년|작년|비교|대비|어때|더\s*좋|얼마|얼마나).*(매출|수량|판매|금액|어때)",
+            "PRODUCT_SALES_COMPARISON",
+        ),
+        (
+            r"(?!.*(일평균|타\s*점포|다른\s*매장|다른\s*점포|점포\s*평균|그룹\s*평균|상권\s*평균)).*[가-힣a-zA-Z]{2,20}.*매출.*(전일|전\s*일|어제|전날|전주|전\s*주|지난주|지난\s*주|전월|전\s*월|지난달|지난\s*달|저번달|저번\s*달|전년|전\s*년|작년|비교|대비|어때|더\s*좋|얼마|얼마나)",
+            "PRODUCT_SALES_COMPARISON",
+        ),
+        # ── ORDER ──
         (r"(전주|전전주|전월).*(기준|옵션|비교|차이|요약|비교해)", "ORDER"),
         (r"(옵션|추천\s*옵션|마감\s*전).*(보여|알려|비교|차이|요약|근거)", "ORDER"),
         (r"(각\s*옵션|각각|비교).*(근거|이유|왜|설명|기준|차이|요약)", "ORDER"),
@@ -170,6 +249,20 @@ class IntentClassifier:
             r"(일평균|일\s*평균).*(타\s*점포|다른\s*매장|전체\s*평균|벤치마크)",
             "BENCHMARK",
         ),
+        # ── DELIVERY_CHANNEL_REVENUE: single-period delivery channel breakdown ──
+        (
+            r"(이번\s*?[1-9]\s*월|이번[1-9]\s*?\s*월|1[0-2]\s*월|[1-9]\s*월).*(배달|채널).*매출",
+            "DELIVERY_CHANNEL_REVENUE",
+        ),
+        (
+            r"(배달|채널|딜리버리|쿠팡|배민|해피오더).*(매출|비중|기여도).*(알려|보여|어때|현황)?",
+            "DELIVERY_CHANNEL_REVENUE",
+        ),
+        (
+            r"((20\d{2}|2026)\s*년\s*[1-9]?[0-2]\s*월|[1-9]?[0-2]\s*월).*?(배달|채널).*매출",
+            "DELIVERY_CHANNEL_REVENUE",
+        ),
+        # ── CHANNEL_ANALYSIS (comparison-type delivery queries) ──
         (
             r"(채널|배달|딜리버리|쿠팡|배민|해피오더).*(매출|실적|판매|비교|분석|현황)",
             "CHANNEL_ANALYSIS",
@@ -186,10 +279,11 @@ class IntentClassifier:
             r"(프로모션이|프로모션이란|프로모션\s*이|벤치마킹이|벤치마킹이란|벤치마크이).*(뭐|무슨|뭔|어떤|설명|정의|개념|알려)",
             "FAQ",
         ),
-        (r"(매출|실적|판매|수익)", "SALES_COMPARISON"),
-        (r"(매출|실적|수입|수익).*?(비교|대비|vs|차이)", "SALES_COMPARISON"),
-        (r"(전주|전월|전년|지난).*(매출|실적|판매)", "SALES_COMPARISON"),
-        (r"(배달|딜리버리|쿠팡|배민|해피오더)", "CHANNEL_ANALYSIS"),
+        # PROMO_ANALYSIS rules — must come before SALES_COMPARISON (매출 keyword overlap)
+        (r"(프로모션|캠페인|행사|이벤트|T데이|티데이|D-day|D-Day|디데이|디\s*데이|다대아|디대이).*(기여|비교|대조|성과|결과|효과|어떻|어때|어땠|총|전체)", "PROMO_ANALYSIS"),
+        (r"(어떤|어떤지|어떤\s*).*(프로모션|캠페인|행사|이벤트).*(기여|효과|성과|매출|반응|좋|높)", "PROMO_ANALYSIS"),
+        (r"(이전|지난|직전|마지막).*(디데이|T데이|티데이|D-day|D-Day|디\s*데이|행사|프로모션|캠페인)", "PROMO_ANALYSIS"),
+        (r"(비교|대비|차이).*?(프로모션|캠페인|행사|이벤트|T데이|티데이|D-day|D-Day|디데이|디\s*데이)", "PROMO_ANALYSIS"),
         (
             r"(T데이|티데이|행사|캠페인|프로모션|이벤트).*(어때|어떻|결과|성과|효과|전체적|요약|분석)",
             "PROMO_ANALYSIS",
@@ -199,6 +293,10 @@ class IntentClassifier:
             "PROMO_ANALYSIS",
         ),
         (r"(T데이|티데이|행사|캠페인|프로모션|이벤트)", "PROMO_ANALYSIS"),
+        (r"(매출|실적|판매|수역)", "SALES_COMPARISON"),
+        (r"(매출|실적|수입|수익).*?(비교|대비|vs|차이)", "SALES_COMPARISON"),
+        (r"(전주|전월|전년|지난).*(매출|실적|판매)", "SALES_COMPARISON"),
+        (r"(배달|딜리버리|쿠팡|배민|해피오더)", "CHANNEL_ANALYSIS"),
         (r"(상권|평균|다른\s*매장|벤치마크|벤치마킹|비교군)", "BENCHMARK"),
         (r"(순위|탑|top|가장\s*(많|높|인기))", "RANKING"),
         (r"(추세|트렌드|변화|추이|최근)", "TREND"),
@@ -361,6 +459,28 @@ class IntentClassifier:
         return bool(re.fullmatch(r"[A-Za-z0-9_-]{2,16}", compact))
 
     @staticmethod
+    def _looks_like_sales_period_comparison(query: str) -> bool:
+        """Return true for store-level period sales comparisons, not product comparisons."""
+        q = query.strip()
+        has_sales_metric = bool(
+            re.search(r"(매출|실적|총매출|누적\s*매출|전체\s*매출|일평균|영업일수|요일\s*구성)", q)
+        )
+        if not has_sales_metric:
+            return False
+        explicit_months = re.findall(r"\d{2,4}\s*년\s*\d{1,2}\s*월", q)
+        if len(explicit_months) >= 2 and re.search(r"(비교|대비|차이|어때|어떻)", q):
+            return True
+        if re.search(r"(전년|작년|동월)", q) and re.search(
+            r"(비교|대비|차이|어때|어떻)", q
+        ):
+            return True
+        if re.search(r"(전체\s*매출|총매출|누적\s*매출|영업일수|요일\s*구성)", q) and re.search(
+            r"(비교|대비|차이)", q
+        ):
+            return True
+        return False
+
+    @staticmethod
     def _normalize_history_intent(raw_intent: str | None) -> str | None:
         if not raw_intent:
             return None
@@ -386,6 +506,8 @@ class IntentClassifier:
             "AI_INSIGHTS",
         }:
             return upper
+        if upper == "PRODUCT_SALES_COMPARISON":
+            return "PRODUCT_SALES_COMPARISON"
         if upper in {
             "SALES",
             "SALES_COMPARISON",
@@ -932,6 +1054,16 @@ class IntentClassifier:
                 if anchor_intent == "ACTIONS_TODO":
                     payload["sub_intent"] = self._actions_sub_intent(resolved_query)
                 return payload
+            if self._looks_like_sales_period_comparison(resolved_query):
+                return {
+                    "intent": "SALES_COMPARISON",
+                    "confidence": "RULE",
+                    "params": self._extract_params_by_rule(
+                        resolved_query, "SALES_COMPARISON"
+                    ),
+                    "llm_tokens_used": 0,
+                    "resolved_query": resolved_query,
+                }
             for pattern, intent in self.RULES:
                 if re.search(pattern, resolved_query, re.IGNORECASE):
                     payload = {
@@ -1117,14 +1249,15 @@ class IntentClassifier:
                 dates_found.append(f"{year}-{int(month_raw):02d}")
 
         if len(dates_found) >= 2:
-            params["period1_month"] = dates_found[0]
-            params["period2_month"] = dates_found[1]
+            ordered_months = sorted(dates_found[:2])
+            params["period1_month"] = ordered_months[0]
+            params["period2_month"] = ordered_months[1]
         elif len(dates_found) == 1:
             params["period1_month"] = dates_found[0]
 
-        if re.search(r"전주|지난\s*주", query):
+        if re.search(r"전\s*주|전주|지난\s*주", query):
             params["relative_period"] = "last_week"
-        elif re.search(r"전월|지난\s*달", query):
+        elif re.search(r"전\s*월|전월|지난\s*달|지난달", query):
             params["relative_period"] = "last_month"
         elif re.search(r"전년|작년|지난\s*해", query):
             params["relative_period"] = "last_year"
@@ -1181,6 +1314,56 @@ class IntentClassifier:
             if period_match:
                 period = period_match.group(1)
                 params["period_name"] = "T데이" if period == "티데이" else period
+
+        if intent == "PROMO_ANALYSIS":
+            normalized = query.lower()
+            promo_keywords = [
+                (r"d[-\s.]?day|디\s*데이|디데이|다대아|디대이", "D-DAY"),
+                (r"네이버\s*페이|네이버페이", "네이버페이"),
+                (r"카카오\s*페이|카카오페이", "카카오페이"),
+                (r"토스\s*페이|토스페이", "토스페이"),
+                (r"해피\s*앱|해피앱", "해피앱"),
+                (r"도넛\s*프라이데이|도넛프라이데이", "도넛프라이데이"),
+                (r"글레이즈드", "글레이즈드"),
+                (r"아메리카노", "아메리카노"),
+                (r"런치\s*세트|런치세트", "런치세트"),
+            ]
+            for pattern, keyword in promo_keywords:
+                if re.search(pattern, normalized, re.IGNORECASE):
+                    params["promo_name"] = keyword
+                    break
+            if re.search(r"(높은\s*순서|순위|랭킹|기여.*커|기여도|매출.*높|반응.*좋)", query):
+                params["analysis_mode"] = "ranking"
+            elif re.search(r"(이전|지난|직전|비교|대비)", query):
+                params["analysis_mode"] = "comparison"
+            else:
+                params["analysis_mode"] = "summary"
+
+        if intent == "PRODUCT_SALES_COMPARISON":
+            if re.search(r'전\s*일|어제|전날', query):
+                params['period_type'] = 'day'
+            elif re.search(r'전주|전\s*주|지난주|지난\s*주', query):
+                params['period_type'] = 'week'
+            elif re.search(r'전년|전\s*년|작년', query):
+                params['period_type'] = 'year'
+            elif re.search(r'전\s*월|전월|지난달|지난\s*달|저번달|저번\s*달', query):
+                params['period_type'] = 'month'
+            else:
+                params['period_type'] = 'month'
+            stripped = re.sub(
+                r'(전\s*일|어제|전날|전주|전\s*주|지난주| 지난\s*주|'
+                r'전\s*월|전월|지난달|지난\s*달|저번달|저번\s*달|'
+                r'전년|전\s*년|작년|'
+                r'대비|비교|vs|차이|변화|매출|수량|판매|금액|'
+                r'전\s*월\s*대비|전\s*일\s*대비|'
+                r'\s*(비교)?해줘|\s*(알려)?줘|'
+                r'\s*어때?\s*?|보다?|얼마나|얼마|더\s*좋?|'
+                r'오늘|금일|금액\s*비교)',
+                ' ',
+                query,
+            ).strip().strip('? ')
+            if stripped:
+                params['product_name'] = stripped
 
         return params
 
@@ -1312,10 +1495,10 @@ class IntentClassifier:
         system_prompt = """당신은 던킨도너츠 매장 운영 AI의 질의 분류기입니다.
 사용자 질의를 아래 카테고리 중 하나로 분류하고, 필요한 파라미터를 추출하세요.
 
-카테고리: SALES_COMPARISON, CHANNEL_ANALYSIS, PROMO_ANALYSIS, BENCHMARK,
-RANKING, TREND, CATEGORY, DAILY_SUMMARY, PRODUCTION, ORDER, WASTE,
-order_like_reference, order_exclude_item, order_compare_special,
-SENSITIVE_BLOCKED, FAQ
+카테고리: SALES_COMPARISON, CHANNEL_ANALYSIS, PRODUCT_SALES_COMPARISON,
+PROMO_ANALYSIS, BENCHMARK, RANKING, TREND, CATEGORY, DAILY_SUMMARY,
+PRODUCTION, ORDER, WASTE, order_like_reference, order_exclude_item,
+order_compare_special, SENSITIVE_BLOCKED, FAQ
 
 예시:
 - "지난주 화요일처럼 주문해줘" -> {"intent":"order_like_reference","params":{"reference_date":"2026-04-07"}}
@@ -1368,6 +1551,7 @@ SENSITIVE_BLOCKED, FAQ
         valid_intents = {
             "SALES_COMPARISON",
             "CHANNEL_ANALYSIS",
+            "PRODUCT_SALES_COMPARISON",
             "PROMO_ANALYSIS",
             "BENCHMARK",
             "RANKING",

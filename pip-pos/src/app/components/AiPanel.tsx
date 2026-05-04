@@ -134,9 +134,11 @@ type LocalIntent =
   | "PROMO_SALES"
   | "PROMO_HOURLY"
   | "PROMO_STORE_COMPARE"
+  | "PROMO_ANALYSIS"
   | "CHANCE_LOSS"
   | "MENU_SUMMARY"
   | "SALES_REASON"
+  | "NET_SALES_EXPLANATION"
   | "UNKNOWN";
 
 type LocalMenuResponse = {
@@ -259,6 +261,12 @@ const FOLLOWUP_CHIPS: Record<string, string[]> = {
 };
 
 const DEFAULT_CHIPS = ["너는 뭘 할 수 있어", "니가 뭔데", "이 화면에서 뭘 봐야 해"];
+
+const DELIVERY_CHANNEL_CHIPS: Record<string, string[]> = {
+  "AI 기반 성과 분석": ["쿠팡이츠 매출 비중 더 자세히 봐줘", "배달 주문 많은 시간대 알려줘", "배달 매출 높은 상품 알려줘", "지난달 배달 채널과 비교해줘"],
+  "종합 현황": ["쿠팡이츠 매출 비중 더 자세히 봐줘", "배달 주문 많은 시간대 알려줘", "배달 매출 높은 상품 알려줘", "지난달 배달 채널과 비교해줘"],
+  DEFAULT: ["쿠팡이츠 매출 비중 더 자세히 봐줘", "배달 주문 많은 시간대 알려줘", "배달 매출 높은 상품 알려줘"],
+};
 
 /**
  * 백엔드가 실수로 JSON 문자열을 반환할 경우 사람이 읽는 문장으로 변환한다.
@@ -793,14 +801,18 @@ function classifyLocalIntent(message: string): LocalIntent {
   if (/(최근.*월간.*매출|월간.*매출.*비교|최근 월간 매출 비교|최근 월간 비교|26년 2월.*26년 1월|2월.*1월.*매출)/.test(lower)) {
     return "PERF_MONTHLY";
   }
-  if (/(글레이즈드|glazed).*(전월|지난달).*매출|글레이즈드.*비교/.test(lower)) {
-    return "PERF_PRODUCT_COMPARE";
-  }
-  if (/(일평균 매출|타 점포 평균|점포 평균과 비교|최근 30일.*평균).*(비교|알려)/.test(lower)) {
-    return "PERF_STORE_AVG";
-  }
+    if (/(글레이즈드|glazed).*(전월|지난달).*매출|글레이즈드.*비교/.test(lower)) {
+      return "PERF_PRODUCT_COMPARE";
+    }
+    if (/(일평균 매출|타 점포 평균|점포 평균과 비교|최근 30일.*평균).*(비교|알려)/.test(lower)) {
+      return "PERF_STORE_AVG";
+    }
+    if (/순매출|net\s*sales/.test(lower)) {
+      return "NET_SALES_EXPLANATION";
+    }
 
     if (/매출.*(낮은|하락|떨어졌|부진).*이유|이유.*매출.*(낮|하락|떨어)|매출.*(원인|부진).*분석|왜.*매출.*(떨어|낮)/.test(lower)) return "SALES_REASON";
+    if (/(d[-\s.]?day|디\s*데이|디데이|다대아|디대이|프로모션|캠페인|행사|이벤트|네이버\s*페이|네이버페이).*(성과|효과|어땠|어때|전체|비교|대비|매출|기여|반응|높은\s*순서|좋은|알려|보여)/.test(lower)) return "PROMO_ANALYSIS";
     if (/반응.*좋은|반응.*프로모션|좋은.*프로모션|반응.*좋은.*행사|좋은.*행사.*알려/.test(lower)) return "PROMO_RESPONSE";
     if (/매출.*기여|기여도|프로모션.*매출|발주.*(보정|바꾸)|더 준비할|준비할.*상품/.test(lower)) return "PROMO_SALES";
     if (/시간대별.*프로모션|시간대별.*강한|강한.*프로모션|강한.*시간대|행사.*강한.*시간대|몇 시에.*효과/.test(lower)) return "PROMO_HOURLY";
@@ -855,7 +867,7 @@ function isGenericBackendAnswer(lines: string[] | null | undefined) {
   const joined = lines.join(" ").trim();
   return (
     joined === "분석 결과를 텍스트로 요약했습니다." ||
-    joined === "자동 인사이트 생성에 실패해 정형 결과만 제공합니다." ||
+    joined === "자동 인사이트 생성에 실패해 연결된 자료만 제공합니다." ||
     joined === "죄송합니다. 현재 응답을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
   );
 }
@@ -879,17 +891,31 @@ function shouldPreferLocalOnly(intent: LocalIntent) {
     intent === "NOTIFICATION_MUTE" ||
     intent === "NOTIFICATION_UNMUTE" ||
     intent === "NOTIFICATION_STATUS" ||
-    intent === "SALES_REASON"
+    intent === "SALES_REASON" ||
+    intent === "NET_SALES_EXPLANATION"
   ) {
     return true;
   }
   return false;
 }
 
-function shouldPreferSalesQueryFirst(selectedMenu: string, message: string, intent: LocalIntent) {
-  if (intent !== "UNKNOWN") return false;
+function isDeliveryCountAnalysisQuestion(message: string) {
   const lower = message.toLowerCase();
-  if (/(프로모션|캠페인)/.test(lower)) return false;
+  const hasDelivery = /(배달|딜리버리|쿠팡|쿠팡이츠|배민|해피오더|bm1)/.test(lower);
+  if (!hasDelivery) return false;
+  return /(건\s*수|건수|주문\s*건\s*수|주문건수|주문\s*수|전\s*월|전월|지난\s*달|전\s*주|전주|지난\s*주|채널\s*별|채널별|비교|대비)/.test(lower);
+}
+
+function shouldPreferSalesQueryFirst(selectedMenu: string, message: string, intent: LocalIntent) {
+  if (isDeliveryCountAnalysisQuestion(message)) return true;
+  if (intent === "PERF_STORE_AVG") return selectedMenu === "종합 현황" || selectedMenu === "AI 기반 성과 분석";
+  if (intent === "PROMO_ANALYSIS") return true;
+  if (intent !== "UNKNOWN" && intent !== "PERF_PRODUCT_COMPARE") return false;
+  const lower = message.toLowerCase();
+  if (/(d[-\s.]?day|디\s*데이|디데이|프로모션|캠페인|행사|이벤트|네이버\s*페이|네이버페이).*(성과|효과|어땠|어때|전체|비교|매출|기여|반응|높은\s*순서)/.test(lower)) {
+    return true;
+  }
+  if (intent === "PERF_PRODUCT_COMPARE") return true;
   const isSalesComparison =
     /(비교|전주|전 월|전월|전년|2월|이번 달|일평균|채널|배달 건 수|매출 금액|글레이즈드)/.test(
       lower,
@@ -970,6 +996,7 @@ async function fetchChat(
 }
 
 async function fetchSalesQuery(message: string) {
+  const demo = getDemoDateTimeState();
   return requestJson<{
     intent?: string;
     title?: string;
@@ -981,11 +1008,14 @@ async function fetchSalesQuery(message: string) {
       items?: string[] | null;
     }>;
     sources?: Array<{ type?: string; description?: string; data_range?: string; freshness?: string }>;
+    metadata?: Record<string, unknown>;
   }>("/v1/sales/query", {
     method: "POST",
     body: JSON.stringify({
       store_id: STORE_ID,
       query: message,
+      demo_date: demo.date,
+      demo_time: demo.time,
     }),
   });
 }
@@ -1158,8 +1188,45 @@ async function buildSalesQueryResponse(message: string, selectedMenu: string): P
       sections.find((section) => section.type === "insight" && section.title === "요약")?.text ??
       sections.find((section) => section.type === "text")?.text ??
       sections.find((section) => section.type === "insight")?.text ??
-      "정형 결과를 기준으로 비교를 정리했습니다.";
+      "연결된 자료 기준으로 비교를 정리했습니다.";
     const actions = extractActionItems(sections);
+    const isPromoSalesAnalysis =
+      result.intent === "PROMO_ANALYSIS" ||
+      String(result.metadata?.analysis_type ?? "") === "promotion_sales";
+    const isDirectBackendAnalysis =
+      isPromoSalesAnalysis ||
+      DIRECT_BACKEND_ANALYSIS_INTENTS.has(String(result.intent ?? ""));
+    if (isDirectBackendAnalysis) {
+      const benchmarkCountMatch = (insightText || "").match(/(\d+)개\s*(?:전체\s*)?비교\s*점포|(\d+)개\s*중|전체\s*(\d+)개\s*비교\s*점포/);
+      const benchmarkCount = benchmarkCountMatch
+        ? (benchmarkCountMatch[1] || benchmarkCountMatch[2] || benchmarkCountMatch[3])
+        : "";
+      const grounding =
+        result.intent === "BENCHMARK"
+          ? benchmarkCount
+            ? `${benchmarkCount}개 비교 점포 평균 기준`
+            : "전체 비교 점포 평균 기준"
+          :
+        String(result.metadata?.grounding ?? "") ||
+        result.sources?.[0]?.description ||
+        "실적 기반 자료 기준";
+      const directLines = sanitizeLines(
+        (insightText || "연결된 자료 기준으로 분석했습니다.").split("\n"),
+      );
+      const firstAction = actions[0];
+      if (
+        firstAction &&
+        !directLines.some((line) => line.includes(firstAction.slice(0, 20)))
+      ) {
+        directLines.push(`다음 액션: ${firstAction}`);
+      }
+      directLines.push(grounding.startsWith("근거:") ? grounding : `근거: ${grounding}`);
+      return {
+        lines: directLines,
+        suggestedQuestions: getAnalysisSuggestedQuestions(result.intent, message, selectedMenu),
+        actionCards: [],
+      };
+    }
     const lines = [`${getDemoDateTimeLabel()} 기준 ${selectedMenu} 질의 결과입니다.`];
     if (metrics.size > 0) {
       const metricLines = Array.from(metrics.values())
@@ -1283,35 +1350,35 @@ async function buildDashboardResponse(message: string): Promise<LocalMenuRespons
       lines: addGroundingAndAction(
         [
           `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME}의 AI 추정 순매출입니다.`,
-          `금일 예상 누적 매출 ₩${formatKrw(displayRevenue)}에 매출이익률 ${Math.round(marginPct * 100)}%를 적용해 ₩${formatKrw(netSales)}로 표시됩니다.`,
+          `금일 예상 누적 매출 ${formatKrw(displayRevenue)}에 매출이익률 ${Math.round(marginPct * 100)}%를 적용해 ${formatKrw(netSales)}로 표시됩니다.`,
           "실제 회계 확정값이 아니라 시간대 판매 패턴 기반 추정치입니다.",
         ],
-        "sales-summary + 금일 예상 매출에 매출이익률 적용",
+        "매출 요약 데이터에 매출이익률 적용",
         "실제 순매출은 정산 완료 후 확인 가능합니다.",
       ),
       suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
-      actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치를 다시 확인합니다.", "/")],
+      actionCards: [],
     };
   }
 
-  // === 금일 예상 기회손실 ===
+  // === 금일 AI 예상 기회손실 ===
   if (/기회손실|손실.*계산|기회.*손실.*계산/.test(lower)) {
     return {
       lines: addGroundingAndAction(
         [
-          `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME}의 금일 예상 기회손실은 ₩${formatKrw(lossValue)}입니다.`,
+          `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME}의 금일 AI 예상 기회손실은 ${formatKrw(lossValue)}입니다.`,
           snapTotal > 0
             ? `전체 판매 제품 ${snapTotal}개 중 긴급 ${snapUrgent}개, 재고 주의 ${snapSupplement}개입니다.`
             : "전체 판매 제품 기준 긴급/재고 주의 품목이 있습니다.",
           "리드타임 1시간 기준으로 위험 품목을 처리하지 않았을 때의 예상 손실입니다.",
         ],
-        "inventory-snapshot summary + inventory/current estimated_chance_loss 합산",
+        "재고 스냅샷 + 재고 추정 손실 합산",
         snapUrgent > 0
           ? "생산관리에서 긴급 품목부터 확인하세요."
           : "현재 핵심 수치를 다시 확인하세요.",
       ),
       suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
-      actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치를 다시 확인합니다.", "/")],
+      actionCards: [],
     };
   }
 
@@ -1321,42 +1388,54 @@ async function buildDashboardResponse(message: string): Promise<LocalMenuRespons
       return {
         lines: addGroundingAndAction(
           [
-            `${demoLabel} 기준 지금 생산관리부터 보는 것이 우선입니다.`,
-            `금일 예상 기회손실이 ₩${formatKrw(lossValue)}로 표시되고, 리드타임 1시간 기준 위험 품목이 있습니다.`,
+            `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME}에서는 생산관리부터 확인하는 것이 우선입니다.`,
+            `금일 AI 예상 기회손실은 ${formatKrw(lossValue)}이며, 긴급 ${snapUrgent}개 · 재고 주의 ${snapSupplement}개 품목이 있습니다.`,
             `그다음 발주관리에서 ${optQtyArr.length}개 추천 옵션을 비교하세요.`,
           ],
-          "기회손실 + 생산관리 요약 + 발주 옵션 수",
+          "매출·재고·발주 추천 데이터 기준",
           "생산관리 → 발주관리 순서로 확인하세요.",
         ),
         suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
-        actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치를 다시 확인합니다.", "/")],
+        actionCards: [
+          buildNavigationCard("생산관리 확인", "긴급 품목과 재고 주의 품목을 확인합니다.", "/production"),
+          buildNavigationCard("발주관리 확인", "추천 발주 옵션을 비교합니다.", "/order"),
+        ],
       };
     }
     return {
       lines: addGroundingAndAction(
         [
           `${demoLabel} 기준 현재 모든 재고가 적정 수준입니다.`,
-          `금일 예상 누적 매출은 ₩${formatKrw(displayRevenue)}이고 AI 추정 순매출은 ₩${formatKrw(netSales)}입니다.`,
+          `금일 예상 누적 매출은 ${formatKrw(displayRevenue)}이고 AI 추정 순매출은 ${formatKrw(netSales)}입니다.`,
           `발주관리에서 ${optQtyArr.length}개 추천 옵션을 비교하세요.`,
         ],
-        "금일 예상 매출 + AI 추정 순매출 + 발주 옵션",
+        "매출·재고·발주 추천 데이터 기준",
         "발주관리에서 추천 옵션을 확인하세요.",
       ),
       suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
-      actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치를 다시 확인합니다.", "/")],
+      actionCards: [buildNavigationCard("발주관리 확인", "추천 발주 옵션을 비교합니다.", "/order")],
     };
   }
 
   // === 오늘 핵심 이슈 요약 / 기본 종합현황 답변 ===
+  const vsText =
+    vsPct > 0 ? `${vsPct.toFixed(1)}% 증가` : vsPct < 0 ? `${Math.abs(vsPct).toFixed(1)}% 감소` : "변동 없음";
+  const optCards =
+    snapUrgent > 0
+      ? [
+          buildNavigationCard("생산관리 확인", "긴급 품목과 재고 주의 품목을 확인합니다.", "/production"),
+          buildNavigationCard("발주관리 확인", "추천 발주 옵션을 비교합니다.", "/order"),
+        ]
+      : [buildNavigationCard("발주관리 확인", "추천 발주 옵션을 비교합니다.", "/order")];
   return {
     lines: addGroundingAndAction(
       [
         `${demoLabel} 기준 ${DEMO_PRIMARY_STORE_NAME} 종합 현황 요약입니다.`,
-        `금일 예상 누적 매출 ₩${formatKrw(displayRevenue)}이며 전일 대비 ${vsPct > 0 ? "+" : ""}${vsPct.toFixed(1)}%입니다.`,
-        `AI 추정 순매출 ₩${formatKrw(netSales)}입니다. 매출이익률 ${Math.round(marginPct * 100)}%를 적용한 추정값입니다.`,
+        `금일 예상 누적 매출은 ${formatKrw(displayRevenue)}이며, 전일 대비 ${vsText}했습니다.`,
+        `AI 추정 순매출은 ${formatKrw(netSales)}입니다. 매출이익률 ${Math.round(marginPct * 100)}%를 적용한 추정값입니다.`,
         snapTotal > 0
-          ? `전체 판매 제품 ${snapTotal}개 중 긴급 ${snapUrgent}개 · 재고 주의 ${snapSupplement}개입니다. 금일 예상 기회손실 ₩${formatKrw(lossValue)}입니다. 리드타임 1시간 기준 위험 품목을 처리하지 않았을 때의 예상 손실입니다.`
-          : `금일 예상 기회손실 ₩${formatKrw(lossValue)}입니다. 리드타임 1시간 기준 위험 품목을 처리하지 않았을 때의 예상 손실입니다.`,
+          ? `전체 판매 제품 ${snapTotal}개 중 긴급 ${snapUrgent}개 · 재고 주의 ${snapSupplement}개입니다. 금일 AI 예상 기회손실은 ${formatKrw(lossValue)}입니다. 리드타임 1시간 기준 위험 품목을 처리하지 않았을 때의 예상 손실입니다.`
+          : `금일 AI 예상 기회손실은 ${formatKrw(lossValue)}입니다. 리드타임 1시간 기준 위험 품목을 처리하지 않았을 때의 예상 손실입니다.`,
         snapUrgent > 0
           ? `생산관리에서 긴급 품목 ${snapUrgent}개, 재고 주의 ${snapSupplement}개 처리가 필요합니다.`
           : "현재 재고는 적정 수준입니다.",
@@ -1364,21 +1443,131 @@ async function buildDashboardResponse(message: string): Promise<LocalMenuRespons
           ? `발주관리 ${optQtyArr.length}개 옵션(수량 ${optQtyArr.join(", ")})을 검토하세요.`
           : "발주 옵션을 확인하세요.",
       ],
-      "sales-summary + inventory-snapshot summary + order recommendations",
+      "매출·재고·발주 추천 데이터 기준",
       lossValue > 0
         ? "생산관리에서 긴급 품목부터 확인한 뒤 발주관리를 검토하세요."
         : "발주관리에서 추천 옵션을 확인하세요.",
     ),
     suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
-    actionCards: [buildNavigationCard("종합 현황 확인", "핵심 수치와 추천 액션을 다시 확인합니다.", "/")],
+    actionCards: optCards,
   };
 }
 
 
+const DDAY_POST_QUESTIONS: SuggestedQuestion[] = [
+  { text: "D-DAY 다시 진행하면 얼마나 좋아질까?", action: "click_chips" },
+  { text: "반응 좋은 행사 알려줘", action: "click_chips" },
+  { text: "더 준비할 상품 알려줘", action: "click_chips" },
+  { text: "행사 매출 높은 순서로 보여줘", action: "click_chips" },
+];
+
+const PROMO_SALES_ANALYSIS_QUESTIONS: SuggestedQuestion[] = [
+  { text: "행사 매출 높은 순서로 보여줘" },
+  { text: "이전 행사와 비교해줘" },
+  { text: "행사 때 잘 팔린 상품 알려줘" },
+  { text: "다음 행사 준비할 상품 알려줘" },
+];
+
+const SALES_PERIOD_ANALYSIS_QUESTIONS = [
+  "일평균 기준으로 다시 비교해줘",
+  "매출이 늘어난 상품 알려줘",
+  "요일 차이를 반영해서 봐줘",
+  "전월과도 비교해줘",
+];
+
+const PRODUCT_SALES_ANALYSIS_QUESTIONS = [
+  "글레이즈드 지난주와도 비교해줘",
+  "글레이즈드와 보스톤크림 비교해줘",
+  "매출 비중 높은 상품 알려줘",
+  "평균보다 낮은 상품 알려줘",
+];
+
+const DELIVERY_COMPARISON_QUESTIONS = [
+  "채널별 배달 건수 자세히 봐줘",
+  "배달 비중이 늘어난 이유 알려줘",
+  "배달 주문 많은 시간대 알려줘",
+  "배달 매출 높은 상품 알려줘",
+];
+
+const DELIVERY_REVENUE_QUESTIONS = [
+  "쿠팡이츠 매출 비중 더 자세히 봐줘",
+  "BM1 주문을 늘릴 방법 알려줘",
+  "배달 매출 높은 상품 알려줘",
+  "지난달 배달 채널과 비교해줘",
+];
+
+const BENCHMARK_ANALYSIS_QUESTIONS = [
+  "평균보다 낮은 이유를 더 봐줘",
+  "객단가가 높은 이유 알려줘",
+  "판매 수량 늘릴 방법 알려줘",
+  "비교 점포보다 약한 항목 알려줘",
+];
+
+const DIRECT_BACKEND_ANALYSIS_INTENTS = new Set([
+  "SALES_COMPARISON",
+  "CHANNEL_ANALYSIS",
+  "PRODUCT_SALES_COMPARISON",
+  "DELIVERY_CHANNEL_REVENUE",
+  "PROMO_ANALYSIS",
+  "BENCHMARK",
+]);
+
+function getAnalysisSuggestedQuestions(intent: string | undefined, message: string, selectedMenu: string) {
+  const normalizedIntent = String(intent ?? "");
+  const lower = message.toLowerCase();
+  if (normalizedIntent === "PROMO_ANALYSIS") return PROMO_SALES_ANALYSIS_QUESTIONS;
+  if (normalizedIntent === "PRODUCT_SALES_COMPARISON") return toSuggestedQuestions(PRODUCT_SALES_ANALYSIS_QUESTIONS);
+  if (normalizedIntent === "DELIVERY_CHANNEL_REVENUE") return toSuggestedQuestions(DELIVERY_REVENUE_QUESTIONS);
+  if (normalizedIntent === "CHANNEL_ANALYSIS" && /(배달|딜리버리|쿠팡|배민|해피오더|건\s*수)/.test(lower)) {
+    return toSuggestedQuestions(DELIVERY_COMPARISON_QUESTIONS);
+  }
+  if (normalizedIntent === "BENCHMARK") return toSuggestedQuestions(BENCHMARK_ANALYSIS_QUESTIONS);
+  if (normalizedIntent === "SALES_COMPARISON") return toSuggestedQuestions(SALES_PERIOD_ANALYSIS_QUESTIONS);
+  return toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS);
+}
+
 async function buildPromotionResponse(message: string): Promise<LocalMenuResponse> {
+  const backendPromo = await buildSalesQueryResponse(message, "프로모션");
+  if (backendPromo) return backendPromo;
+
   const intent = classifyLocalIntent(message);
+  const lower = message.toLowerCase();
+  // D-DAY detection: 디데이/D-Day 관련 질문은 별도 처리 (typo 포함)
+  const isDDayQuestion =
+    /d[-\s.]?day|디\s*데이|디데이|다대아|디대이/.test(lower) ||
+    /(d[-\s.]?day|디\s*데이|디데이|다대아|디대이).*(프로모션|행사|성적|성과|어땠|알려|최근|언제)/.test(lower);
+
+  // Fetch promo data upfront for both D-DAY and general promo responses
   const [detail, promotions] = await Promise.all([getPromoPerformanceDetail(), getPromotions()]);
   const detailPromotions = detail?.promotions ?? [];
+
+  // Build promo summary lines from actual data (total bills, total sales, top by response/sales)
+  const promoSummaryLines = (): string[] => {
+    if (detailPromotions.length === 0) return [];
+    const totalBills = detailPromotions.reduce((s, p) => s + (Number(p.total_bill_cnt) || 0), 0);
+    const totalSales = detailPromotions.reduce((s, p) => s + (Number(p.total_sales_amt) || 0), 0);
+    const sortedByBills = [...detailPromotions].sort((a, b) => (Number(b.total_bill_cnt) || 0) - (Number(a.total_bill_cnt) || 0));
+    const sortedBySales = [...detailPromotions].sort((a, b) => (Number(b.total_sales_amt) || 0) - (Number(a.total_sales_amt) || 0));
+    const topResponse = sortedByBills[0];
+    const topSales = sortedBySales[0];
+    return [
+      `총 참여 ${formatCount(totalBills)}건, 총 매출 ${formatKrw(totalSales)}`,
+      `가장 반응이 큰 행사는 ${cleanPromoName(topResponse.campaign_name)}으로 ${formatCount(topResponse.total_bill_cnt)}건, ${formatKrw(topResponse.total_sales_amt)}`,
+      `매출 기여가 큰 행사는 ${cleanPromoName(topSales.campaign_name)}으로 ${formatKrw(topSales.total_sales_amt)}, 반응 ${formatCount(topSales.total_bill_cnt)}건`,
+    ];
+  };
+
+  if (isDDayQuestion) {
+    return {
+      lines: [
+        "현재 연결된 행사 참여 및 매출 자료로 해당 행사 성과를 다시 확인하지 못했습니다.",
+        "행사명과 기간 연결이 복구되면 참여 건수, 행사 매출, 전체 매출 비중을 기준으로 판단하겠습니다.",
+        "근거: 행사 참여 및 매출 자료 기준",
+      ],
+      suggestedQuestions: PROMO_SALES_ANALYSIS_QUESTIONS,
+      actionCards: [],
+    };
+  }
   const aiPromotions = promotions.filter((item) => item.status === "ai");
   const actualPromotions = promotions.filter((item) => item.status !== "ai");
   const activePromotions = promotions.filter((item) => item.status !== "ended");
@@ -1576,7 +1765,7 @@ async function buildPerformanceResponse(message: string): Promise<LocalMenuRespo
   }
 
   // Delivery/channel data not available
-  if (/전주.*배달.*건수|전월.*배달.*건수|이번 달.*배달.*지난 달|지난달.*배달.*건수/.test(lower)) {
+  if (/전주.*배달.*건\s*수|전월.*배달.*건\s*수|전\s*주.*배달.*건\s*수|전\s*월.*배달.*건\s*수|이번 달.*배달.*지난 달|지난달.*배달.*건\s*수/.test(lower)) {
     return {
       lines: addGroundingAndAction(
         [
@@ -1604,23 +1793,20 @@ async function buildPerformanceResponse(message: string): Promise<LocalMenuRespo
   }
 
   if (intent === "PERF_STORE_AVG") {
-    const comparison = await getStoreAvgComparison();
-    if (comparison) {
+    const apiResult = await fetchSalesQuery(message).catch(() => null);
+    if (apiResult) {
+      const sections = apiResult.sections ?? [];
+      const insightText =
+        sections.find((section) => section.type === "insight")?.text ??
+        "연결된 자료 기준으로 비교를 정리했습니다.";
+      const actions = extractActionItems(sections);
       return {
         lines: addGroundingAndAction(
-          [
-            `최근 30일 기준 ${DEMO_PRIMARY_STORE_NAME}의 일평균 매출은 ${formatKrw(comparison.our_avg_daily)}이며, 전체 ${formatCount(comparison.total_stores)}개 점포 평균 ${formatKrw(comparison.all_stores_avg_daily)}보다 ${formatSignedPct(comparison.diff_pct)}입니다.`,
-            `현재는 전체 평균보다 ${comparison.diff_pct < 0 ? "낮은" : "높은"} 위치입니다.`,
-            comparison.diff_pct < 0
-              ? "강점 상품과 피크 시간 운영을 상위 점포 수준으로 끌어올릴 여지가 있습니다."
-              : "현재 강점을 유지하되 상위 상품과 시간대 운영을 표준화할 필요가 있습니다.",
-          ],
-          `최근 30일 ${DEMO_PRIMARY_STORE_NAME}과 전체 ${formatCount(comparison.total_stores)}개 점포 평균 일매출 비교`,
-          comparison.diff_pct < 0
-            ? "전체 평균 이상 매장의 상위 상품 운영과 피크 시간 대응 방식을 먼저 비교하세요."
-            : "현재 강한 시간대와 상품 구성을 유지하면서 약한 시간대를 보완하세요.",
+          [insightText],
+          apiResult.sources?.[0]?.description || "전점포 벤치마크 비교 데이터",
+          actions[0] || "현재 우세한 시간대와 메뉴 구성을 유지하세요.",
         ),
-        suggestedQuestions: chips("PERF_STORE_AVG"),
+        suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS[selectedMenu] ?? DEFAULT_CHIPS),
       };
     }
   }
@@ -1946,6 +2132,29 @@ async function buildAlarmSettingsResponse(): Promise<LocalMenuResponse> {
   };
 }
 
+async function buildNetSalesExplanation(message: string): Promise<LocalMenuResponse> {
+  const { date, time } = getDemoDateTimeState();
+  const demoLabel = `${date} ${time} 기준`;
+  const salesData = await requestJson<Record<string, unknown>>("/home/sales-summary").catch(() => null);
+  const salesSummary = salesData as Record<string, unknown> | null;
+  const hasCumulative = salesSummary?.cumulative_revenue_until != null && Number(salesSummary.cumulative_revenue_until) > 0;
+  const displayRevenue = hasCumulative ? Number(salesSummary.cumulative_revenue_until) : Number(salesSummary?.today_revenue ?? 0);
+  const marginPct = (salesSummary?.profitability as Record<string, unknown> | undefined)?.gross_profit_margin_pct != null && (salesSummary?.profitability as Record<string, unknown>).gross_profit_margin_pct > 0
+    ? Number((salesSummary.profitability as Record<string, unknown>).gross_profit_margin_pct) / 100
+    : 0.68;
+  const netSales = Math.round(displayRevenue * marginPct);
+
+  return {
+    lines: [
+      `AI 추정 순매출은 현재까지의 판매 흐름을 바탕으로 오늘 예상 누적 매출에 기준 매출이익률을 적용한 참고 지표입니다.`,
+      `${demoLabel} ${DEMO_PRIMARY_STORE_NAME} 기준으로는 예상 누적 매출 ${formatKrw(displayRevenue)}에 매출이익률 ${Math.round(marginPct * 100)}%를 적용해 ${formatKrw(netSales)}로 표시됩니다.`,
+      "화면에서는 ‘AI 추정 순매출’이라고 표시하지만, 실제 정산 순매출이 아니라 예상 매출에 기준 매출이익률을 적용한 추정값입니다. 실제 확정 매출은 정산 완료 후 확인하는 값입니다.",
+    ],
+    suggestedQuestions: toSuggestedQuestions(QUICK_CHIPS["종합 현황"]),
+    actionCards: [],
+  };
+}
+
 async function buildMenuAwareResponse(
   selectedMenu: string,
   message: string,
@@ -1980,8 +2189,13 @@ async function buildMenuAwareResponse(
     return buildSalesReasonResponse(message);
   }
 
+  // === Net sales explanation - KPI definition across all menus ===
+  if (intent === "NET_SALES_EXPLANATION") {
+    return buildNetSalesExplanation(message);
+  }
+
   // === Promotion intents ===
-  if (intent === "PROMO_RESPONSE" || intent === "PROMO_SALES" || intent === "PROMO_HOURLY" || intent === "PROMO_STORE_COMPARE") {
+  if (intent === "PROMO_RESPONSE" || intent === "PROMO_SALES" || intent === "PROMO_HOURLY" || intent === "PROMO_STORE_COMPARE" || intent === "PROMO_ANALYSIS") {
     return buildPromotionResponse(message);
   }
 
@@ -2015,7 +2229,7 @@ async function buildMenuAwareResponse(
     }
     // Delivery/channel/promo questions in performance menu: handle via buildPerformanceResponse
     if (
-      /전주.*배달.*건수|전월.*배달.*건수|배달.*채널.*비중|채널별.*매출.*비중/.test(lower) ||
+      /전주.*배달.*건\s*수|전월.*배달.*건\s*수|전\s*주.*배달.*건\s*수|전\s*월.*배달.*건\s*수|배달.*채널.*비중|채널별.*매출.*비중/.test(lower) ||
       /반응.*좋은|프로모션.*매출|매출.*기여/.test(lower)
     ) {
       return buildPerformanceResponse(message);
@@ -2277,6 +2491,27 @@ export default function AiPanel({
         }
       }
 
+      // D-DAY 질문은 로컬 핸들러로 바로 라우팅 (LLM 호출 우회)
+      if (/d[-\s.]?day|디\s*데이|디데이|다대아|디대이/.test(trimmed.toLowerCase())) {
+        try {
+          const promoResp = await buildPromotionResponse(trimmed);
+          if (promoResp) {
+            finishWith(
+              promoResp.lines,
+              promoResp.suggestedQuestions ??
+                PROMO_SALES_ANALYSIS_QUESTIONS,
+              promoResp.actionCards,
+              promoResp.insightCard,
+              promoResp.actions,
+              promoResp.markdown,
+            );
+            return;
+          }
+        } catch {
+          /* D-DAY local response failed; fall through to LLM */
+        }
+      }
+
       if (selectedMenu === "벤치마킹" && !needsBackendFirst) {
         try {
           const bench = await buildMenuAwareResponse(selectedMenu, trimmed, localIntent);
@@ -2322,7 +2557,10 @@ export default function AiPanel({
       }
 
       // ── OVERVIEW: force local handler before any backend call ──
-      if (selectedMenu === "종합 현황") {
+      // But sales comparison questions (월 매출 비교, 전년 동월, 25년/26년 기준 등) go to backend
+      const isSalesComparisonQuestion =
+        /(전년|전년\s*동월|작년\.|25년|2025년?|26년|2026년?|월\s*매출.*비교|매출\s*비교|동월|영업일수|일평균\s*매출|요일\s*구성)/.test(trimmed);
+      if (selectedMenu === "종합 현황" && !isSalesComparisonQuestion) {
         try {
           const overviewResp = await buildDashboardResponse(trimmed);
           if (overviewResp) {

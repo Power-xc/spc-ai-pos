@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import ContentWrapper from "./ContentWrapper";
-import AiOrder from "./AiOrder";
+import AiOrder, { getOrderSteps } from "./AiOrder";
 import ManualOrder from "./ManualOrder";
 import DatePicker from "../ui/DatePicker";
 
@@ -345,12 +345,12 @@ export default function OrderManagement({
         isAiPanelOpen={isAiPanelOpen}
         isSidebarOpen={isSidebarOpen}
       >
-        <ManualOrder
+        <AiOrder
+          open={true}
+          initialStep={0}
+          mode="manual"
+          onOrderComplete={handleOrderComplete}
           onClose={() => setShowManualOrder(false)}
-          onOrderComplete={(items) => {
-            handleOrderComplete(items);
-            setShowManualOrder(false);
-          }}
         />
       </ContentWrapper>
     );

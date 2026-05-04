@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
@@ -1157,6 +1158,7 @@ async def get_sales_comparison(
                 f"""
                 WITH source AS (
                     SELECT
+                        biz_date::date AS biz_date,
                         CASE
                             WHEN biz_date BETWEEN :period1_start AND :period1_end THEN 'period1'
                             WHEN biz_date BETWEEN :period2_start AND :period2_end THEN 'period2'
@@ -1175,6 +1177,7 @@ async def get_sales_comparison(
                 )
                 SELECT
                     period_label,
+                    count(DISTINCT biz_date) AS biz_days,
                     sum(sales_amt) AS total_sales,
                     sum(sold_qty) AS total_qty,
                     sum(waste_qty) AS total_waste,
@@ -1230,6 +1233,7 @@ async def get_sales_comparison(
             )
             summary_map = {
                 str(row.get("period_label")): {
+                    "biz_days": int(row.get("biz_days", 0) or 0),
                     "total_sales": round(_number(row.get("total_sales")), 2),
                     "total_qty": round(_number(row.get("total_qty")), 2),
                     "total_waste": round(_number(row.get("total_waste")), 2),
@@ -1265,6 +1269,7 @@ async def get_sales_comparison(
                 "period1": {
                     "start": str(period1_start),
                     "end": str(period1_end),
+                    "biz_days": int(period1.get("biz_days", 0) or 0),
                     "total_sales": round(_number(period1.get("total_sales")), 2),
                     "total_qty": round(_number(period1.get("total_qty")), 2),
                     "total_waste": round(_number(period1.get("total_waste")), 2),
@@ -1273,6 +1278,7 @@ async def get_sales_comparison(
                 "period2": {
                     "start": str(period2_start),
                     "end": str(period2_end),
+                    "biz_days": int(period2.get("biz_days", 0) or 0),
                     "total_sales": round(_number(period2.get("total_sales")), 2),
                     "total_qty": round(_number(period2.get("total_qty")), 2),
                     "total_waste": round(_number(period2.get("total_waste")), 2),
@@ -1343,6 +1349,7 @@ async def get_sales_comparison(
         summary_rows = (
             source.groupby("period_label", as_index=False)
             .agg(
+                biz_days=("biz_date", "nunique"),
                 total_sales=("sales_amt", "sum"),
                 total_qty=("sold_qty", "sum"),
                 total_waste=("waste_qty", "sum"),
@@ -1386,6 +1393,7 @@ async def get_sales_comparison(
             "period1": {
                 "start": str(period1_start),
                 "end": str(period1_end),
+                "biz_days": int(period1.get("biz_days", 0) or 0),
                 "total_sales": round(float(period1.get("total_sales", 0) or 0), 2),
                 "total_qty": round(float(period1.get("total_qty", 0) or 0), 2),
                 "total_waste": round(float(period1.get("total_waste", 0) or 0), 2),
@@ -1394,6 +1402,7 @@ async def get_sales_comparison(
             "period2": {
                 "start": str(period2_start),
                 "end": str(period2_end),
+                "biz_days": int(period2.get("biz_days", 0) or 0),
                 "total_sales": round(float(period2.get("total_sales", 0) or 0), 2),
                 "total_qty": round(float(period2.get("total_qty", 0) or 0), 2),
                 "total_waste": round(float(period2.get("total_waste", 0) or 0), 2),
@@ -1504,7 +1513,9 @@ async def get_store_vs_benchmark(
                     store_id,
                     avg(total_sales) AS daily_avg_sales,
                     avg(total_qty) AS daily_avg_qty,
-                    avg(waste_total) AS daily_avg_waste
+                    avg(CASE WHEN total_qty > 0 THEN total_sales / total_qty ELSE NULL END) AS daily_avg_ticket,
+                    avg(waste_total) AS daily_avg_waste,
+                    avg(stockout_sku_cnt) AS daily_avg_stockout
                 FROM {GOLD_SCHEMA}.new_kpi_store_day_gold
                 WHERE biz_date BETWEEN :start_date AND :end_date
                 GROUP BY store_id
@@ -1522,6 +1533,9 @@ async def get_store_vs_benchmark(
                     "diff_pct": {},
                     "rank_among_stores": None,
                     "total_stores": 0,
+                    "period_start": str(start_date),
+                    "period_end": str(end_date),
+                    "business_days": 0,
                 }
             total_stores = len(rows)
             my_row = next((row for row in rows if str(row.get("store_id")) == str(store_id)), None)
@@ -1532,6 +1546,9 @@ async def get_store_vs_benchmark(
                     "diff_pct": {},
                     "rank_among_stores": None,
                     "total_stores": total_stores,
+                    "period_start": str(start_date),
+                    "period_end": str(end_date),
+                    "business_days": (end_date - start_date).days + 1,
                 }
             avg_sales = round(
                 sum(_number(row.get("daily_avg_sales")) for row in rows) / total_stores,
@@ -1541,8 +1558,16 @@ async def get_store_vs_benchmark(
                 sum(_number(row.get("daily_avg_qty")) for row in rows) / total_stores,
                 2,
             )
+            avg_ticket = round(
+                sum(_number(row.get("daily_avg_ticket")) for row in rows if row.get("daily_avg_ticket") is not None) / max(sum(1 for row in rows if row.get("daily_avg_ticket") is not None), 1),
+                2,
+            )
             avg_waste = round(
                 sum(_number(row.get("daily_avg_waste")) for row in rows) / total_stores,
+                2,
+            )
+            avg_stockout = round(
+                sum(_number(row.get("daily_avg_stockout")) for row in rows if row.get("daily_avg_stockout") is not None) / max(sum(1 for row in rows if row.get("daily_avg_stockout") is not None), 1),
                 2,
             )
             rank = next(
@@ -1555,25 +1580,37 @@ async def get_store_vs_benchmark(
             )
             my_sales = _number(my_row.get("daily_avg_sales"))
             my_qty = _number(my_row.get("daily_avg_qty"))
+            my_ticket = _number(my_row.get("daily_avg_ticket"))
             my_waste = _number(my_row.get("daily_avg_waste"))
+            my_stockout = _number(my_row.get("daily_avg_stockout"))
+            business_days = (end_date - start_date).days + 1
             return {
                 "my_store": {
                     "daily_avg_sales": round(my_sales, 2),
                     "daily_avg_qty": round(my_qty, 2),
+                    "daily_avg_ticket": round(my_ticket, 2),
                     "daily_avg_waste": round(my_waste, 2),
+                    "daily_avg_stockout": round(my_stockout, 2),
                 },
                 "all_stores_avg": {
                     "daily_avg_sales": avg_sales,
                     "daily_avg_qty": avg_qty,
+                    "daily_avg_ticket": avg_ticket,
                     "daily_avg_waste": avg_waste,
+                    "daily_avg_stockout": avg_stockout,
                 },
                 "diff_pct": {
                     "sales": _safe_pct_change(my_sales, avg_sales),
                     "qty": _safe_pct_change(my_qty, avg_qty),
+                    "ticket": _safe_pct_change(my_ticket, avg_ticket),
                     "waste": _safe_pct_change(my_waste, avg_waste),
+                    "stockout": _safe_pct_change(my_stockout, avg_stockout),
                 },
                 "rank_among_stores": rank,
                 "total_stores": total_stores,
+                "period_start": str(start_date),
+                "period_end": str(end_date),
+                "business_days": business_days,
             }
         except Exception:
             logger.exception(
@@ -2459,6 +2496,401 @@ async def get_promo_analysis(
         return []
 
 
+async def get_promo_performance_summary(
+    db,
+    store_id: str,
+    promo_name_filter: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> dict[str, Any]:
+    """Get promotion sales facts capped to the requested performance end date."""
+    if _is_async_session(db):
+        try:
+            latest_row = await _fetch_gold_one(
+                db,
+                f"""
+                SELECT max(biz_date) AS biz_date
+                FROM {GOLD_SCHEMA}.new_campaign_day_gold
+                WHERE store_id = :store_id
+                """,
+                {"store_id": str(store_id)},
+            )
+            latest_campaign_date = latest_row.get("biz_date") if latest_row else None
+            resolved_end = end_date or latest_campaign_date
+            if resolved_end is None:
+                return _empty_promo_summary()
+            if start_date is None:
+                start_date = resolved_end - timedelta(days=30)
+
+            metric_cutoff = min(resolved_end, latest_campaign_date) if latest_campaign_date else resolved_end
+            has_filter = bool(str(promo_name_filter or "").strip())
+            candidate_start = metric_cutoff - timedelta(days=455) if has_filter else start_date
+            candidate_end = metric_cutoff
+            promo_filter = ""
+            params: dict[str, Any] = {
+                "store_id": str(store_id),
+                "candidate_start": candidate_start,
+                "candidate_end": candidate_end,
+            }
+            if has_filter:
+                promo_filter = """
+                      AND (
+                        campaign_name ILIKE :promo_pattern
+                        OR campaign_id ILIKE :promo_pattern
+                      )
+                """
+                params["promo_pattern"] = f"%{str(promo_name_filter).strip()}%"
+
+            candidate_rows = await _fetch_gold_all(
+                db,
+                f"""
+                WITH base AS (
+                    SELECT DISTINCT
+                        store_id,
+                        biz_date,
+                        COALESCE(campaign_id, '') AS campaign_id,
+                        COALESCE(campaign_name, '') AS campaign_name,
+                        COALESCE(sales_amt, 0)::numeric AS sales_amt,
+                        COALESCE(bill_cnt, 0)::numeric AS bill_cnt
+                    FROM {GOLD_SCHEMA}.new_campaign_day_gold
+                    WHERE store_id = :store_id
+                      AND biz_date BETWEEN :candidate_start AND :candidate_end
+                )
+                SELECT *
+                FROM base
+                WHERE TRUE
+                {promo_filter}
+                ORDER BY biz_date DESC, sales_amt DESC, bill_cnt DESC, campaign_name
+                """,
+                params,
+            )
+
+            if not candidate_rows:
+                empty = _empty_promo_summary()
+                empty.update(
+                    {
+                        "period_start": str(start_date),
+                        "period_end": str(metric_cutoff),
+                        "candidate_search_start": str(candidate_start),
+                        "candidate_search_end": str(candidate_end),
+                        "metric_cutoff_date": str(metric_cutoff),
+                        "query_promotion_type": str(promo_name_filter or "프로모션"),
+                        "future_data_included": False,
+                    }
+                )
+                return empty
+
+            def _campaign_key(row: dict[str, Any]) -> tuple[str, str]:
+                return (str(row.get("campaign_id") or ""), str(row.get("campaign_name") or ""))
+
+            if has_filter:
+                current_key = _campaign_key(candidate_rows[0])
+                current_rows = [row for row in candidate_rows if _campaign_key(row) == current_key]
+            else:
+                current_rows = [
+                    row
+                    for row in candidate_rows
+                    if start_date <= row.get("biz_date") <= metric_cutoff
+                ]
+
+            if not current_rows:
+                return _empty_promo_summary()
+
+            row_dates = [row["biz_date"] for row in current_rows if row.get("biz_date")]
+            raw_min_date = min(row_dates) if row_dates else start_date
+            raw_max_date = max(row_dates) if row_dates else metric_cutoff
+            campaign_names = sorted(
+                {
+                    str(row.get("campaign_name") or "")
+                    for row in current_rows
+                    if row.get("campaign_name")
+                }
+            )
+            campaign_ids = sorted(
+                {
+                    str(row.get("campaign_id") or "")
+                    for row in current_rows
+                    if row.get("campaign_id")
+                }
+            )
+
+            def _month_range_for(value: date) -> tuple[date, date]:
+                return (
+                    date(value.year, value.month, 1),
+                    date(value.year, value.month, calendar.monthrange(value.year, value.month)[1]),
+                )
+
+            single_campaign = len({_campaign_key(row) for row in current_rows}) == 1
+            if single_campaign and raw_min_date == raw_max_date:
+                metric_start, metric_end = _month_range_for(raw_min_date)
+                metric_end = min(metric_end, metric_cutoff)
+            else:
+                metric_start = max(start_date, raw_min_date)
+                metric_end = min(metric_cutoff, raw_max_date)
+
+            promo_sales = sum(_number(row.get("sales_amt")) for row in current_rows)
+            promo_bills = int(round(sum(_number(row.get("bill_cnt")) for row in current_rows)))
+            promo_count = len({_campaign_key(row) for row in current_rows})
+
+            total_sales_row = await _fetch_gold_one(
+                db,
+                f"""
+                SELECT COALESCE(sum(total_sales), 0) AS total_sales
+                FROM {GOLD_SCHEMA}.new_kpi_store_day_gold
+                WHERE store_id = :store_id
+                  AND biz_date BETWEEN :metric_start AND :metric_end
+                """,
+                {
+                    "store_id": str(store_id),
+                    "metric_start": metric_start,
+                    "metric_end": metric_end,
+                },
+            )
+            same_period_total = _number(total_sales_row.get("total_sales") if total_sales_row else 0)
+            promo_ratio_pct = (promo_sales / same_period_total * 100) if same_period_total > 0 else 0
+
+            grouped: dict[tuple[str, str], dict[str, Any]] = {}
+            for row in current_rows:
+                key = _campaign_key(row)
+                bucket = grouped.setdefault(
+                    key,
+                    {
+                        "campaign_id": key[0],
+                        "campaign_name": key[1],
+                        "sales_amt": 0.0,
+                        "bill_cnt": 0,
+                        "min_date": row.get("biz_date"),
+                        "max_date": row.get("biz_date"),
+                    },
+                )
+                bucket["sales_amt"] += _number(row.get("sales_amt"))
+                bucket["bill_cnt"] += int(round(_number(row.get("bill_cnt"))))
+                if row.get("biz_date"):
+                    bucket["min_date"] = min(bucket["min_date"], row["biz_date"])
+                    bucket["max_date"] = max(bucket["max_date"], row["biz_date"])
+
+            top_campaigns = [
+                {
+                    **item,
+                    "sales_amt": round(_number(item.get("sales_amt")), 2),
+                    "bill_cnt": int(round(_number(item.get("bill_cnt")))),
+                    "period_start": item["min_date"].isoformat() if item.get("min_date") else None,
+                    "period_end": item["max_date"].isoformat() if item.get("max_date") else None,
+                }
+                for item in sorted(
+                    grouped.values(),
+                    key=lambda grouped_item: (
+                        _number(grouped_item.get("sales_amt")),
+                        _number(grouped_item.get("bill_cnt")),
+                    ),
+                    reverse=True,
+                )[:5]
+            ]
+
+            previous_comparison_available = False
+            previous_promotion: dict[str, Any] | None = None
+            prev_sales = 0.0
+            prev_bills = 0
+            prev_ratio_pct = 0.0
+            prev_rows: list[dict[str, Any]] = []
+            previous_period_start: date | None = None
+            previous_period_end: date | None = None
+
+            if has_filter:
+                current_key = _campaign_key(current_rows[0])
+                previous_candidates = [
+                    row
+                    for row in candidate_rows
+                    if _campaign_key(row) != current_key
+                    and row.get("biz_date")
+                    and row["biz_date"] < raw_min_date
+                ]
+                if previous_candidates:
+                    prev_key = _campaign_key(previous_candidates[0])
+                    prev_rows = [row for row in previous_candidates if _campaign_key(row) == prev_key]
+            else:
+                previous_period_end = start_date - timedelta(days=1)
+                previous_period_start = previous_period_end - timedelta(days=(metric_cutoff - start_date).days)
+                prev_rows = await _fetch_gold_all(
+                    db,
+                    f"""
+                    WITH base AS (
+                        SELECT DISTINCT
+                            store_id,
+                            biz_date,
+                            COALESCE(campaign_id, '') AS campaign_id,
+                            COALESCE(campaign_name, '') AS campaign_name,
+                            COALESCE(sales_amt, 0)::numeric AS sales_amt,
+                            COALESCE(bill_cnt, 0)::numeric AS bill_cnt
+                        FROM {GOLD_SCHEMA}.new_campaign_day_gold
+                        WHERE store_id = :store_id
+                          AND biz_date BETWEEN :prev_start AND :prev_end
+                    )
+                    SELECT *
+                    FROM base
+                    ORDER BY biz_date DESC, sales_amt DESC, bill_cnt DESC, campaign_name
+                    """,
+                    {
+                        "store_id": str(store_id),
+                        "prev_start": previous_period_start,
+                        "prev_end": previous_period_end,
+                    },
+                )
+
+            prev_total = 0.0
+            if prev_rows:
+                prev_dates = [row["biz_date"] for row in prev_rows if row.get("biz_date")]
+                prev_raw_min = min(prev_dates)
+                prev_raw_max = max(prev_dates)
+                if len({_campaign_key(row) for row in prev_rows}) == 1 and prev_raw_min == prev_raw_max:
+                    previous_period_start, previous_period_end = _month_range_for(prev_raw_min)
+                    previous_period_end = min(previous_period_end, metric_cutoff)
+                else:
+                    previous_period_start = previous_period_start or prev_raw_min
+                    previous_period_end = previous_period_end or prev_raw_max
+                prev_sales = sum(_number(row.get("sales_amt")) for row in prev_rows)
+                prev_bills = int(round(sum(_number(row.get("bill_cnt")) for row in prev_rows)))
+                previous_comparison_available = prev_sales > 0 or prev_bills > 0
+                prev_total_row = await _fetch_gold_one(
+                    db,
+                    f"""
+                    SELECT COALESCE(sum(total_sales), 0) AS total_sales
+                    FROM {GOLD_SCHEMA}.new_kpi_store_day_gold
+                    WHERE store_id = :store_id
+                      AND biz_date BETWEEN :prev_start AND :prev_end
+                    """,
+                    {
+                        "store_id": str(store_id),
+                        "prev_start": previous_period_start,
+                        "prev_end": previous_period_end,
+                    },
+                )
+                prev_total = _number(prev_total_row.get("total_sales") if prev_total_row else 0)
+                prev_ratio_pct = (prev_sales / prev_total * 100) if prev_total > 0 else 0
+                prev_names = sorted({str(row.get("campaign_name") or "") for row in prev_rows if row.get("campaign_name")})
+                previous_promotion = {
+                    "campaign_name": prev_names[0] if len(prev_names) == 1 else ", ".join(prev_names[:3]),
+                    "participation_count": prev_bills,
+                    "promo_sales": round(prev_sales, 2),
+                    "same_period_total_sales": round(prev_total, 2),
+                    "promo_sales_ratio_pct": round(prev_ratio_pct, 2),
+                    "period_start": previous_period_start.isoformat() if previous_period_start else None,
+                    "period_end": previous_period_end.isoformat() if previous_period_end else None,
+                }
+
+            sales_diff = promo_sales - prev_sales
+            bills_diff = promo_bills - prev_bills
+            ratio_diff = promo_ratio_pct - prev_ratio_pct
+            sales_diff_pct = (sales_diff / prev_sales * 100) if prev_sales > 0 else None
+            bills_diff_pct = (bills_diff / prev_bills * 100) if prev_bills > 0 else None
+
+            query_type = str(promo_name_filter or "").strip() or "프로모션"
+            first_campaign_name = campaign_names[0] if len(campaign_names) == 1 else (top_campaigns[0]["campaign_name"] if top_campaigns else "")
+            if query_type.upper() == "D-DAY" or (query_type == "프로모션" and "D-DAY" in first_campaign_name.upper()):
+                query_type = "D-DAY"
+            elif "네이버페이" in first_campaign_name or query_type == "네이버페이":
+                query_type = "네이버페이"
+
+            if metric_start.year == metric_end.year and metric_start.month == metric_end.month:
+                campaign_period_label = f"{metric_start.year}년 {metric_start.month}월"
+            else:
+                campaign_period_label = f"{metric_start.isoformat()}~{metric_end.isoformat()}"
+
+            return {
+                "query_promotion_type": query_type,
+                "campaign_id": campaign_ids[0] if len(campaign_ids) == 1 else None,
+                "campaign_name": first_campaign_name,
+                "campaign_names": campaign_names,
+                "campaign_period_label": campaign_period_label,
+                "promo_count": promo_count,
+                "promo_sales": round(promo_sales, 2),
+                "promo_bill_cnt": promo_bills,
+                "participation_count": promo_bills,
+                "min_date": raw_min_date.isoformat() if raw_min_date else None,
+                "max_date": raw_max_date.isoformat() if raw_max_date else None,
+                "period_start": metric_start.isoformat(),
+                "period_end": metric_end.isoformat(),
+                "raw_campaign_start": raw_min_date.isoformat() if raw_min_date else None,
+                "raw_campaign_end": raw_max_date.isoformat() if raw_max_date else None,
+                "candidate_search_start": candidate_start.isoformat(),
+                "candidate_search_end": candidate_end.isoformat(),
+                "metric_cutoff_date": metric_cutoff.isoformat(),
+                "future_data_included": False,
+                "same_period_total_sales": round(same_period_total, 2),
+                "same_period_total_sales_source": f"{GOLD_SCHEMA}.new_kpi_store_day_gold.total_sales",
+                "same_period_total_sales_period_start": metric_start.isoformat(),
+                "same_period_total_sales_period_end": metric_end.isoformat(),
+                "promo_sales_ratio_pct": round(promo_ratio_pct, 2),
+                "top_campaigns": top_campaigns,
+                "product_mix_available": False,
+                "product_mix": [],
+                "product_mix_unavailable_reason": "현재 연결된 행사 자료만으로는 제품군별 판매 믹스를 분리하기 어렵습니다.",
+                "previous_comparison_available": previous_comparison_available,
+                "previous_promotion": previous_promotion,
+                "previous_promo_count": len({_campaign_key(row) for row in prev_rows}) if prev_rows else 0,
+                "previous_promo_sales": round(prev_sales, 2),
+                "previous_promo_bill_cnt": prev_bills,
+                "previous_promo_ratio_pct": round(prev_ratio_pct, 2),
+                "previous_comparison_unavailable_reason": ""
+                if previous_comparison_available
+                else "이전 행사와 직접 비교할 수 있는 연결 자료가 부족합니다.",
+                "sales_diff": round(sales_diff, 2),
+                "sales_diff_pct": round(sales_diff_pct, 1) if sales_diff_pct is not None else None,
+                "bills_diff": bills_diff,
+                "bills_diff_pct": round(bills_diff_pct, 1) if bills_diff_pct is not None else None,
+                "promo_sales_ratio_diff_pctp": round(ratio_diff, 2),
+            }
+        except Exception:
+            logger.exception("Failed to fetch gold promo performance for store_id=%s", store_id)
+            return _empty_promo_summary()
+    return _empty_promo_summary()
+
+
+def _empty_promo_summary() -> dict[str, Any]:
+    return {
+        "query_promotion_type": "프로모션",
+        "campaign_id": None,
+        "campaign_name": "",
+        "campaign_names": [],
+        "campaign_period_label": "",
+        "promo_count": 0,
+        "promo_sales": 0,
+        "promo_bill_cnt": 0,
+        "participation_count": 0,
+        "min_date": None,
+        "max_date": None,
+        "period_start": None,
+        "period_end": None,
+        "raw_campaign_start": None,
+        "raw_campaign_end": None,
+        "candidate_search_start": None,
+        "candidate_search_end": None,
+        "metric_cutoff_date": None,
+        "future_data_included": False,
+        "same_period_total_sales": 0,
+        "same_period_total_sales_source": "",
+        "same_period_total_sales_period_start": None,
+        "same_period_total_sales_period_end": None,
+        "promo_sales_ratio_pct": 0,
+        "top_campaigns": [],
+        "product_mix_available": False,
+        "product_mix": [],
+        "product_mix_unavailable_reason": "현재 연결된 행사 자료만으로는 제품군별 판매 믹스를 분리하기 어렵습니다.",
+        "previous_comparison_available": False,
+        "previous_promotion": None,
+        "previous_promo_count": 0,
+        "previous_promo_sales": 0,
+        "previous_promo_bill_cnt": 0,
+        "previous_promo_ratio_pct": 0,
+        "previous_comparison_unavailable_reason": "이전 행사와 직접 비교할 수 있는 연결 자료가 부족합니다.",
+        "sales_diff": 0,
+        "sales_diff_pct": None,
+        "bills_diff": 0,
+        "bills_diff_pct": None,
+        "promo_sales_ratio_diff_pctp": 0,
+    }
+
+
 async def get_payment_method_mix(
     db,
     store_id: str,
@@ -2471,12 +2903,22 @@ async def get_payment_method_mix(
                 db,
                 f"""
                 SELECT max(biz_date) AS biz_date
-                FROM {GOLD_SCHEMA}.new_payment_mix_day_gold
+                FROM {GOLD_SCHEMA}.new_campaign_day_gold
+                WHERE store_id = :store_id
+                """,
+                {"store_id": str(store_id)},
+            )
+            kpi_latest_row = await _fetch_gold_one(
+                db,
+                f"""
+                SELECT max(biz_date) AS biz_date
+                FROM {GOLD_SCHEMA}.new_kpi_store_day_gold
                 WHERE store_id = :store_id
                 """,
                 {"store_id": str(store_id)},
             )
             resolved_end = end_date or (latest_row.get("biz_date") if latest_row else None)
+            kpi_end = kpi_latest_row.get("biz_date") if kpi_latest_row else resolved_end
             if resolved_end is None:
                 return {
                     "period": {"start": None, "end": None},
@@ -4278,3 +4720,472 @@ async def insert_ai_insight(
     except Exception:
         logger.exception("Failed to insert ai insight for store_id=%s", store_id)
         return 0
+
+
+async def get_delivery_comparison(
+    db,
+    store_id: str,
+    period1_start: date,
+    period1_end: date,
+    period2_start: date,
+    period2_end: date,
+) -> dict[str, Any]:
+    """Compare delivery order counts and sales between two periods.
+
+    Uses dunkin_mart_copy.gold__sales_channel_day view.
+    Delivery is identified by channel_div = '온라인-배달'.
+    """
+    try:
+        if _is_async_session(db):
+            # Period summary: total sales, delivery sales, delivery orders, delivery ratio
+            rows = await _fetch_gold_all(
+                db,
+                f"""
+                SELECT
+                    period_label,
+                    SUM(sales_amt) AS total_sales,
+                    SUM(CASE WHEN channel_div = '온라인-배달' THEN sales_amt ELSE 0 END) AS delivery_sales,
+                    SUM(CASE WHEN channel_div = '온라인-배달' THEN ord_cnt ELSE 0 END) AS delivery_orders,
+                    SUM(ord_cnt) AS total_orders
+                FROM (
+                    SELECT
+                        biz_date,
+                        channel_div,
+                        channel_name,
+                        sales_amt,
+                        ord_cnt,
+                        CASE
+                            WHEN biz_date BETWEEN :period1_start AND :period1_end THEN 'period1'
+                            WHEN biz_date BETWEEN :period2_start AND :period2_end THEN 'period2'
+                        END AS period_label
+                    FROM {GOLD_SCHEMA}.gold__sales_channel_day
+                    WHERE store_id = :store_id
+                      AND (
+                        biz_date BETWEEN :period1_start AND :period1_end
+                        OR biz_date BETWEEN :period2_start AND :period2_end
+                      )
+                ) sub
+                WHERE period_label IS NOT NULL
+                GROUP BY period_label
+                """,
+                {
+                    "store_id": str(store_id),
+                    "period1_start": period1_start,
+                    "period1_end": period1_end,
+                    "period2_start": period2_start,
+                    "period2_end": period2_end,
+                },
+            )
+            # Channel-level breakdown for delivery channels
+            channel_rows = await _fetch_gold_all(
+                db,
+                f"""
+                SELECT
+                    period_label,
+                    channel_name,
+                    SUM(sales_amt) AS sales_amt,
+                    SUM(ord_cnt) AS ord_cnt
+                FROM (
+                    SELECT
+                        biz_date,
+                        channel_name,
+                        sales_amt,
+                        ord_cnt,
+                        CASE
+                            WHEN biz_date BETWEEN :period1_start AND :period1_end THEN 'period1'
+                            WHEN biz_date BETWEEN :period2_start AND :period2_end THEN 'period2'
+                        END AS period_label
+                    FROM {GOLD_SCHEMA}.gold__sales_channel_day
+                    WHERE store_id = :store_id
+                      AND channel_div = '온라인-배달'
+                      AND (
+                        biz_date BETWEEN :period1_start AND :period1_end
+                        OR biz_date BETWEEN :period2_start AND :period2_end
+                      )
+                ) sub
+                WHERE period_label IS NOT NULL
+                GROUP BY period_label, channel_name
+                ORDER BY period_label, sales_amt DESC
+                """,
+                {
+                    "store_id": str(store_id),
+                    "period1_start": period1_start,
+                    "period1_end": period1_end,
+                    "period2_start": period2_start,
+                    "period2_end": period2_end,
+                },
+            )
+
+            summary_map = {
+                str(r.get("period_label")): {
+                    "total_sales": round(_number(r.get("total_sales")), 2),
+                    "delivery_sales": round(_number(r.get("delivery_sales")), 2),
+                    "delivery_orders": int(_number(r.get("delivery_orders"))),
+                    "total_orders": int(_number(r.get("total_orders"))),
+                }
+                for r in rows
+            }
+
+            p1 = summary_map.get("period1", {})
+            p2 = summary_map.get("period2", {})
+
+            p1_total_sales = p1.get("total_sales", 0) or 0
+            p2_total_sales = p2.get("total_sales", 0) or 0
+            p1_del_sales = p1.get("delivery_sales", 0) or 0
+            p2_del_sales = p2.get("delivery_sales", 0) or 0
+            p1_del_orders = p1.get("delivery_orders", 0) or 0
+            p2_del_orders = p2.get("delivery_orders", 0) or 0
+
+            # Compute delivery sales ratio
+            p1_del_ratio = round(p1_del_sales / p1_total_sales * 100, 1) if p1_total_sales > 0 else None
+            p2_del_ratio = round(p2_del_sales / p2_total_sales * 100, 1) if p2_total_sales > 0 else None
+
+            # Order count change
+            order_change = p2_del_orders - p1_del_orders
+            order_change_pct = _safe_pct_change(p2_del_orders, p1_del_orders)
+
+            # Channel breakdown per period
+            def _group_channels(period_key: str) -> list[dict]:
+                chs = []
+                for r in channel_rows:
+                    if str(r.get("period_label")) == period_key:
+                        chs.append({
+                            "channel_name": str(r.get("channel_name", "")),
+                            "ord_cnt": int(_number(r.get("ord_cnt"))),
+                            "sales_amt": round(_number(r.get("sales_amt")), 2),
+                        })
+                return chs
+
+            # Check if delivery data actually exists
+            has_delivery_data = bool(channel_rows)
+            total_delivery_orders = p1_del_orders + p2_del_orders
+
+            return {
+                "has_delivery_data": has_delivery_data,
+                "total_delivery_orders": total_delivery_orders,
+                "period1": {
+                    "start": str(period1_start),
+                    "end": str(period1_end),
+                    "total_sales": p1_total_sales,
+                    "delivery_sales": p1_del_sales,
+                    "delivery_orders": p1_del_orders,
+                    "delivery_ratio_pct": p1_del_ratio,
+                    "delivery_channels": _group_channels("period1"),
+                },
+                "period2": {
+                    "start": str(period2_start),
+                    "end": str(period2_end),
+                    "total_sales": p2_total_sales,
+                    "delivery_sales": p2_del_sales,
+                    "delivery_orders": p2_del_orders,
+                    "delivery_ratio_pct": p2_del_ratio,
+                    "delivery_channels": _group_channels("period2"),
+                },
+                "order_change": order_change,
+                "order_change_pct": order_change_pct,
+                "ratio_change": (p2_del_ratio - p1_del_ratio) if (p1_del_ratio is not None and p2_del_ratio is not None) else None,
+            }
+    except Exception as exc:
+        logger.exception("get_delivery_comparison failed for store_id=%s", store_id)
+        return {
+            "has_delivery_data": False,
+            "total_delivery_orders": 0,
+            "error": str(exc),
+            "period1": {},
+            "period2": {},
+        }
+
+
+def _build_product_where(product_name: str) -> tuple[str, dict[str, Any]]:
+    """Build WHERE clause for product name matching. Returns (where_clause, params)."""
+    if not product_name:
+        return "1=1", {}
+    pn = str(product_name).strip()
+    if len(pn) < 2:
+        return "1=1", {}
+    return "product_name ILIKE :product_wild", {"product_wild": f"%{pn}%"}
+
+
+async def get_product_sales_comparison(
+    db,
+    store_id: str,
+    demo_date: str | date,
+    product_name: str = "",
+    **kwargs,
+) -> dict[str, Any]:
+    """상품(상품명 기반) 전월 대비 매출·수량 비교 (new_product_sales_day_gold)."""
+    try:
+        dd = date.fromisoformat(str(demo_date).split("T")[0])
+        # Use explicit period dates from kwargs when provided (supports day/week/month/year)
+        if kwargs.get("p1_start") and kwargs.get("p1_end") and kwargs.get("p2_start") and kwargs.get("p2_end"):
+            p1_start = date.fromisoformat(str(kwargs["p1_start"]).split("T")[0])
+            p1_end = date.fromisoformat(str(kwargs["p1_end"]).split("T")[0])
+            p2_start = date.fromisoformat(str(kwargs["p2_start"]).split("T")[0])
+            p2_end = date.fromisoformat(str(kwargs["p2_end"]).split("T")[0])
+        else:
+            # Default: month comparison
+            recent_start, recent_end = dd.replace(day=1), dd
+            prev_month = dd.month - 1 if dd.month > 1 else 12
+            prev_year = dd.year - 1 if dd.month == 1 else dd.year
+            prev_1st = date(prev_year, prev_month, 1)
+            import calendar
+            max_day = calendar.monthrange(prev_year, prev_month)[1]
+            compare_end = date(prev_year, prev_month, min(dd.day, max_day))
+            p1_start, p1_end = prev_1st, compare_end
+            p2_start, p2_end = recent_start, recent_end
+        p1_days = max(1, (p1_end - p1_start).days + 1)
+        p2_days = max(1, (p2_end - p2_start).days + 1)
+        prod_where, extra_params = _build_product_where(product_name)
+        if _is_async_session(db):
+            async def _agg(period_start, period_end, where_clause):
+                params = {"sid": store_id, "s": period_start, "e": period_end}
+                params.update(extra_params)
+                row = await _fetch_gold_one(
+                    db,
+                    f"""SELECT
+                        COALESCE(SUM(sold_qty),0)::int AS prod_qty,
+                        COALESCE(SUM(sale_amt),0)::numeric AS prod_sales,
+                        (SELECT COALESCE(SUM(sale_amt),0)::numeric
+                         FROM dunkin_mart_copy.new_product_sales_day_gold
+                         WHERE store_id=:sid AND biz_date BETWEEN :s AND :e) AS total_sales
+                     FROM dunkin_mart_copy.new_product_sales_day_gold
+                     WHERE store_id=:sid
+                       AND biz_date BETWEEN :s AND :e
+                       AND {where_clause}
+                     """,
+                    params,
+                )
+                return dict(row)
+
+            async def _rank(period_start, period_end, where_clause):
+                params = {"sid": store_id, "s": period_start, "e": period_end}
+                params.update(extra_params)
+                rows = await _fetch_gold_all(
+                    db,
+                    f"""SELECT product_name, SUM(sale_amt)::numeric AS sale_amt
+                        FROM dunkin_mart_copy.new_product_sales_day_gold
+                        WHERE store_id=:sid AND biz_date BETWEEN :s AND :e
+                        AND {where_clause}
+                        GROUP BY product_name ORDER BY sale_amt DESC LIMIT 3
+                    """,
+                    params,
+                )
+                return [dict(r) for r in rows]
+
+            async def _overall_rank(period_start, period_end):
+                rows = await _fetch_gold_all(
+                    db,
+                    """SELECT product_name, SUM(sale_amt)::numeric AS s
+                        FROM dunkin_mart_copy.new_product_sales_day_gold
+                        WHERE store_id=:sid AND biz_date BETWEEN :s AND :e
+                        GROUP BY product_name ORDER BY s DESC
+                    """,
+                    {"sid": store_id, "s": period_start, "e": period_end},
+                )
+                ranked = [dict(r) for r in rows]
+                matched = [
+                    r["product_name"] for r in ranked
+                    if product_name and product_name in r["product_name"]
+                ]
+                return {
+                    "items": ranked[:10],
+                    "matched_names": matched,
+                    "total_items": len(ranked),
+                }
+
+            async def _peer_avg(period_start, period_end, where_clause):
+                params = {"s": period_start, "e": period_end}
+                params.update(extra_params)
+                row = await _fetch_gold_one(
+                    db,
+                    f"""SELECT AVG(sub.gl_qty)::numeric AS avg_qty,
+                               AVG(sub.gl_sales)::numeric AS avg_sales,
+                               COUNT(*)::int AS peer_cnt
+                      FROM (
+                         SELECT store_id,
+                                SUM(sold_qty)::int AS gl_qty,
+                                SUM(sale_amt)::numeric AS gl_sales
+                         FROM dunkin_mart_copy.new_product_sales_day_gold
+                         WHERE biz_date BETWEEN :s AND :e AND {where_clause}
+                         GROUP BY store_id HAVING SUM(sold_qty) > 0
+                      ) sub
+                     """,
+                    params,
+                )
+                return dict(row) if row else {"avg_qty": None, "avg_sales": None, "peer_cnt": 0}
+
+            p1_a = await _agg(p1_start, p1_end, prod_where)
+            p2_a = await _agg(p2_start, p2_end, prod_where)
+            p1_top = await _rank(p1_start, p1_end, prod_where)
+            p2_top = await _rank(p2_start, p2_end, prod_where)
+            p1_rk = await _overall_rank(p1_start, p1_end)
+            p2_rk = await _overall_rank(p2_start, p2_end)
+            p1_peer = await _peer_avg(p1_start, p1_end, prod_where)
+            p2_peer = await _peer_avg(p2_start, p2_end, prod_where)
+        else:
+            raise RuntimeError("File-backed mode not supported for product comparison.")
+        p1g = p1_a.get("prod_qty", 0) or 0
+        p2g = p2_a.get("prod_qty", 0) or 0
+        p1gm = float(p1_a.get("prod_sales", 0) or 0)
+        p2gm = float(p2_a.get("prod_sales", 0) or 0)
+        p1ts = float(p1_a.get("total_sales", 0) or 0)
+        p2ts = float(p2_a.get("total_sales", 0) or 0)
+        p1_ratio = (round(p1gm / p1ts * 100, 1) if p1ts > 0 else 0)
+        p2_ratio = (round(p2gm / p2ts * 100, 1) if p2ts > 0 else 0)
+        qty_chg = p2g - p1g
+        qty_chg_pct = (round(qty_chg / p1g * 100, 1) if p1g > 0 else None)
+        sales_chg = p2gm - p1gm
+        sales_chg_pct = (round(sales_chg / p1gm * 100, 1) if p1gm > 0 else None)
+        p1_avg_rank = None
+        p2_avg_rank = None
+        p1_matched_ranks = [i + 1 for i, it in enumerate(p1_rk.get("items", []))
+                            if it.get("product_name") in p1_rk.get("matched_names", [])]
+        p2_matched_ranks = [i + 1 for i, it in enumerate(p2_rk.get("items", []))
+                            if it.get("product_name") in p2_rk.get("matched_names", [])]
+        if p1_matched_ranks:
+            p1_avg_rank = round(sum(p1_matched_ranks) / len(p1_matched_ranks))
+        if p2_matched_ranks:
+            p2_avg_rank = round(sum(p2_matched_ranks) / len(p2_matched_ranks))
+        p1_peer_avg_qty = float(p1_peer.get("avg_qty", 0) or 0)
+        p2_peer_avg_qty = float(p2_peer.get("avg_qty", 0) or 0)
+        p1_peer_cnt = p1_peer.get("peer_cnt", 0)
+        p2_peer_cnt = p2_peer.get("peer_cnt", 0)
+        return {
+            "has_data": p1g > 0 or p2g > 0,
+            "period_type": kwargs.get("period_type", "month"),
+            "product_name": product_name or "",
+            "matched_products": list({it.get("product_name") for it in p1_top + p2_top if it.get("product_name")}),
+            "period1": {
+                "start": str(p1_start),
+                "end": str(p1_end),
+                "days": p1_days,
+                "qty": p1g,
+                "sales": p1gm,
+                "total_sales": p1ts,
+                "ratio_pct": p1_ratio,
+                "top_products": p1_top,
+                "avg_rank": p1_avg_rank,
+                "rank_total_items": len(p1_rk.get("items", [])),
+                "peer_avg_qty": p1_peer_avg_qty,
+                "peer_cnt": p1_peer_cnt,
+            },
+            "period2": {
+                "start": str(p2_start),
+                "end": str(p2_end),
+                "days": p2_days,
+                "qty": p2g,
+                "sales": p2gm,
+                "total_sales": p2ts,
+                "ratio_pct": p2_ratio,
+                "top_products": p2_top,
+                "avg_rank": p2_avg_rank,
+                "rank_total_items": len(p2_rk.get("items", [])),
+                "peer_avg_qty": p2_peer_avg_qty,
+                "peer_cnt": p2_peer_cnt,
+            },
+            "qty_change": qty_chg,
+            "qty_change_pct": qty_chg_pct,
+            "sales_change": sales_chg,
+            "sales_change_pct": sales_chg_pct,
+            "ratio_change": round((p2_ratio - p1_ratio), 1) if (p1_ratio and p2_ratio) else None,
+        }
+    except Exception as exc:
+        logger.exception("get_product_sales_comparison failed for store_id=%s prod=%s", store_id, product_name)
+        return {
+            "has_data": False,
+            "period_type": kwargs.get("period_type", "month"),
+            "error": str(exc),
+            "product_name": product_name or "",
+            "matched_products": [],
+            "period1": {},
+            "period2": {},
+        }
+
+
+async def get_delivery_channel_revenue(
+    db,
+    store_id: str,
+    period_start: date,
+    period_end: date,
+) -> dict:
+    """Single-period delivery channel revenue breakdown.
+
+    Uses dunkin_mart_copy.gold__sales_channel_day.
+    Delivery identified by channel_div = '온라인-배달' or ILIKE '%배달%'.
+    """
+    try:
+        # Total delivery stats for the period
+        total_sql = f"""
+            SELECT
+                SUM(CASE WHEN channel_div ILIKE '%배달%' THEN sales_amt ELSE 0 END) AS delivery_total_sales,
+                SUM(CASE WHEN channel_div ILIKE '%배달%' THEN ord_cnt ELSE 0 END) AS delivery_total_orders,
+                SUM(sales_amt) AS grand_total_sales
+            FROM {GOLD_SCHEMA}.gold__sales_channel_day
+            WHERE store_id = :store_id
+              AND biz_date BETWEEN :period_start AND :period_end
+        """
+
+        total_rows = await _fetch_gold_all(db, total_sql, {
+            "store_id": str(store_id),
+            "period_start": period_start,
+            "period_end": period_end,
+        })
+        if not total_rows:
+            return {
+                "has_data": False,
+                "error": "No sales channel data for the given period",
+            }
+        total_row = total_rows[0]
+
+        # Per-channel breakdown
+        channel_sql = f"""
+            SELECT
+                channel_name,
+                SUM(sales_amt) AS sales,
+                SUM(ord_cnt) AS orders
+            FROM {GOLD_SCHEMA}.gold__sales_channel_day
+            WHERE store_id = :store_id
+              AND biz_date BETWEEN :period_start AND :period_end
+              AND channel_div ILIKE '%배달%'
+            GROUP BY channel_name
+            ORDER BY sales DESC
+        """
+
+        channel_rows = await _fetch_gold_all(db, channel_sql, {
+            "store_id": str(store_id),
+            "period_start": period_start,
+            "period_end": period_end,
+        })
+        channels = []
+        delivery_total = _number(total_row.get("delivery_total_sales")) or 0
+        for row in channel_rows:
+            ch_sales = _number(row.get("sales")) or 0
+            ch_orders = int(_number(row.get("orders"))) or 0
+            share = round(ch_sales / delivery_total * 100, 1) if delivery_total > 0 else 0
+            channels.append({
+                "channel_name": str(row.get("channel_name", "")),
+                "sales": ch_sales,
+                "orders": ch_orders,
+                "sales_share_pct": share,
+            })
+
+        delivery_total_sales = _number(total_row.get("delivery_total_sales")) or 0
+        delivery_total_orders = int(_number(total_row.get("delivery_total_orders"))) or 0
+        grand_total = _number(total_row.get("grand_total_sales")) or 0
+        delivery_share_of_total = round(delivery_total_sales / grand_total * 100, 1) if grand_total > 0 else 0
+
+        return {
+            "has_data": len(channels) > 0,
+            "period_start": str(period_start),
+            "period_end": str(period_end),
+            "delivery_total_sales": delivery_total_sales,
+            "delivery_total_orders": delivery_total_orders,
+            "delivery_share_of_total_pct": delivery_share_of_total,
+            "channels": channels,
+        }
+    except Exception as exc:
+        logger.exception("get_delivery_channel_revenue failed for store_id=%s", store_id)
+        return {
+            "has_data": False,
+            "error": str(exc),
+        }

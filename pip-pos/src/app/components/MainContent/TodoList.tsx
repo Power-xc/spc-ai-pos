@@ -845,6 +845,7 @@ export default function TodoList({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
           {/* ── 생산 관리 배너 ── */}
           {(() => {
             const s = snapshot?.summary;
+            const lossValue = inventoryChanceLoss > 0 ? inventoryChanceLoss : (summary?.totalEstimatedLoss ?? 0);
             if (s && getDemoTime()) {
               return (
                 <div className="bg-[#1d1d1d] border border-[#ebebeb] rounded-[20px] px-[20px] py-[15px] flex flex-col gap-[10px]">
@@ -863,9 +864,9 @@ export default function TodoList({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
                       </p>
                     </div>
                   </div>
-                  {inventoryChanceLoss != null && inventoryChanceLoss > 0 && (
+                  {lossValue > 0 && (
                     <p className="text-[9px] text-white opacity-80 leading-[21px] whitespace-nowrap">
-                      미대응 손실 ₩{inventoryChanceLoss.toLocaleString()} · 전체 판매 제품 기반
+                      금일 AI 예상 기회손실 ₩{Math.round(lossValue).toLocaleString()} · 리드타임 1시간 기준
                     </p>
                   )}
                 </div>
@@ -891,12 +892,12 @@ export default function TodoList({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
                       )}
                     </div>
                   </div>
-                  {summary.totalEstimatedLoss > 0 && (
+                  {lossValue > 0 && (
                     <p className="text-[9px] text-white opacity-80 leading-[21px] whitespace-nowrap">
-                      미대응 손실 ₩{Math.round(summary.totalEstimatedLoss).toLocaleString()} · 품절 위험 구간 기준
+                      금일 AI 예상 기회손실 ₩{Math.round(lossValue).toLocaleString()} · 리드타임 1시간 기준
                     </p>
                   )}
-            </div>
+                </div>
               );
             }
             return null;
@@ -914,11 +915,11 @@ export default function TodoList({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
                     </p>
                 </div>
                 <div className="flex ml-auto">
-                  <p className="text-[10px] text-[#555] leading-[20px] mr-2">
-                    {snapshot?.summary
-                      ? <p>전체 판매 제품 <span className="font-bold text-[#3aaedd]">{snapshot.summary.total_count}개</span></p>
-                      : "오늘 생산 배치 현황"}
-                  </p>
+	                  <p className="text-[10px] text-[#555] leading-[20px] mr-2">
+	                    {snapshot?.summary
+	                      ? <span>전체 판매 제품 <span className="font-bold text-[#3aaedd]">{snapshot.summary.total_count}개</span></span>
+	                      : "오늘 생산 배치 현황"}
+	                  </p>
                   {productionPhase ? (
                     <p className="text-[8px] text-[#3aaedd] font-bold leading-[20px]">
                       {getDemoTime()} 기준 · {productionPhase}
@@ -997,7 +998,7 @@ export default function TodoList({ isAiPanelOpen, isSidebarOpen }: MenuProps) {
                   <button
                     onClick={() => setShowBatchModal(true)}
                     disabled={muteState.muted}
-                    className="px-[12px] py-[4px] rounded-[20px] cursor-pointer transition-opacity shrink-0 disabled:opacity-40"
+                    className="h-[22px] px-[10px] rounded-[10px] flex items-center cursor-pointer transition-opacity shrink-0 disabled:opacity-40"
                     style={{ background: muteState.muted ? "#d0d0d0" : GRADIENT }}
                   >
                     <p className="font-bold text-[10px] text-white leading-[14px]">
