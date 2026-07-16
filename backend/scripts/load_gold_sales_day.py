@@ -4,7 +4,7 @@ Load Gold sales data from pickle cache into PostgreSQL
 
 Usage:
     python scripts/load_gold_sales_day.py --source <path>
-    python scripts/load_gold_sales_day.py --source /app/data/seed_data/.cache/local_data_store.pkl
+    python scripts/load_gold_sales_day.py --source ./data/seed_data/.cache/local_data_store.pkl
 """
 
 import argparse
@@ -16,13 +16,9 @@ from pathlib import Path
 import pandas as pd
 import asyncpg
 
-DB_CONFIG = {
-    "host": "127.0.0.1",
-    "port": 5433,
-    "database": "foxpos",
-    "user": "app_user",
-    "password": "app_password",
-}
+from _db import db_config
+
+DB_CONFIG = db_config()
 
 GOLD_SCHEMA = "dunkin_mart_copy"
 

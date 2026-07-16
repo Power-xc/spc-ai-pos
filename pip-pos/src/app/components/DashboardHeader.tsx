@@ -2,22 +2,6 @@ import { useState } from "react";
 import img3 from "../../assets/reset.svg";
 import logo from "../../assets/ico-pos.svg";
 
-function getMockupShellUrl() {
-  if (typeof window === "undefined") {
-    return "http://221.139.49.60:5173/mockup/pos-shell.html?from=fox0414&return_to=http%3A%2F%2F221.139.49.60%3A5173%2F0420%2F0414%2Falerts";
-  }
-
-  const protocol = window.location.protocol || "http:";
-  const hostname = window.location.hostname || "221.139.49.60";
-  const baseUrl = `${protocol}//${hostname}:5173/mockup/pos-shell.html`;
-  const returnTo = `${protocol}//${hostname}:5173/0420/0414/alerts`;
-  const params = new URLSearchParams({
-    from: "fox0414",
-    return_to: returnTo,
-  });
-  return `${baseUrl}?${params.toString()}`;
-}
-
 interface DashboardHeaderProps {
   isAiPanelOpen: boolean;
   setIsAiPanelOpen: (isOpen: boolean) => void;
@@ -40,10 +24,6 @@ export default function DashboardHeader({
   isRefreshing,
 }: DashboardHeaderProps) {
   const [showReportModal, setShowReportModal] = useState(false);
-
-  const handleOpenMockupShell = () => {
-    window.location.href = getMockupShellUrl();
-  };
 
   const handlePdfExport = async () => {
     const { jsPDF } = await import("jspdf");
@@ -125,13 +105,6 @@ export default function DashboardHeader({
         style={{ left: `${topBtnsLeft}px ` }}
       >
         <div className="content-stretch flex gap-[10px] items-center relative shrink-0">
-          <button
-            onClick={handleOpenMockupShell}
-            className="text-[12px] font-normal border-[1px] border-[#3BB1E1] rounded-[20px] px-[10px] py-[4px] cursor-pointer text-[#3AAFDE] hover:bg-[#3BB1E1] hover:text-white"
-            title="HQ POS mockup shell로 이동"
-          >
-            HQ POS <span className="ml-1">{">"}</span>
-          </button>
           <button
             onClick={handleRefresh}
             className="bg-[#f0f1f3] content-stretch flex gap-[8px] items-center justify-center px-[14px] py-[8px] relative rounded-[20px] shrink-0 cursor-pointer transition-opacity"

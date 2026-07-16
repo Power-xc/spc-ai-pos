@@ -1,17 +1,11 @@
 [tool.poetry]
-name = "dunkin-ai-agent-backend"
+name = "foxpos-backend"
 version = "0.1.0"
-description = "Backend service for the Dunkin AI Agent POC"
-authors = ["OpenAI Codex <codex@openai.com>"]
+description = "FoxPOS backend service — BR Korea POS AI assistant PoC"
+authors = ["Power-xc"]
 readme = "README.md"
 packages = [
     { include = "app" },
-    { include = "api" },
-    { include = "agents" },
-    { include = "core" },
-    { include = "proactive" },
-    { include = "prompts" },
-    { include = "security" },
     { include = "tools" },
 ]
 

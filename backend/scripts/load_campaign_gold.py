@@ -9,13 +9,9 @@ so we create an empty table so the SQL path won't crash on missing relation.
 import asyncio
 import asyncpg
 
-DB_CONFIG = {
-    "host": "127.0.0.1",
-    "port": 5433,
-    "database": "foxpos",
-    "user": "app_user",
-    "password": "app_password",
-}
+from _db import db_config
+
+DB_CONFIG = db_config()
 
 GOLD_SCHEMA = "dunkin_mart_copy"
 

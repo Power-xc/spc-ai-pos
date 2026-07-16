@@ -8,16 +8,12 @@ from datetime import date as date_type, datetime, timezone
 import pandas as pd
 import asyncpg
 
-DB_CONFIG = {
-    "host": "127.0.0.1",
-    "port": 5433,
-    "database": "foxpos",
-    "user": "app_user",
-    "password": "app_password",
-}
+from _db import db_config
+
+DB_CONFIG = db_config()
 
 GOLD_SCHEMA = "dunkin_mart_copy"
-PICKLE_PATH = "/data/sapie/tax/BR-POS-App-UX-PoC/data/.cache/local_data_store.pkl"
+from _db import SEED_PICKLE as PICKLE_PATH
 
 
 def _to_date(v):

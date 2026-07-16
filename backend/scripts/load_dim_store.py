@@ -6,17 +6,13 @@ import pickle
 
 import asyncpg
 
-DB_CONFIG = {
-    "host": "127.0.0.1",
-    "port": 5433,
-    "database": "foxpos",
-    "user": "app_user",
-    "password": "app_password",
-}
+from _db import db_config, SEED_PICKLE
+
+DB_CONFIG = db_config()
 GOLD = "dunkin_mart_copy"
 
 async def main():
-    with open("/app/data/seed_data/.cache/local_data_store.pkl", "rb") as f:
+    with open(SEED_PICKLE, "rb") as f:
         data = pickle.load(f)
 
     ds = data["dim_store"]

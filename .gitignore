@@ -49,3 +49,7 @@ logs/
 *.orig
 .playwright-mcp/
 pip-pos/test-results/
+
+# Editor / tool caches
+.vite/
+.claude/

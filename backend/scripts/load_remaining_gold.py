@@ -5,7 +5,7 @@ Create and populate remaining Gold tables:
   - new_inventory_risk_day_gold (from fact_inventory_day)
   - new_campaign_day_gold (empty placeholder)
 
-DB: 127.0.0.1:5433/foxpos, user=app_user, password=app_password
+DB connection + seed-data paths come from the environment (see scripts/_db.py).
 """
 
 import asyncio
@@ -15,13 +15,9 @@ import sys
 import pandas as pd
 import asyncpg
 
-DB_CONFIG = {
-    "host": "127.0.0.1",
-    "port": 5433,
-    "database": "foxpos",
-    "user": "app_user",
-    "password": "app_password",
-}
+from _db import db_config, SEED_PICKLE
+
+DB_CONFIG = db_config()
 
 GOLD_SCHEMA = "dunkin_mart_copy"
 
@@ -229,7 +225,7 @@ async def verify(conn):
 
 
 async def main():
-    source = "/app/data/seed_data/.cache/local_data_store.pkl"
+    source = SEED_PICKLE
     print(f"Loading pickle from {source}...")
     data = load_pickle(source)
     fact_inv = data.get("fact_inventory_day")

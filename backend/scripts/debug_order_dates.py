@@ -1,8 +1,11 @@
 import asyncio, asyncpg
 from datetime import date, timedelta
 
+from _db import db_config
+
+
 async def main():
-    conn = await asyncpg.connect(host='127.0.0.1', port=5433, database='foxpos', user='app_user', password='app_password')
+    conn = await asyncpg.connect(**db_config())
 
     today = date.today()
     ref_end = today

@@ -18,12 +18,6 @@ COPY pyproject.toml README.md alembic.ini ./
 RUN poetry install --with dev --no-root
 
 COPY app ./app
-COPY agents ./agents
-COPY api ./api
-COPY core ./core
-COPY proactive ./proactive
-COPY prompts ./prompts
-COPY security ./security
 COPY tools ./tools
 COPY config ./config
 COPY alembic ./alembic

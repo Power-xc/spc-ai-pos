@@ -1,5 +1,5 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "pip-pos",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -78,12 +78,5 @@
     "tailwindcss": "4.1.12",
     "typescript": "^6.0.2",
     "vite": "6.3.5"
-  },
-  "pnpm": {
-    "overrides": {
-      "vite": "6.3.5",
-      "@types/react": "18.3.12",
-      "@types/react-dom": "18.3.5"
-    }
   }
 }

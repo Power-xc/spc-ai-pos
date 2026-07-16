@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: foxpos
       POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: app_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy from .env.example)}
     ports:
       - "5433:5432"
     volumes:
@@ -22,47 +22,23 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: foxpos-backend
-    working_dir: /app
-    network_mode: host
-    command: >
-      sh -c "alembic upgrade head &&
-             poetry run uvicorn app.main:app --host 0.0.0.0 --port 8100 --reload"
+    # DATABASE_URL is set here (using POSTGRES_PASSWORD from .env) so the
+    # credential lives in exactly one place; other settings come from env_file.
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app_user:${POSTGRES_PASSWORD}@postgres:5432/foxpos
     env_file:
       - ./infra/env/backend.env
+    ports:
+      - "8100:8100"
     volumes:
-      - /data/sapie/tax/foxpos-workspace/foxpos-poc-clean/backend:/app
-      - /data/sapie/tax/foxpos-workspace/foxpos-poc-clean/data:/app/data
-      - /data/sapie/tax/foxpos-workspace/foxpos-poc-clean/dd_img:/app/dd_img
-      - /data/sapie/tax/BR-POS-App-UX-PoC/data:/app/data/seed_data
+      - ./data:/app/data
+      - ./dd_img:/app/dd_img
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8100/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-      start_period: 15s
 
-  frontend:
-    build:
-      context: ./apps/frontend
-      dockerfile: Dockerfile
-    container_name: foxpos-frontend
-    working_dir: /frontend
-    network_mode: host
-    command: >
-      sh -c "if [ ! -d node_modules ] || [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then npm ci; fi &&
-             npm run dev -- --host 0.0.0.0 --port 5173"
-    env_file:
-      - ./infra/env/frontend.env
-    volumes:
-      - ./apps/frontend:/frontend
-      - frontend_node_modules:/frontend/node_modules
-    depends_on:
-      backend:
-        condition: service_healthy
-
+  # Optional Redis for the realtime SSE fan-out. Enable with:
+  #   docker compose --profile realtime up -d
   redis:
     image: redis:7-alpine
     container_name: foxpos-redis
@@ -79,5 +55,4 @@ services:
 
 volumes:
   postgres_data:
-  frontend_node_modules:
   redis_data:

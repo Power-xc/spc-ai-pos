@@ -1,6 +1,6 @@
 #!/bin/bash
-# FoxPOS PoC Development Startup Script
-# Usage: ./scripts/start-dev.sh [backend|pip-pos|mobile|hq-pos|all]
+# FoxPOS PoC — local development launcher
+# Usage: ./scripts/start-dev.sh [backend|pip-pos|mobile|all]
 
 set -e
 
@@ -19,7 +19,7 @@ start_backend() {
 }
 
 start_pip_pos() {
-    echo "Starting PIP POS on port 5181..."
+    echo "Starting PIP POS (desktop) on port 5181..."
     cd "$PROJECT_ROOT/pip-pos"
     if [ ! -d "node_modules" ]; then
         echo "Installing dependencies..."
@@ -42,18 +42,6 @@ start_mobile() {
     echo "Mobile PID: $MOBILE_PID"
 }
 
-start_hq_pos() {
-    echo "Starting HQ POS on port 5173..."
-    cd "$PROJECT_ROOT/hq-pos"
-    if [ ! -d "node_modules" ]; then
-        echo "Installing dependencies..."
-        npm install
-    fi
-    npx vite --host 0.0.0.0 --port 5173 &
-    HQ_PID=$!
-    echo "HQ POS PID: $HQ_PID"
-}
-
 case "${1:-all}" in
     backend)
         start_backend
@@ -64,24 +52,19 @@ case "${1:-all}" in
     mobile)
         start_mobile
         ;;
-    hq-pos)
-        start_hq_pos
-        ;;
     all)
         start_backend
         sleep 3
         start_pip_pos
         start_mobile
-        start_hq_pos
         echo ""
         echo "=== All services started ==="
         echo "Backend:    http://localhost:8100"
         echo "PIP POS:    http://localhost:5181"
-        echo "Mobile:     http://localhost:5186/"
-        echo "HQ POS:     http://localhost:5173/mockup/pos-shell.html"
+        echo "PIP Mobile: http://localhost:5186/index.mobile.html"
         ;;
     *)
-        echo "Usage: $0 [backend|pip-pos|mobile|hq-pos|all]"
+        echo "Usage: $0 [backend|pip-pos|mobile|all]"
         exit 1
         ;;
 esac

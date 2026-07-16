@@ -25,8 +25,6 @@ from app.routers import (
     analytics,
     chat,
     dashboard,
-    hq_ai,
-    hq_dashboard,
     modal,
     notifications,
     notification_settings,
@@ -193,8 +191,6 @@ app.include_router(promotions.router)
 app.include_router(sales.router)
 app.include_router(analytics.router)
 app.include_router(chat.router)
-app.include_router(hq_ai.router)
-app.include_router(hq_dashboard.router)
 app.include_router(notifications.router)
 app.include_router(notification_settings.router)
 app.include_router(support.router)
