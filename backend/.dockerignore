@@ -1,0 +1,17 @@
+.git
+.gitignore
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+.mypy_cache
+.ruff_cache
+docs
+tests
+logs
+_legacy
+app/db_legacy_root
+alembic_legacy_root
+migrations

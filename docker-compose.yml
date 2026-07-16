@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pipaipos-postgres
+    environment:
+      POSTGRES_DB: pipaipos
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy from .env.example)}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d pipaipos"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pipaipos-backend
+    # DATABASE_URL is set here (using POSTGRES_PASSWORD from .env) so the
+    # credential lives in exactly one place; other settings come from env_file.
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app_user:${POSTGRES_PASSWORD}@postgres:5432/pipaipos
+    env_file:
+      - ./infra/env/backend.env
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./data:/app/data
+      - ./dd_img:/app/dd_img
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Optional Redis for the realtime SSE fan-out. Enable with:
+  #   docker compose --profile realtime up -d redis
+  redis:
+    image: redis:7-alpine
+    container_name: pipaipos-redis
+    profiles: ["realtime"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:

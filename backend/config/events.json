@@ -1,0 +1,58 @@
+[
+  {
+    "name": "설",
+    "aliases": ["설날", "구정"],
+    "year": 2025,
+    "start_date": "2025-01-27",
+    "end_date": "2025-01-30"
+  },
+  {
+    "name": "설",
+    "aliases": ["설날", "구정"],
+    "year": 2026,
+    "start_date": "2026-02-16",
+    "end_date": "2026-02-18"
+  },
+  {
+    "name": "추석",
+    "aliases": ["한가위"],
+    "year": 2025,
+    "start_date": "2025-10-05",
+    "end_date": "2025-10-08"
+  },
+  {
+    "name": "추석",
+    "aliases": ["한가위"],
+    "year": 2026,
+    "start_date": "2026-09-24",
+    "end_date": "2026-09-27"
+  },
+  {
+    "name": "크리스마스",
+    "aliases": ["성탄절", "Christmas"],
+    "year": 2025,
+    "start_date": "2025-12-24",
+    "end_date": "2025-12-25"
+  },
+  {
+    "name": "크리스마스",
+    "aliases": ["성탄절", "Christmas"],
+    "year": 2026,
+    "start_date": "2026-12-24",
+    "end_date": "2026-12-25"
+  },
+  {
+    "name": "T데이",
+    "aliases": ["티데이"],
+    "year": 2025,
+    "start_date": "2025-04-08",
+    "end_date": "2025-04-10"
+  },
+  {
+    "name": "T데이",
+    "aliases": ["티데이"],
+    "year": 2026,
+    "start_date": "2026-04-08",
+    "end_date": "2026-04-10"
+  }
+]
