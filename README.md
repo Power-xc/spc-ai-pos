@@ -2,7 +2,7 @@
 
 > **점주용 지능형 POS AI 어시스턴트** — 실시간 매출 분석 · 생산 계획 추천 · 발주 추천 · 대화형 피드백 · v0.21.0
 
-**목차** — [소개](#소개) · [주요 기능](#주요-기능) · [아키텍처](#아키텍처) · [프로젝트 구조](#프로젝트-구조) · [로컬 실행](#로컬-실행) · [환경 변수](#환경-변수) · [PoC 안내](#poc-안내) · [개발진 및 협업 개발자](#개발진-및-협업-개발자) · [브랜드 · 라이선스](#브랜드-·-라이선스)
+**목차** — [소개](#소개) · [디자인 시스템 및 UX/UI 설계](#디자인-시스템-및-uxui-설계) · [주요 기능](#주요-기능) · [아키텍처](#아키텍처) · [프로젝트 구조](#프로젝트-구조) · [로컬 실행](#로컬-실행) · [환경 변수](#환경-변수) · [PoC 안내](#poc-안내) · [기여진 및 협업 개발자](#기여진-및-협업-개발자-contributors) · [브랜드 · 라이선스](#브랜드-·-라이선스)
 
 ---
 
@@ -20,14 +20,24 @@ Pip AI POS는 **BR코리아(던킨) 가맹점주**를 위한 AI 어시스턴트 
 | **현황 파악 지연** | 시간대별 매출 추이와 핵심 알림을 대조하기 어렵다 | 실시간 현황 대시보드와 대화형 AI 어시스턴트 패널 제공 |
 
 <p align="center">
-  <img src="docs/screenshots/pip-pos-dashboard.png" alt="PIP POS 데스크톱 대시보드" style="max-width: 100%; height: auto;"><br/>
+  <img src="docs/screenshots/pip-pos-dashboard.jpg" alt="PIP POS 데스크톱 대시보드" style="max-width: 100%; height: auto;"><br/>
   <em>PIP POS 데스크톱 — 종합 현황 대시보드와 PIP AI 패널</em>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/pip-mobile.png" alt="PIP Mobile" style="max-width: 100%; height: auto; width: 280px;"><br/>
+  <img src="docs/screenshots/pip-mobile.jpg" alt="PIP Mobile" style="max-width: 100%; height: auto; width: 280px;"><br/>
   <em>PIP Mobile — 점주 모바일 화면</em>
 </p>
+
+---
+
+## 디자인 시스템 및 UX/UI 설계
+
+본 프로젝트는 점주의 실시간 사용 편의성을 극대화하기 위해 다음과 같은 UX/UI 및 AI 어시스턴트 디자인 원칙을 적용하였습니다.
+
+- **역할 기반 색상 시스템 (Role-based Color System)**: 핵심 매출 성과 및 기회손실 추정치 등 시각적으로 즉각 인지해야 하는 데이터에 직관적인 강조 색상을 적용하고, 일반 작업 및 비강조 요소는 차분하게 배치하여 복잡한 매장 내 정보 인지 부하를 해소합니다.
+- **일관성 있는 컴포넌트 밀도 (Density Controls)**: 바쁜 오프라인 매장 환경에서도 오작동 없이 손쉽게 탭할 수 있는 넓은 터치 타겟과 시원한 간격을 보장하도록 설계되었습니다.
+- **지능형 AI 패널 인터페이스 (PIP AI Bot)**: POS 우측에 배치된 AI 어시스턴트 패널은 자연어 질의와 즉시 실행 가능한 제안 카드를 매끄럽게 결합하여 점주가 상황별 최적의 대응(생산 추가, 주문 확인 등)을 1클릭으로 수행할 수 있도록 돕습니다.
 
 ---
 
@@ -210,10 +220,12 @@ cd pip-mobile && npm install && npm run dev -- --host 0.0.0.0 --port 5186
 
 ---
 
-## 개발진 및 협업 개발자
+## 기여진 및 협업 개발자 (Contributors)
 
-- **Won-github** — 백엔드 협업 개발
-- **taxuyou** — 백엔드 협업 개발
+| 역할 | 기여자 | 설명 |
+| --- | --- | --- |
+| **Product / UX Designer · AI Builder** | [**Power-xc**](https://github.com/Power-xc) | 프로젝트 리드 — UI/UX 설계, AI 어시스턴트 구조, 프론트엔드 개발 및 전체 개선 |
+| **Backend & Data** | `Won-github` · `taxuyou` | 백엔드 API · 데이터 파이프라인 협업 개발 |
 
 ---
 
