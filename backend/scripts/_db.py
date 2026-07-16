@@ -5,7 +5,7 @@ source tree. Match these to docker-compose.yml (the ``POSTGRES_*`` values) or to
 the backend ``.env``::
 
     export PGPASSWORD=...            # required — matches POSTGRES_PASSWORD
-    export PGHOST=127.0.0.1 PGPORT=5433 PGDATABASE=foxpos PGUSER=app_user
+    export PGHOST=127.0.0.1 PGPORT=5433 PGDATABASE=pipaipos PGUSER=app_user
     export SEED_PICKLE=./data/seed_data/.cache/local_data_store.pkl
 
 Run the scripts from the ``backend/`` directory, e.g.::
@@ -28,7 +28,7 @@ def db_config() -> dict:
     return {
         "host": os.environ.get("PGHOST", "127.0.0.1"),
         "port": int(os.environ.get("PGPORT", "5433")),
-        "database": os.environ.get("PGDATABASE", "foxpos"),
+        "database": os.environ.get("PGDATABASE", "pipaipos"),
         "user": os.environ.get("PGUSER", "app_user"),
         "password": password,
     }

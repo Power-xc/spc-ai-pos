@@ -1,20 +1,31 @@
-# FoxPOS — 점주용 POS AI 어시스턴트 (PoC)
+# Pip AI POS — 점주용 POS AI 어시스턴트 (PoC)
 
-FoxPOS는 **BR코리아(던킨) 가맹점주**를 위한 AI 어시스턴트 POS 시스템의 개념 증명(Proof of Concept)입니다.
+> **점주용 지능형 POS AI 어시스턴트** — 실시간 매출 분석 · 생산 계획 추천 · 발주 추천 · 대화형 피드백 · v0.21.0
+
+**목차** — [소개](#소개) · [주요 기능](#주요-기능) · [아키텍처](#아키텍처) · [프로젝트 구조](#프로젝트-구조) · [로컬 실행](#로컬-실행) · [환경 변수](#환경-변수) · [PoC 안내](#poc-안내) · [개발진 및 협업 개발자](#개발진-및-협업-개발자) · [브랜드 · 라이선스](#브랜드-·-라이선스)
+
+---
+
+## 소개
+
+Pip AI POS는 **BR코리아(던킨) 가맹점주**를 위한 AI 어시스턴트 POS 시스템의 개념 증명(Proof of Concept)입니다.
 매장 데이터(매출·생산·발주·재고)를 바탕으로 **PIP AI**가 실시간 인사이트, 발주 추천, 기회손실 추정, 대화형 질의응답을 제공합니다.
 
-> **English TL;DR** — FoxPOS is a proof-of-concept AI assistant POS for Dunkin (BR Korea) franchise owners.
-> A FastAPI backend orchestrates domain agents (sales / production / ordering) over a self-hosted,
-> OpenAI-compatible LLM and PostgreSQL, serving two React + Vite frontends: **PIP POS** (desktop) and
-> **PIP Mobile**. This repository is a PoC — the data and models are for demonstration only.
+가맹점을 운영하는 점주들이 복잡한 통계나 엑셀 자료를 대조하지 않고도 매장 상황을 5초 안에 이해하고 최적의 의사결정을 내릴 수 있도록 돕는 구조적 장치들을 제공합니다.
+
+| 운영 페인포인트 | 증상 | Pip AI POS의 처방 |
+|-----------------|------|-------------------|
+| **기회손실 발생** | 재고가 부족해 손님이 왔을 때 제품을 못 판다 | 실시간 소진율 분석 및 생산 계획 추천으로 기회손실을 최소화 |
+| **발주 실수** | 사람이 감으로 하다 보니 과발주/과소발주 발생 | 과거 실적, 행사 영향, 편차 데이터를 반영한 AI 추천 발주 제안 |
+| **현황 파악 지연** | 시간대별 매출 추이와 핵심 알림을 대조하기 어렵다 | 실시간 현황 대시보드와 대화형 AI 어시스턴트 패널 제공 |
 
 <p align="center">
-  <img src="docs/screenshots/pip-pos-dashboard.png" alt="PIP POS 데스크톱 대시보드" width="720"><br/>
+  <img src="docs/screenshots/pip-pos-dashboard.png" alt="PIP POS 데스크톱 대시보드" style="max-width: 100%; height: auto;"><br/>
   <em>PIP POS 데스크톱 — 종합 현황 대시보드와 PIP AI 패널</em>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/pip-mobile.png" alt="PIP Mobile" width="280"><br/>
+  <img src="docs/screenshots/pip-mobile.png" alt="PIP Mobile" style="max-width: 100%; height: auto; width: 280px;"><br/>
   <em>PIP Mobile — 점주 모바일 화면</em>
 </p>
 
@@ -29,32 +40,70 @@ FoxPOS는 **BR코리아(던킨) 가맹점주**를 위한 AI 어시스턴트 POS 
 - **알림 & 할일** — 우선순위 기반 알림과 할일(To-Do) 관리
 - **데이터 마스킹 / 감사 로그** — 응답 마스킹과 감사 로깅을 포함한 서버 측 보안 계층
 
+---
+
 ## 아키텍처
 
 ```mermaid
-flowchart LR
-    subgraph FE[프론트엔드 · React + Vite]
-      A["PIP POS<br/>데스크톱 · 5181"]
-      B["PIP Mobile<br/>모바일 · 5186"]
+flowchart TD
+    %% Nodes
+    subgraph FE [프론트엔드 · React + Vite]
+        direction LR
+        A["PIP POS (데스크톱 · 5181)"]
+        B["PIP Mobile (모바일 · 5186)"]
     end
-    subgraph BE["백엔드 · FastAPI · 8100"]
-      R[Routers]
-      O["Intent 분류 · 라우팅"]
-      AG["Agents<br/>Sales · Production · Order"]
-      G[LLM Gateway]
+
+    subgraph BE [백엔드 · FastAPI · 8100]
+        direction TB
+        R["API 라우터 (Routers)"]
+        O["의도 분류 및 라우팅 (Intent Classifier)"]
+        AG{"도메인 에이전트"}
+        
+        R --> O
+        O --> AG
     end
+
+    AS["Sales Agent<br/>인사이트 · 매출 추정"]
+    AP["Production Agent<br/>재고 분석 · 생산 제안"]
+    AO["Order Agent<br/>발주 추천 · 기회손실"]
+    
+    G["LLM 게이트웨이<br/>LLM Gateway"]
+    DB[("PostgreSQL 16<br/>매장 데이터베이스")]
     LLM[("자체호스팅 LLM<br/>OpenAI 호환 API")]
-    DB[("PostgreSQL 16")]
-    A -->|"/api 프록시"| BE
-    B -->|VITE_API_BASE_URL| BE
-    R --> O --> AG --> G --> LLM
-    BE --> DB
+
+    %% Connections
+    A -->|"/api 프록시"| R
+    B -->|"API 요청"| R
+    R --> DB
+    
+    AG -- "매출 분석" --> AS
+    AG -- "생산 계획" --> AP
+    AG -- "발주 관리" --> AO
+    
+    AS --> G
+    AP --> G
+    AO --> G
+    
+    AS --> DB
+    AP --> DB
+    AO --> DB
+    
+    G --> LLM
+
+    %% Styling
+    style FE fill:#f8fafc,stroke:#38bdf8,stroke-width:2px
+    style BE fill:#f8fafc,stroke:#0f172a,stroke-width:2px
+    style AG fill:#2196F3,color:#fff
+    style DB fill:#f90,color:#fff
+    style LLM fill:#4a4,color:#fff
 ```
 
 - **Backend** — FastAPI · SQLAlchemy(async) · Alembic · Pydantic · APScheduler · Poetry (Python 3.11)
 - **Frontend** — React 18 · Vite · TypeScript · Tailwind CSS · Radix UI · MUI
 - **DB** — PostgreSQL 16
 - **LLM** — OpenAI 호환 엔드포인트(자체호스팅 vLLM / llama.cpp 등)를 `OPENAI_BASE_URL`로 연결
+
+---
 
 ## 프로젝트 구조
 
@@ -80,6 +129,8 @@ spc-ai-pos/
 ├── docker-compose.yml  # PostgreSQL + 백엔드
 └── .env.example        # 로컬 Postgres 비밀번호 (compose용)
 ```
+
+---
 
 ## 로컬 실행
 
@@ -134,6 +185,8 @@ cd pip-mobile && npm install && npm run dev -- --host 0.0.0.0 --port 5186
 | PIP Mobile | `5186` | 점주 모바일 |
 | PostgreSQL | `5433` | Docker Compose (컨테이너 내부 5432) |
 
+---
+
 ## 환경 변수
 
 | 파일 | 용도 |
@@ -145,6 +198,8 @@ cd pip-mobile && npm install && npm run dev -- --host 0.0.0.0 --port 5186
 
 각 디렉터리의 `*.env.example`을 복사해 실제 값을 채우세요. **실제 `.env`는 커밋하지 않습니다.**
 
+---
+
 ## PoC 안내
 
 이 저장소는 **개념 증명(PoC)**입니다.
@@ -152,6 +207,15 @@ cd pip-mobile && npm install && npm run dev -- --host 0.0.0.0 --port 5186
 - 포함된 데이터/지표는 데모 목적의 예시이며 실제 운영 수치가 아닙니다.
 - LLM 응답 품질은 연결한 모델과 프롬프트 구성에 따라 달라집니다.
 - 일부 예측/추정 값(기회손실 등)은 시뮬레이션 로직 기반의 근사치입니다.
+
+---
+
+## 개발진 및 협업 개발자
+
+- **Won-github** — 백엔드 협업 개발
+- **taxuyou** — 백엔드 협업 개발
+
+---
 
 ## 브랜드 · 라이선스
 

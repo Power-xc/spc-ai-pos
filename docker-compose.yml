@@ -1,9 +1,9 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: foxpos-postgres
+    container_name: pipaipos-postgres
     environment:
-      POSTGRES_DB: foxpos
+      POSTGRES_DB: pipaipos
       POSTGRES_USER: app_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy from .env.example)}
     ports:
@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app_user -d foxpos"]
+      test: ["CMD-SHELL", "pg_isready -U app_user -d pipaipos"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -21,11 +21,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: foxpos-backend
+    container_name: pipaipos-backend
     # DATABASE_URL is set here (using POSTGRES_PASSWORD from .env) so the
     # credential lives in exactly one place; other settings come from env_file.
     environment:
-      DATABASE_URL: postgresql+asyncpg://app_user:${POSTGRES_PASSWORD}@postgres:5432/foxpos
+      DATABASE_URL: postgresql+asyncpg://app_user:${POSTGRES_PASSWORD}@postgres:5432/pipaipos
     env_file:
       - ./infra/env/backend.env
     ports:
@@ -38,10 +38,10 @@ services:
         condition: service_healthy
 
   # Optional Redis for the realtime SSE fan-out. Enable with:
-  #   docker compose --profile realtime up -d
+  #   docker compose --profile realtime up -d redis
   redis:
     image: redis:7-alpine
-    container_name: foxpos-redis
+    container_name: pipaipos-redis
     profiles: ["realtime"]
     ports:
       - "6379:6379"
