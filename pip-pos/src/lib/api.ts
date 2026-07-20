@@ -3240,26 +3240,60 @@ const HOURLY_PROFILE = {
 };
 
 /* ── 데모 폴백 데이터 — 백엔드 미연결(정적 데모 배포) 시 원시 데이터 소스로 주입.
- * 실제 API 응답과 같은 형태로 넣어 소진 속도·생산 계획·기회손실 계산 로직이 그대로 동작한다. */
-const DEMO_FALLBACK_INVENTORY: InventoryCurrentItem[] = [
-  { product_id: "2001", product_name: "초코링", category: "도넛", on_hand_eod: 4, sold_qty: 36, stockout_minutes: 0, base_price: 1300, estimated_chance_loss: 8900, stockout_risk: "HIGH" },
-  { product_id: "2002", product_name: "글레이즈드", category: "도넛", on_hand_eod: 6, sold_qty: 48, stockout_minutes: 0, base_price: 1500, estimated_chance_loss: 13900, stockout_risk: "HIGH" },
-  { product_id: "2003", product_name: "보스턴크림", category: "도넛", on_hand_eod: 5, sold_qty: 28, stockout_minutes: 0, base_price: 1500, estimated_chance_loss: 7500, stockout_risk: "HIGH" },
-  { product_id: "2004", product_name: "에그타르트", category: "도넛", on_hand_eod: 12, sold_qty: 20, stockout_minutes: 0, base_price: 1800, estimated_chance_loss: 0, stockout_risk: "MEDIUM" },
-  { product_id: "2005", product_name: "베이글", category: "도넛", on_hand_eod: 11, sold_qty: 14, stockout_minutes: 0, base_price: 1600, estimated_chance_loss: 0, stockout_risk: "MEDIUM" },
-  { product_id: "2006", product_name: "먼치킨", category: "도넛", on_hand_eod: 30, sold_qty: 24, stockout_minutes: 0, base_price: 700, estimated_chance_loss: 0, stockout_risk: "LOW" },
-  { product_id: "2007", product_name: "딸기 크림 도넛", category: "도넛", on_hand_eod: 30, sold_qty: 18, stockout_minutes: 0, base_price: 1600, estimated_chance_loss: 0, stockout_risk: "LOW" },
+ * 실제 API 응답 형태를 유지해 소진 속도·생산 계획·기회손실 계산 로직이 그대로 동작한다. */
+type DemoFallbackProduct = {
+  product_id: string;
+  product_name: string;
+  stock: number;
+  predicted_stock_1h: number;
+  sold_qty: number;
+  base_price: number;
+  hourly_burn_rate: number;
+  stockout_probability: number;
+  recommended_production_qty: number;
+  estimated_chance_loss: number;
+  risk_level: string;
+  first_production: { avg_time: string; avg_qty: number } | null;
+  second_production: { avg_time: string; avg_qty: number } | null;
+  why: string;
+};
+
+const DEMO_FALLBACK_PRODUCTS: DemoFallbackProduct[] = [
+  { product_id: "2001", product_name: "초코링", stock: 4, predicted_stock_1h: 0, sold_qty: 36, base_price: 1300, hourly_burn_rate: 3.8, stockout_probability: 0.88, recommended_production_qty: 28, estimated_chance_loss: 8900, risk_level: "HIGH", first_production: { avg_time: "10:00", avg_qty: 30 }, second_production: { avg_time: "15:00", avg_qty: 20 }, why: "최근 4주 동일 요일 오후 판매 패턴" },
+  { product_id: "2002", product_name: "글레이즈드", stock: 6, predicted_stock_1h: 1, sold_qty: 48, base_price: 1500, hourly_burn_rate: 4.5, stockout_probability: 0.82, recommended_production_qty: 24, estimated_chance_loss: 13900, risk_level: "HIGH", first_production: { avg_time: "10:30", avg_qty: 24 }, second_production: { avg_time: "15:30", avg_qty: 18 }, why: "베스트셀러 · 오후 피크 소진 가속" },
+  { product_id: "2003", product_name: "보스턴크림", stock: 5, predicted_stock_1h: 2, sold_qty: 28, base_price: 1500, hourly_burn_rate: 3.2, stockout_probability: 0.74, recommended_production_qty: 18, estimated_chance_loss: 7500, risk_level: "HIGH", first_production: { avg_time: "11:00", avg_qty: 18 }, second_production: { avg_time: "16:00", avg_qty: 12 }, why: "주말 대비 평일 오후 수요 상승" },
+  { product_id: "2004", product_name: "에그타르트", stock: 12, predicted_stock_1h: 9, sold_qty: 20, base_price: 1800, hourly_burn_rate: 2.6, stockout_probability: 0.42, recommended_production_qty: 8, estimated_chance_loss: 0, risk_level: "MEDIUM", first_production: null, second_production: null, why: "오후 간식 수요 증가 패턴" },
+  { product_id: "2005", product_name: "베이글", stock: 11, predicted_stock_1h: 8, sold_qty: 14, base_price: 1600, hourly_burn_rate: 2.2, stockout_probability: 0.38, recommended_production_qty: 0, estimated_chance_loss: 0, risk_level: "MEDIUM", first_production: null, second_production: null, why: "판매 속도 완만 상승" },
+  { product_id: "2006", product_name: "먼치킨", stock: 30, predicted_stock_1h: 27, sold_qty: 24, base_price: 700, hourly_burn_rate: 2.4, stockout_probability: 0.08, recommended_production_qty: 0, estimated_chance_loss: 0, risk_level: "LOW", first_production: null, second_production: null, why: "재고 여유" },
+  { product_id: "2007", product_name: "딸기 크림 도넛", stock: 30, predicted_stock_1h: 28, sold_qty: 18, base_price: 1600, hourly_burn_rate: 1.8, stockout_probability: 0.05, recommended_production_qty: 0, estimated_chance_loss: 0, risk_level: "LOW", first_production: null, second_production: null, why: "재고 여유" },
 ];
 
-const DEMO_FALLBACK_COCKPIT_ITEMS = [
-  { product_id: "2001", product_name: "초코링", category: "도넛", current_stock: 4, predicted_stock_1h: 0, hourly_burn_rate: 3.8, stockout_probability: 0.88, recommended_production_qty: 28, first_production: { avg_time: "10:00", avg_qty: 30 }, second_production: { avg_time: "15:00", avg_qty: 20 }, risk_level: "HIGH", why: ["최근 4주 동일 요일 오후 판매 패턴"] },
-  { product_id: "2002", product_name: "글레이즈드", category: "도넛", current_stock: 6, predicted_stock_1h: 1, hourly_burn_rate: 4.5, stockout_probability: 0.82, recommended_production_qty: 24, first_production: { avg_time: "10:30", avg_qty: 24 }, second_production: { avg_time: "15:30", avg_qty: 18 }, risk_level: "HIGH", why: ["베스트셀러 · 오후 피크 소진 가속"] },
-  { product_id: "2003", product_name: "보스턴크림", category: "도넛", current_stock: 5, predicted_stock_1h: 2, hourly_burn_rate: 3.2, stockout_probability: 0.74, recommended_production_qty: 18, first_production: { avg_time: "11:00", avg_qty: 18 }, second_production: { avg_time: "16:00", avg_qty: 12 }, risk_level: "HIGH", why: ["주말 대비 평일 오후 수요 상승"] },
-  { product_id: "2004", product_name: "에그타르트", category: "도넛", current_stock: 12, predicted_stock_1h: 9, hourly_burn_rate: 2.6, stockout_probability: 0.42, recommended_production_qty: 8, first_production: null, second_production: null, risk_level: "MEDIUM", why: ["오후 간식 수요 증가 패턴"] },
-  { product_id: "2005", product_name: "베이글", category: "도넛", current_stock: 11, predicted_stock_1h: 8, hourly_burn_rate: 2.2, stockout_probability: 0.38, recommended_production_qty: 0, first_production: null, second_production: null, risk_level: "MEDIUM", why: ["판매 속도 완만 상승"] },
-  { product_id: "2006", product_name: "먼치킨", category: "도넛", current_stock: 30, predicted_stock_1h: 27, hourly_burn_rate: 2.4, stockout_probability: 0.08, recommended_production_qty: 0, first_production: null, second_production: null, risk_level: "LOW", why: ["재고 여유"] },
-  { product_id: "2007", product_name: "딸기 크림 도넛", category: "도넛", current_stock: 30, predicted_stock_1h: 28, hourly_burn_rate: 1.8, stockout_probability: 0.05, recommended_production_qty: 0, first_production: null, second_production: null, risk_level: "LOW", why: ["재고 여유"] },
-];
+const DEMO_FALLBACK_INVENTORY: InventoryCurrentItem[] = DEMO_FALLBACK_PRODUCTS.map((p) => ({
+  product_id: p.product_id,
+  product_name: p.product_name,
+  category: "도넛",
+  on_hand_eod: p.stock,
+  sold_qty: p.sold_qty,
+  stockout_minutes: 0,
+  base_price: p.base_price,
+  estimated_chance_loss: p.estimated_chance_loss,
+  stockout_risk: p.risk_level,
+}));
+
+const DEMO_FALLBACK_COCKPIT_ITEMS = DEMO_FALLBACK_PRODUCTS.map((p) => ({
+  product_id: p.product_id,
+  product_name: p.product_name,
+  category: "도넛",
+  current_stock: p.stock,
+  predicted_stock_1h: p.predicted_stock_1h,
+  hourly_burn_rate: p.hourly_burn_rate,
+  stockout_probability: p.stockout_probability,
+  recommended_production_qty: p.recommended_production_qty,
+  first_production: p.first_production,
+  second_production: p.second_production,
+  risk_level: p.risk_level,
+  why: [p.why],
+}));
 
 const DEMO_FALLBACK_SALES_SUMMARY = {
   today_revenue: 1489959,
