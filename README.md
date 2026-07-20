@@ -9,9 +9,12 @@
 `React` · `TypeScript` · `FastAPI` · `PostgreSQL` · `LLM Orchestration`
 Version `v0.21.0`
 
+**Live Demo** — [PIP POS 데스크톱](https://pip-ai-pos.vercel.app) · [PIP 점주앱 모바일](https://pip-ai-mobile.vercel.app)
+프론트엔드 정적 데모입니다. 백엔드 연동 기능(PIP AI 실응답·실데이터 조회)은 [로컬 실행](#로컬-실행)으로 확인할 수 있습니다.
+
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Power-xc/spc-ai-pos/main/docs/screenshots/pip-pos-dashboard.jpg" alt="PIP AI POS 데스크톱 대시보드 — 매출·추천 액션·PIP AI 어시스턴트 패널" width="68%" />
-  <img src="https://raw.githubusercontent.com/Power-xc/spc-ai-pos/main/docs/screenshots/pip-mobile.jpg" alt="PIP Mobile 점주 앱 — AI 인사이트와 오늘 매출" width="21%" />
+  <a href="https://pip-ai-pos.vercel.app"><img src="https://raw.githubusercontent.com/Power-xc/spc-ai-pos/main/docs/screenshots/pip-pos-dashboard.png" alt="PIP AI POS 데스크톱 대시보드 — 매출·추천 액션·PIP AI 어시스턴트 패널" width="70%" /></a>
+  <a href="https://pip-ai-mobile.vercel.app"><img src="https://raw.githubusercontent.com/Power-xc/spc-ai-pos/main/docs/screenshots/pip-mobile-store.png" alt="PIP 점주앱 — 매장 근무팀·재고 현황" width="18%" /></a>
 </p>
 
 **목차** — [개요](#프로젝트-개요) · [문제 정의](#문제-정의) · [주요 기능](#주요-기능) · [시스템 아키텍처](#시스템-아키텍처) · [프로젝트 구조](#프로젝트-구조) · [로컬 실행](#로컬-실행) · [사용 포트](#사용-포트) · [환경변수](#환경변수) · [PoC 범위와 한계](#poc-범위와-한계) · [Contributors](#contributors) · [License](#license-and-attribution)
