@@ -8,7 +8,7 @@ interface DashboardHeaderProps {
   isSidebarOpen: boolean;
   selectedMenu: string;
   headerLeft: number;
-  topBtnsLeft: number;
+  topBtnsRight: number;
   handleRefresh: () => void;
   isRefreshing: boolean;
 }
@@ -19,7 +19,7 @@ export default function DashboardHeader({
   isSidebarOpen,
   selectedMenu,
   headerLeft,
-  topBtnsLeft,
+  topBtnsRight,
   handleRefresh,
   isRefreshing,
 }: DashboardHeaderProps) {
@@ -102,7 +102,7 @@ export default function DashboardHeader({
       {/* Top action buttons (새로고침, AI 리포터 생성, PIP AI 챗봇) */}
       <div
         className="absolute content-stretch flex gap-[10px] items-center top-[13.77px] transition-all duration-300"
-        style={{ left: `${topBtnsLeft}px ` }}
+        style={{ right: `${topBtnsRight}px` }}
       >
         <div className="content-stretch flex gap-[10px] items-center relative shrink-0">
           <button

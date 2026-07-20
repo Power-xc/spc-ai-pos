@@ -75,7 +75,7 @@ export default function Frame({ className }: { className?: string }) {
 
   // Dynamic layout values
   const sidebarW = isSidebarOpen ? 188 : 0;
-  const topBtnsLeft = 360 + (!isAiPanelOpen ? 217 : 0);
+  const topBtnsRight = (isAiPanelOpen ? 217 : 0) + 20;
   const headerLeft = isSidebarOpen ? sidebarW + 20 : 46;
   const cardLeft = isSidebarOpen ? sidebarW + 20 : 20;
   const contentRight = isAiPanelOpen ? 787 : 1004;
@@ -103,7 +103,7 @@ export default function Frame({ className }: { className?: string }) {
         isSidebarOpen={isSidebarOpen}
         selectedMenu={selectedMenu}
         headerLeft={headerLeft}
-        topBtnsLeft={topBtnsLeft}
+        topBtnsRight={topBtnsRight}
         handleRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />

@@ -3239,6 +3239,39 @@ const HOURLY_PROFILE = {
   20: 0.04, 21: 0.03,
 };
 
+/* ── 데모 폴백 데이터 — 백엔드 미연결(정적 데모 배포) 시 원시 데이터 소스로 주입.
+ * 실제 API 응답과 같은 형태로 넣어 소진 속도·생산 계획·기회손실 계산 로직이 그대로 동작한다. */
+const DEMO_FALLBACK_INVENTORY: InventoryCurrentItem[] = [
+  { product_id: "2001", product_name: "초코링", category: "도넛", on_hand_eod: 4, sold_qty: 36, stockout_minutes: 0, base_price: 1300, estimated_chance_loss: 8900, stockout_risk: "HIGH" },
+  { product_id: "2002", product_name: "글레이즈드", category: "도넛", on_hand_eod: 6, sold_qty: 48, stockout_minutes: 0, base_price: 1500, estimated_chance_loss: 13900, stockout_risk: "HIGH" },
+  { product_id: "2003", product_name: "보스턴크림", category: "도넛", on_hand_eod: 5, sold_qty: 28, stockout_minutes: 0, base_price: 1500, estimated_chance_loss: 7500, stockout_risk: "HIGH" },
+  { product_id: "2004", product_name: "에그타르트", category: "도넛", on_hand_eod: 12, sold_qty: 20, stockout_minutes: 0, base_price: 1800, estimated_chance_loss: 0, stockout_risk: "MEDIUM" },
+  { product_id: "2005", product_name: "베이글", category: "도넛", on_hand_eod: 11, sold_qty: 14, stockout_minutes: 0, base_price: 1600, estimated_chance_loss: 0, stockout_risk: "MEDIUM" },
+  { product_id: "2006", product_name: "먼치킨", category: "도넛", on_hand_eod: 30, sold_qty: 24, stockout_minutes: 0, base_price: 700, estimated_chance_loss: 0, stockout_risk: "LOW" },
+  { product_id: "2007", product_name: "딸기 크림 도넛", category: "도넛", on_hand_eod: 30, sold_qty: 18, stockout_minutes: 0, base_price: 1600, estimated_chance_loss: 0, stockout_risk: "LOW" },
+];
+
+const DEMO_FALLBACK_COCKPIT_ITEMS = [
+  { product_id: "2001", product_name: "초코링", category: "도넛", current_stock: 4, predicted_stock_1h: 0, hourly_burn_rate: 3.8, stockout_probability: 0.88, recommended_production_qty: 28, first_production: { avg_time: "10:00", avg_qty: 30 }, second_production: { avg_time: "15:00", avg_qty: 20 }, risk_level: "HIGH", why: ["최근 4주 동일 요일 오후 판매 패턴"] },
+  { product_id: "2002", product_name: "글레이즈드", category: "도넛", current_stock: 6, predicted_stock_1h: 1, hourly_burn_rate: 4.5, stockout_probability: 0.82, recommended_production_qty: 24, first_production: { avg_time: "10:30", avg_qty: 24 }, second_production: { avg_time: "15:30", avg_qty: 18 }, risk_level: "HIGH", why: ["베스트셀러 · 오후 피크 소진 가속"] },
+  { product_id: "2003", product_name: "보스턴크림", category: "도넛", current_stock: 5, predicted_stock_1h: 2, hourly_burn_rate: 3.2, stockout_probability: 0.74, recommended_production_qty: 18, first_production: { avg_time: "11:00", avg_qty: 18 }, second_production: { avg_time: "16:00", avg_qty: 12 }, risk_level: "HIGH", why: ["주말 대비 평일 오후 수요 상승"] },
+  { product_id: "2004", product_name: "에그타르트", category: "도넛", current_stock: 12, predicted_stock_1h: 9, hourly_burn_rate: 2.6, stockout_probability: 0.42, recommended_production_qty: 8, first_production: null, second_production: null, risk_level: "MEDIUM", why: ["오후 간식 수요 증가 패턴"] },
+  { product_id: "2005", product_name: "베이글", category: "도넛", current_stock: 11, predicted_stock_1h: 8, hourly_burn_rate: 2.2, stockout_probability: 0.38, recommended_production_qty: 0, first_production: null, second_production: null, risk_level: "MEDIUM", why: ["판매 속도 완만 상승"] },
+  { product_id: "2006", product_name: "먼치킨", category: "도넛", current_stock: 30, predicted_stock_1h: 27, hourly_burn_rate: 2.4, stockout_probability: 0.08, recommended_production_qty: 0, first_production: null, second_production: null, risk_level: "LOW", why: ["재고 여유"] },
+  { product_id: "2007", product_name: "딸기 크림 도넛", category: "도넛", current_stock: 30, predicted_stock_1h: 28, hourly_burn_rate: 1.8, stockout_probability: 0.05, recommended_production_qty: 0, first_production: null, second_production: null, risk_level: "LOW", why: ["재고 여유"] },
+];
+
+const DEMO_FALLBACK_SALES_SUMMARY = {
+  today_revenue: 1489959,
+  hourly_trend: [
+    { hour: 8, revenue: 45000 }, { hour: 9, revenue: 60000 }, { hour: 10, revenue: 89000 },
+    { hour: 11, revenue: 119000 }, { hour: 12, revenue: 149000 }, { hour: 13, revenue: 134000 },
+    { hour: 14, revenue: 119000 }, { hour: 15, revenue: 104000 }, { hour: 16, revenue: 119000 },
+    { hour: 17, revenue: 149000 }, { hour: 18, revenue: 164000 }, { hour: 19, revenue: 134000 },
+    { hour: 20, revenue: 60000 }, { hour: 21, revenue: 45000 },
+  ],
+};
+
 export async function getProductionAgent(): Promise<ProductionAgentData> {
   try {
     const demoHour = getDemoDateObject().getHours();
@@ -3263,11 +3296,17 @@ export async function getProductionAgent(): Promise<ProductionAgentData> {
       }>(`/v1/dashboard/production?store_id=${STORE_ID}`),
     ]);
 
-    const inventoryItems = inventoryRaw ?? [];
+    const hasLiveData =
+      (inventoryRaw?.length ?? 0) > 0 || (cockpitRaw?.items?.length ?? 0) > 0;
+    const inventoryItems = hasLiveData
+      ? (inventoryRaw ?? [])
+      : DEMO_FALLBACK_INVENTORY;
     const inventoryMap = new Map(
       inventoryItems.map((item) => [String(item.product_id), item]),
     );
-    const cockpitItems = cockpitRaw?.items ?? [];
+    const cockpitItems = hasLiveData
+      ? (cockpitRaw?.items ?? [])
+      : DEMO_FALLBACK_COCKPIT_ITEMS;
 
     const items = (cockpitItems.length > 0 ? cockpitItems : inventoryItems).map((item) => {
       const productId = String(item.product_id);
@@ -3748,13 +3787,16 @@ export async function getOrderAgent(): Promise<OrderAgentData> {
   });
 
   try {
-    const [summaryData, inventoryItems] = await Promise.all([
+    const [summaryRaw, inventoryRaw] = await Promise.all([
       safeGet<{
         today_revenue?: number;
         hourly_trend?: { hour: number; revenue: number }[];
       }>(summaryPath),
       safeGet<InventoryCurrentItem[]>(inventoryPath),
     ]);
+    const summaryData = summaryRaw ?? DEMO_FALLBACK_SALES_SUMMARY;
+    const inventoryItems =
+      (inventoryRaw?.length ?? 0) > 0 ? inventoryRaw : DEMO_FALLBACK_INVENTORY;
 
     /* "시각까지의 누적" 규칙: 8~(H-1)시 전체 + H시×(M/60) */
     const demoDateObj = getDemoDateObject();
